@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LieferPool – Login</title>
+  <link rel="stylesheet" href="style.css">
+  <script>
+    // Config – Backend-URL anpassen
+  </script>
+</head>
+<body>
+<div class="login-page">
+  <div class="login-box">
+    <div class="login-logo">Liefer<span>Pool</span></div>
+    <div class="login-sub">Regionale Lieferkooperative</div>
+
+    <div id="error" class="alert alert-error" style="display:none"></div>
+
+    <!-- Login Form -->
+    <div id="form-login">
+      <div class="form-group">
+        <label class="form-label">E-Mail</label>
+        <input class="form-control" type="email" id="email" placeholder="name@betrieb.de" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Passwort</label>
+        <input class="form-control" type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="btn btn-primary" id="btn-login" style="width:100%;justify-content:center;margin-top:.5rem">
+        Anmelden
+      </button>
+      <hr class="login-divider">
+      <p style="font-size:12px;color:var(--text3);text-align:center">
+        Noch kein Konto?
+        <a href="#" id="show-register">Registrieren</a>
+      </p>
+    </div>
+
+    <!-- Register Form -->
+    <div id="form-register" style="display:none">
+      <div class="form-group">
+        <label class="form-label">Name / Betrieb</label>
+        <input class="form-control" type="text" id="reg-name" placeholder="Hof Mustermann">
+      </div>
+      <div class="form-group">
+        <label class="form-label">E-Mail</label>
+        <input class="form-control" type="email" id="reg-email" placeholder="name@betrieb.de">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Passwort</label>
+        <input class="form-control" type="password" id="reg-password" placeholder="Mindestens 8 Zeichen">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Rolle</label>
+        <select class="form-control" id="reg-role">
+          <option value="erzeuger">Erzeuger (Landwirt / Produzent)</option>
+          <option value="caterer">Caterer (Großabnehmer)</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" id="btn-register" style="width:100%;justify-content:center;margin-top:.5rem">
+        Konto erstellen
+      </button>
+      <hr class="login-divider">
+      <p style="font-size:12px;color:var(--text3);text-align:center">
+        <a href="#" id="show-login">Zurück zum Login</a>
+      </p>
+    </div>
+  </div>
+</div>
+
+<script src="api.js"></script>
+<script>
+  // Bereits eingeloggt → weiterleiten
+  if (Auth.isLoggedIn()) {
+    const role = Auth.getUser()?.role;
+    if (role) window.location.href = role + '.html';
+  }
+
+  function showError(msg) {
+    const el = document.getElementById('error');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+  function hideError() {
+    document.getElementById('error').style.display = 'none';
+  }
+
+  function setLoading(btn, loading) {
+    if (loading) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Bitte warten...';
+    } else {
+      btn.disabled = false;
+    }
+  }
+
+  // Login
+  document.getElementById('btn-login').addEventListener('click', async () => {
+    hideError();
+    const email    = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const btn      = document.getElementById('btn-login');
+
+    if (!email || !password) return showError('E-Mail und Passwort eingeben');
+    setLoading(btn, true);
+
+    try {
+      const { token, user } = await api.login(email, password);
+      Auth.setToken(token);
+      Auth.setUser(user);
+      window.location.href = user.role + '.html';
+    } catch (err) {
+      btn.textContent = 'Anmelden';
+      btn.disabled = false;
+      showError(err.message);
+    }
+  });
+
+  // Enter key
+  document.getElementById('password').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('btn-login').click();
+  });
+
+  // Register
+  document.getElementById('btn-register').addEventListener('click', async () => {
+    hideError();
+    const name     = document.getElementById('reg-name').value.trim();
+    const email    = document.getElementById('reg-email').value.trim();
+    const password = document.getElementById('reg-password').value;
+    const role     = document.getElementById('reg-role').value;
+    const btn      = document.getElementById('btn-register');
+
+    if (!name || !email || !password) return showError('Alle Felder ausfüllen');
+    if (password.length < 8) return showError('Passwort mindestens 8 Zeichen');
+    setLoading(btn, true);
+
+    try {
+      const { token, user } = await api.register(email, password, role, name);
+      Auth.setToken(token);
+      Auth.setUser(user);
+      window.location.href = user.role + '.html';
+    } catch (err) {
+      btn.textContent = 'Konto erstellen';
+      btn.disabled = false;
+      showError(err.message);
+    }
+  });
+
+  // Toggle Login/Register
+  document.getElementById('show-register').addEventListener('click', e => {
+    e.preventDefault();
+    hideError();
+    document.getElementById('form-login').style.display = 'none';
+    document.getElementById('form-register').style.display = 'block';
+  });
+  document.getElementById('show-login').addEventListener('click', e => {
+    e.preventDefault();
+    hideError();
+    document.getElementById('form-register').style.display = 'none';
+    document.getElementById('form-login').style.display = 'block';
+  });
+</script>
+</body>
+</html>

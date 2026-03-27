@@ -1,165 +1,703 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LieferPool – Login</title>
-  <link rel="stylesheet" href="style.css">
-  <script>
-    // Config – Backend-URL anpassen
-  </script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LieferPool – Regionale Lieferkooperative</title>
+<meta name="description" content="Kleinerzeuger bündeln Mengen. Caterer erhalten einen verlässlichen Großlieferanten. Automatische Abrechnung, sofortige Auszahlung.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#0b0c0a;
+  --bg2:#111210;
+  --bg3:#181917;
+  --border:#232420;
+  --green:#7ab648;
+  --green-dim:#4d7a2a;
+  --green-bg:#111a0a;
+  --text:#e8e9e3;
+  --text2:#8a8d81;
+  --text3:#4a4d45;
+  --amber:#c8963a;
+}
+
+html{scroll-behavior:smooth}
+body{
+  font-family:'DM Sans',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ---- NAV ---- */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:1.25rem 3rem;
+  border-bottom:1px solid transparent;
+  transition:all .3s;
+}
+nav.scrolled{
+  background:rgba(11,12,10,.92);
+  border-color:var(--border);
+  backdrop-filter:blur(12px);
+}
+.nav-logo{
+  font-family:'DM Mono',monospace;
+  font-size:14px;font-weight:500;
+  letter-spacing:.06em;color:var(--text);
+  text-decoration:none;
+}
+.nav-logo span{color:var(--green)}
+.nav-links{display:flex;align-items:center;gap:2rem}
+.nav-links a{
+  font-size:13px;color:var(--text2);text-decoration:none;
+  transition:color .15s;
+}
+.nav-links a:hover{color:var(--text)}
+.nav-cta{
+  font-size:13px;padding:8px 20px;
+  border:1px solid var(--green-dim);
+  border-radius:4px;
+  background:var(--green-bg);
+  color:var(--green);
+  text-decoration:none;
+  transition:all .15s;
+  font-family:'DM Mono',monospace;
+  letter-spacing:.03em;
+}
+.nav-cta:hover{background:var(--green);color:#0b0c0a}
+
+/* ---- HERO ---- */
+.hero{
+  min-height:100vh;
+  display:flex;flex-direction:column;
+  justify-content:center;
+  padding:8rem 3rem 6rem;
+  position:relative;
+  overflow:hidden;
+}
+
+/* Organisches Hintergrundmuster */
+.hero::before{
+  content:'';
+  position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse 60% 50% at 80% 30%, rgba(122,182,72,.06) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 60% at 20% 70%, rgba(122,182,72,.04) 0%, transparent 60%);
+  pointer-events:none;
+}
+
+/* Feldlinien - subtle grid */
+.hero::after{
+  content:'';
+  position:absolute;inset:0;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size:80px 80px;
+  opacity:.4;
+  mask-image:radial-gradient(ellipse at center, black 0%, transparent 70%);
+  pointer-events:none;
+}
+
+.hero-inner{max-width:1100px;margin:0 auto;width:100%;position:relative;z-index:1}
+
+.hero-label{
+  font-family:'DM Mono',monospace;
+  font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--green);
+  margin-bottom:2rem;
+  display:flex;align-items:center;gap:.75rem;
+  opacity:0;animation:fadeUp .6s .1s forwards;
+}
+.hero-label::before{
+  content:'';width:32px;height:1px;background:var(--green);
+}
+
+.hero-headline{
+  font-family:'Playfair Display',serif;
+  font-size:clamp(2.8rem,6vw,5.5rem);
+  font-weight:700;
+  line-height:1.08;
+  letter-spacing:-.02em;
+  color:var(--text);
+  max-width:16ch;
+  opacity:0;animation:fadeUp .7s .2s forwards;
+}
+.hero-headline em{
+  font-style:italic;
+  color:var(--green);
+}
+
+.hero-sub{
+  font-size:clamp(1rem,1.5vw,1.2rem);
+  color:var(--text2);
+  font-weight:300;
+  line-height:1.7;
+  max-width:52ch;
+  margin-top:2rem;
+  opacity:0;animation:fadeUp .7s .35s forwards;
+}
+
+.hero-actions{
+  display:flex;align-items:center;gap:1.25rem;
+  margin-top:2.5rem;
+  flex-wrap:wrap;
+  opacity:0;animation:fadeUp .7s .5s forwards;
+}
+.btn-hero-primary{
+  padding:14px 28px;
+  background:var(--green);
+  color:#0b0c0a;
+  font-weight:500;font-size:14px;
+  border-radius:4px;text-decoration:none;
+  transition:all .15s;
+  letter-spacing:.01em;
+}
+.btn-hero-primary:hover{background:#8dcf55;transform:translateY(-1px)}
+.btn-hero-secondary{
+  font-size:13px;color:var(--text2);text-decoration:none;
+  font-family:'DM Mono',monospace;letter-spacing:.03em;
+  display:flex;align-items:center;gap:.5rem;
+  transition:color .15s;
+}
+.btn-hero-secondary:hover{color:var(--text)}
+.btn-hero-secondary::after{content:'↓'}
+
+/* Zahlen unter Hero */
+.hero-stats{
+  display:flex;gap:3rem;flex-wrap:wrap;
+  margin-top:5rem;padding-top:2.5rem;
+  border-top:1px solid var(--border);
+  opacity:0;animation:fadeUp .7s .65s forwards;
+}
+.stat-item{}
+.stat-num{
+  font-family:'Playfair Display',serif;
+  font-size:2.2rem;font-weight:700;
+  color:var(--text);line-height:1;
+}
+.stat-num span{color:var(--green)}
+.stat-label{
+  font-size:12px;color:var(--text3);
+  font-family:'DM Mono',monospace;
+  letter-spacing:.06em;text-transform:uppercase;
+  margin-top:.4rem;
+}
+
+/* ---- SECTIONS ---- */
+section{padding:7rem 3rem}
+.container{max-width:1100px;margin:0 auto;width:100%}
+
+/* ---- PROBLEM ---- */
+.problem-section{background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.section-label{
+  font-family:'DM Mono',monospace;
+  font-size:10px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--green);margin-bottom:1.25rem;
+}
+.section-title{
+  font-family:'Playfair Display',serif;
+  font-size:clamp(2rem,4vw,3.2rem);
+  font-weight:700;line-height:1.12;
+  letter-spacing:-.02em;
+  max-width:18ch;
+}
+.section-title em{font-style:italic;color:var(--green)}
+
+.problem-grid{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:1px;background:var(--border);
+  margin-top:4rem;border:1px solid var(--border);border-radius:8px;overflow:hidden;
+}
+.problem-cell{
+  background:var(--bg2);
+  padding:2rem 2.5rem;
+}
+.problem-cell-label{
+  font-family:'DM Mono',monospace;font-size:10px;
+  letter-spacing:.1em;text-transform:uppercase;
+  color:var(--text3);margin-bottom:1.25rem;
+}
+.problem-cell-title{
+  font-family:'Playfair Display',serif;
+  font-size:1.4rem;font-weight:700;
+  margin-bottom:1rem;line-height:1.2;
+}
+.problem-list{
+  list-style:none;display:flex;flex-direction:column;gap:.625rem;
+}
+.problem-list li{
+  font-size:13px;color:var(--text2);
+  display:flex;align-items:flex-start;gap:.625rem;
+  line-height:1.5;
+}
+.problem-list li::before{
+  content:'×';color:#d45a4a;
+  font-family:'DM Mono',monospace;font-size:14px;
+  flex-shrink:0;margin-top:1px;
+}
+.solution-list li::before{
+  content:'✓';color:var(--green) !important;
+}
+
+/* ---- WIE ES FUNKTIONIERT ---- */
+.how-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:1.5rem;margin-top:4rem;
+}
+.how-card{
+  padding:2rem;
+  border:1px solid var(--border);
+  border-radius:8px;
+  background:var(--bg2);
+  position:relative;
+  overflow:hidden;
+  transition:border-color .2s;
+}
+.how-card:hover{border-color:var(--green-dim)}
+.how-card::before{
+  content:'';
+  position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,var(--green),transparent);
+}
+.how-num{
+  font-family:'Playfair Display',serif;
+  font-size:3rem;font-weight:700;
+  color:var(--border);
+  line-height:1;margin-bottom:1.25rem;
+}
+.how-title{
+  font-size:15px;font-weight:500;
+  margin-bottom:.625rem;
+}
+.how-text{
+  font-size:13px;color:var(--text2);
+  line-height:1.65;
+}
+.how-tag{
+  display:inline-block;margin-top:1.25rem;
+  font-family:'DM Mono',monospace;font-size:10px;
+  letter-spacing:.06em;
+  padding:3px 8px;border-radius:20px;
+  background:var(--green-bg);color:var(--green);
+  border:1px solid var(--green-dim);
+}
+
+/* ---- ZIELGRUPPEN ---- */
+.audience-section{background:var(--bg2);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.audience-grid{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:2rem;margin-top:4rem;
+}
+.audience-card{
+  padding:2.5rem;
+  border:1px solid var(--border);
+  border-radius:8px;background:var(--bg);
+}
+.audience-card-icon{
+  font-size:2rem;margin-bottom:1.25rem;
+  filter:grayscale(1);
+}
+.audience-card-title{
+  font-family:'Playfair Display',serif;
+  font-size:1.5rem;font-weight:700;
+  margin-bottom:.5rem;
+}
+.audience-card-sub{
+  font-size:13px;color:var(--text2);
+  margin-bottom:1.5rem;line-height:1.6;
+}
+.audience-features{list-style:none;display:flex;flex-direction:column;gap:.5rem}
+.audience-features li{
+  font-size:13px;color:var(--text2);
+  display:flex;align-items:flex-start;gap:.625rem;line-height:1.5;
+}
+.audience-features li::before{
+  content:'→';color:var(--green);
+  font-family:'DM Mono',monospace;flex-shrink:0;
+}
+.audience-card-cta{
+  display:inline-block;margin-top:2rem;
+  font-size:13px;color:var(--green);
+  font-family:'DM Mono',monospace;
+  letter-spacing:.03em;text-decoration:none;
+  border-bottom:1px solid var(--green-dim);
+  padding-bottom:2px;transition:color .15s;
+}
+.audience-card-cta:hover{color:#8dcf55}
+
+/* ---- CHAIN SECTION ---- */
+.chain-section{}
+.chain-inner{
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:5rem;align-items:center;
+}
+.chain-visual{
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:1.5rem;
+  font-family:'DM Mono',monospace;
+  font-size:11px;
+  line-height:2;
+  color:var(--text3);
+  overflow:hidden;
+}
+.chain-visual .cv-line{display:flex;align-items:center;gap:.75rem}
+.chain-visual .cv-green{color:var(--green)}
+.chain-visual .cv-amber{color:var(--amber)}
+.chain-visual .cv-dim{color:var(--text3)}
+.chain-visual .cv-block{
+  display:inline-block;padding:2px 6px;
+  background:var(--bg3);border-radius:3px;
+  font-size:10px;
+}
+.chain-text{}
+.chain-points{display:flex;flex-direction:column;gap:1.5rem;margin-top:2rem}
+.chain-point{display:flex;gap:1rem}
+.chain-point-dot{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--green);flex-shrink:0;
+  margin-top:5px;
+}
+.chain-point-title{font-weight:500;font-size:14px;margin-bottom:.25rem}
+.chain-point-text{font-size:13px;color:var(--text2);line-height:1.6}
+
+/* ---- CTA ---- */
+.cta-section{
+  background:var(--bg2);
+  border-top:1px solid var(--border);
+  text-align:center;
+}
+.cta-headline{
+  font-family:'Playfair Display',serif;
+  font-size:clamp(2rem,4vw,3.5rem);
+  font-weight:700;line-height:1.1;
+  letter-spacing:-.02em;
+  max-width:20ch;margin:0 auto 1.5rem;
+}
+.cta-headline em{font-style:italic;color:var(--green)}
+.cta-sub{
+  font-size:15px;color:var(--text2);
+  max-width:44ch;margin:0 auto 2.5rem;
+  line-height:1.65;
+}
+.cta-actions{display:flex;justify-content:center;gap:1rem;flex-wrap:wrap}
+.btn-cta-primary{
+  padding:14px 32px;background:var(--green);
+  color:#0b0c0a;font-weight:500;font-size:14px;
+  border-radius:4px;text-decoration:none;transition:all .15s;
+}
+.btn-cta-primary:hover{background:#8dcf55;transform:translateY(-1px)}
+.btn-cta-secondary{
+  padding:14px 32px;border:1px solid var(--border);
+  color:var(--text2);font-size:14px;
+  border-radius:4px;text-decoration:none;transition:all .15s;
+}
+.btn-cta-secondary:hover{border-color:var(--text3);color:var(--text)}
+
+/* ---- FOOTER ---- */
+footer{
+  border-top:1px solid var(--border);
+  padding:2.5rem 3rem;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:1rem;
+}
+.footer-logo{
+  font-family:'DM Mono',monospace;font-size:13px;
+  color:var(--text3);
+}
+.footer-logo span{color:var(--green)}
+.footer-links{display:flex;gap:2rem}
+.footer-links a{font-size:12px;color:var(--text3);text-decoration:none;transition:color .15s}
+.footer-links a:hover{color:var(--text2)}
+
+/* ---- ANIMATIONS ---- */
+@keyframes fadeUp{
+  from{opacity:0;transform:translateY(20px)}
+  to{opacity:1;transform:translateY(0)}
+}
+
+.reveal{
+  opacity:0;transform:translateY(24px);
+  transition:opacity .65s ease, transform .65s ease;
+}
+.reveal.visible{opacity:1;transform:translateY(0)}
+
+/* ---- RESPONSIVE ---- */
+@media(max-width:900px){
+  nav{padding:1rem 1.5rem}
+  section{padding:5rem 1.5rem}
+  .hero{padding:7rem 1.5rem 5rem}
+  .problem-grid{grid-template-columns:1fr}
+  .how-grid{grid-template-columns:1fr}
+  .audience-grid{grid-template-columns:1fr}
+  .chain-inner{grid-template-columns:1fr}
+  footer{padding:2rem 1.5rem;flex-direction:column;align-items:flex-start}
+}
+@media(max-width:600px){
+  .hero-stats{gap:2rem}
+  .nav-links{display:none}
+}
+</style>
 </head>
 <body>
-<div class="login-page">
-  <div class="login-box">
-    <div class="login-logo">Liefer<span>Pool</span></div>
-    <div class="login-sub">Regionale Lieferkooperative</div>
 
-    <div id="error" class="alert alert-error" style="display:none"></div>
+<!-- NAV -->
+<nav id="nav">
+  <a href="#" class="nav-logo">Liefer<span>Pool</span></a>
+  <div class="nav-links">
+    <a href="#wie">Wie es funktioniert</a>
+    <a href="#fuer-wen">Für wen</a>
+    <a href="#blockchain">Technologie</a>
+  </div>
+  <a href="/login" class="nav-cta">Anmelden →</a>
+</nav>
 
-    <!-- Login Form -->
-    <div id="form-login">
-      <div class="form-group">
-        <label class="form-label">E-Mail</label>
-        <input class="form-control" type="email" id="email" placeholder="name@betrieb.de" autocomplete="email">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Passwort</label>
-        <input class="form-control" type="password" id="password" placeholder="••••••••" autocomplete="current-password">
-      </div>
-      <button class="btn btn-primary" id="btn-login" style="width:100%;justify-content:center;margin-top:.5rem">
-        Anmelden
-      </button>
-      <hr class="login-divider">
-      <p style="font-size:12px;color:var(--text3);text-align:center">
-        Noch kein Konto?
-        <a href="#" id="show-register">Registrieren</a>
-      </p>
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-label">Regionale Lieferkooperative · NRW</div>
+    <h1 class="hero-headline">
+      Viele Kleine.<br>
+      <em>Ein verlässlicher</em><br>
+      Lieferant.
+    </h1>
+    <p class="hero-sub">
+      LieferPool bündelt Mengen regionaler Kleinerzeuger zu planungssicheren
+      Großlieferungen für Caterer, Kantinen und Krankenhäuser —
+      mit automatischer Abrechnung und sofortiger Auszahlung.
+    </p>
+    <div class="hero-actions">
+      <a href="/login" class="btn-hero-primary">Jetzt starten</a>
+      <a href="#wie" class="btn-hero-secondary">Wie es funktioniert</a>
     </div>
-
-    <!-- Register Form -->
-    <div id="form-register" style="display:none">
-      <div class="form-group">
-        <label class="form-label">Name / Betrieb</label>
-        <input class="form-control" type="text" id="reg-name" placeholder="Hof Mustermann">
+    <div class="hero-stats">
+      <div class="stat-item">
+        <div class="stat-num">1<span>×</span></div>
+        <div class="stat-label">Vertrag für Caterer</div>
       </div>
-      <div class="form-group">
-        <label class="form-label">E-Mail</label>
-        <input class="form-control" type="email" id="reg-email" placeholder="name@betrieb.de">
+      <div class="stat-item">
+        <div class="stat-num">0<span> €</span></div>
+        <div class="stat-label">Fee für Erzeuger</div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Passwort</label>
-        <input class="form-control" type="password" id="reg-password" placeholder="Mindestens 8 Zeichen">
+      <div class="stat-item">
+        <div class="stat-num">&lt;10<span>s</span></div>
+        <div class="stat-label">Auszahlung nach Lieferung</div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Rolle</label>
-        <select class="form-control" id="reg-role">
-          <option value="erzeuger">Erzeuger (Landwirt / Produzent)</option>
-          <option value="caterer">Caterer (Großabnehmer)</option>
-        </select>
+      <div class="stat-item">
+        <div class="stat-num">100<span>%</span></div>
+        <div class="stat-label">Regional & nachvollziehbar</div>
       </div>
-      <button class="btn btn-primary" id="btn-register" style="width:100%;justify-content:center;margin-top:.5rem">
-        Konto erstellen
-      </button>
-      <hr class="login-divider">
-      <p style="font-size:12px;color:var(--text3);text-align:center">
-        <a href="#" id="show-login">Zurück zum Login</a>
-      </p>
     </div>
   </div>
-</div>
+</section>
 
-<script src="api.js"></script>
+<!-- PROBLEM -->
+<section class="problem-section">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-label">Das Problem</div>
+      <h2 class="section-title">Warum Großcaterer selten <em>regional</em> kaufen</h2>
+    </div>
+    <div class="problem-grid reveal">
+      <div class="problem-cell">
+        <div class="problem-cell-label">Kleinerzeuger heute</div>
+        <div class="problem-cell-title">Zu klein für den Markt</div>
+        <ul class="problem-list">
+          <li>Schwankende Mengen, keine Planbarkeit</li>
+          <li>Einzelne Rechnungen, hoher Aufwand</li>
+          <li>Kein Zugang zu Ausschreibungen</li>
+          <li>60 Tage Zahlungsziel — Liquiditätsproblem</li>
+          <li>Kein Reputationsnachweis für Abnehmer</li>
+        </ul>
+      </div>
+      <div class="problem-cell">
+        <div class="problem-cell-label">Mit LieferPool</div>
+        <div class="problem-cell-title">Gemeinsam groß genug</div>
+        <ul class="problem-list solution-list">
+          <li>Planungssichere Mengen durch Pool-Bündelung</li>
+          <li>Eine Rechnung, automatisch generiert</li>
+          <li>Zugang zu Großabnehmern ab Tag 1</li>
+          <li>SEPA Instant — Geld in Sekunden</li>
+          <li>Verifizierte Zertifikate, on-chain nachweisbar</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WIE ES FUNKTIONIERT -->
+<section id="wie">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-label">So funktioniert es</div>
+      <h2 class="section-title">Drei Schritte zum <em>Großlieferanten</em></h2>
+    </div>
+    <div class="how-grid">
+      <div class="how-card reveal">
+        <div class="how-num">01</div>
+        <div class="how-title">Caterer stellt Bedarf ein</div>
+        <p class="how-text">Menge, Produkt, Lieferwoche und Maximalpreis. Das System erstellt automatisch einen Lieferpool — sichtbar für alle verifizierten Erzeuger in der Region.</p>
+        <span class="how-tag">Pool aktiv</span>
+      </div>
+      <div class="how-card reveal">
+        <div class="how-num">02</div>
+        <div class="how-title">Erzeuger sagen Mengen zu</div>
+        <p class="how-text">Jeder Betrieb committet seinen Anteil. Sobald die Mindestmenge erreicht ist, wird der Pool automatisch gesperrt — der Vertrag steht.</p>
+        <span class="how-tag">Smart Contract</span>
+      </div>
+      <div class="how-card reveal">
+        <div class="how-num">03</div>
+        <div class="how-title">Lieferung & sofortige Zahlung</div>
+        <p class="how-text">Caterer bestätigt den Wareneingang per QR-Scan. Auszahlungen werden anteilig berechnet und innerhalb von Sekunden per SEPA Instant veranlasst.</p>
+        <span class="how-tag">Auszahlung &lt;10s</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FÜR WEN -->
+<section class="audience-section" id="fuer-wen">
+  <div class="container">
+    <div class="reveal">
+      <div class="section-label">Für wen</div>
+      <h2 class="section-title">Zwei Seiten. <em>Eine Lösung.</em></h2>
+    </div>
+    <div class="audience-grid">
+      <div class="audience-card reveal">
+        <div class="audience-card-icon">🌱</div>
+        <div class="audience-card-title">Erzeuger & Betriebe</div>
+        <p class="audience-card-sub">Landwirte, Gemüsegärtner, Bio-Betriebe — alle die regional produzieren und planbare Absatzwege suchen.</p>
+        <ul class="audience-features">
+          <li>Marktzugang ohne Händler oder Großmarkt</li>
+          <li>Planungssicherheit durch commitmentbasierte Preise</li>
+          <li>Keine Einzelverhandlungen mit Abnehmern</li>
+          <li>Sofortauszahlung statt 30–60 Tage Zahlungsziel</li>
+          <li>Plattformfee: 0 € — vollständig kostenlos</li>
+        </ul>
+        <a href="/login" class="audience-card-cta">Als Erzeuger registrieren →</a>
+      </div>
+      <div class="audience-card reveal">
+        <div class="audience-card-icon">🍽</div>
+        <div class="audience-card-title">Caterer & Großabnehmer</div>
+        <p class="audience-card-sub">Betriebskantinen, Krankenhaus-Catering, Schulverpflegung, Airline-Catering — alle die regional beziehen wollen ohne den Aufwand.</p>
+        <ul class="audience-features">
+          <li>Ein Vertrag, eine Rechnung — unabhängig von Erzeugeranzahl</li>
+          <li>ESG-Nachweise & Bio-Zertifikate automatisch</li>
+          <li>Regionale Quote ohne eigenes Lieferantenmanagement</li>
+          <li>Planungssicherheit durch Pool-System</li>
+          <li>1% Transaktionsfee — nur bei Lieferung</li>
+        </ul>
+        <a href="/login" class="audience-card-cta">Als Caterer registrieren →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BLOCKCHAIN -->
+<section id="blockchain">
+  <div class="container">
+    <div class="chain-inner">
+      <div class="chain-text reveal">
+        <div class="section-label">Technologie</div>
+        <h2 class="section-title">Blockchain als <em>Rückgrat</em></h2>
+        <div class="chain-points">
+          <div class="chain-point">
+            <div class="chain-point-dot"></div>
+            <div>
+              <div class="chain-point-title">Zertifikate unveränderlich gespeichert</div>
+              <p class="chain-point-text">Bio-, QS- und Demeter-Nachweise werden als Hash on-chain gespeichert. Kein Dokument kann rückwirkend verändert werden.</p>
+            </div>
+          </div>
+          <div class="chain-point">
+            <div class="chain-point-dot"></div>
+            <div>
+              <div class="chain-point-title">Automatische Auszahlungsberechnung</div>
+              <p class="chain-point-text">Smart Contracts berechnen anteilige Erlöse, Qualitätsabzüge und Plattformfees vollständig automatisiert — ohne manuelle Abrechnung.</p>
+            </div>
+          </div>
+          <div class="chain-point">
+            <div class="chain-point-dot"></div>
+            <div>
+              <div class="chain-point-title">Für Nutzer unsichtbar</div>
+              <p class="chain-point-text">Kein Wallet, kein Token, kein Krypto. Blockchain läuft im Backend. Nutzer sehen nur: Lieferung bestätigt, Geld da.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="chain-visual reveal">
+        <div class="cv-line"><span class="cv-green">✓</span> <span>ProducerRegistry.sol</span></div>
+        <div class="cv-line cv-dim">│</div>
+        <div class="cv-line"><span class="cv-dim">├─</span> <span class="cv-green">registerProducer</span><span class="cv-block">0x7f3a...e8b2</span></div>
+        <div class="cv-line"><span class="cv-dim">└─</span> <span class="cv-green">addCertificate</span> <span class="cv-amber">Bio-DE-001</span></div>
+        <div class="cv-line cv-dim" style="margin-top:.5rem">│</div>
+        <div class="cv-line"><span class="cv-green">✓</span> <span>SupplyPool.sol</span></div>
+        <div class="cv-line cv-dim">│</div>
+        <div class="cv-line"><span class="cv-dim">├─</span> <span class="cv-green">createPool</span> <span class="cv-amber">Karotten Bio · 1000kg</span></div>
+        <div class="cv-line"><span class="cv-dim">├─</span> <span class="cv-green">commitQuantity</span> <span class="cv-dim">Hof Brüggemann · 120kg</span></div>
+        <div class="cv-line"><span class="cv-dim">└─</span> <span class="cv-green">lockPool</span> <span class="cv-block">100% ✓</span></div>
+        <div class="cv-line cv-dim" style="margin-top:.5rem">│</div>
+        <div class="cv-line"><span class="cv-green">✓</span> <span>DeliveryContract.sol</span></div>
+        <div class="cv-line cv-dim">│</div>
+        <div class="cv-line"><span class="cv-dim">├─</span> <span class="cv-green">confirmDelivery</span> <span class="cv-amber">987kg · Qualität A</span></div>
+        <div class="cv-line"><span class="cv-dim">└─</span> <span class="cv-green">releasePayments</span> <span class="cv-dim">12 Erzeuger · 1.776€</span></div>
+        <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);display:flex;align-items:center;gap:.5rem">
+          <div style="width:6px;height:6px;border-radius:50%;background:var(--green)"></div>
+          <span style="color:var(--text3)">Polygon · Block #4821934 · 0.003s</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+  <div class="container">
+    <h2 class="cta-headline reveal">Bereit für <em>planbare</em> Regionallieferungen?</h2>
+    <p class="cta-sub reveal">Kostenlos registrieren. Erzeuger zahlen keine Fee. Caterer zahlen nur bei Lieferung.</p>
+    <div class="cta-actions reveal">
+      <a href="/login" class="btn-cta-primary">Als Erzeuger starten</a>
+      <a href="/login" class="btn-cta-secondary">Als Caterer anfragen</a>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">Liefer<span>Pool</span> · NRW</div>
+  <div class="footer-links">
+    <a href="#">Impressum</a>
+    <a href="#">Datenschutz</a>
+    <a href="/login">Login</a>
+  </div>
+</footer>
+
 <script>
-  // Bereits eingeloggt → weiterleiten
-  if (Auth.isLoggedIn()) {
-    const role = Auth.getUser()?.role;
-    if (role) window.location.href = role + '.html';
-  }
+// Nav scroll effect
+const nav = document.getElementById('nav');
+window.addEventListener('scroll', () => {
+  nav.classList.toggle('scrolled', window.scrollY > 40);
+});
 
-  function showError(msg) {
-    const el = document.getElementById('error');
-    el.textContent = msg;
-    el.style.display = 'block';
-  }
-  function hideError() {
-    document.getElementById('error').style.display = 'none';
-  }
-
-  function setLoading(btn, loading) {
-    if (loading) {
-      btn.disabled = true;
-      btn.innerHTML = '<span class="spinner"></span> Bitte warten...';
-    } else {
-      btn.disabled = false;
-    }
-  }
-
-  // Login
-  document.getElementById('btn-login').addEventListener('click', async () => {
-    hideError();
-    const email    = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value;
-    const btn      = document.getElementById('btn-login');
-
-    if (!email || !password) return showError('E-Mail und Passwort eingeben');
-    setLoading(btn, true);
-
-    try {
-      const { token, user } = await api.login(email, password);
-      Auth.setToken(token);
-      Auth.setUser(user);
-      window.location.href = user.role + '.html';
-    } catch (err) {
-      btn.textContent = 'Anmelden';
-      btn.disabled = false;
-      showError(err.message);
+// Scroll reveal
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      observer.unobserve(e.target);
     }
   });
+}, { threshold: 0.12 });
 
-  // Enter key
-  document.getElementById('password').addEventListener('keydown', e => {
-    if (e.key === 'Enter') document.getElementById('btn-login').click();
-  });
-
-  // Register
-  document.getElementById('btn-register').addEventListener('click', async () => {
-    hideError();
-    const name     = document.getElementById('reg-name').value.trim();
-    const email    = document.getElementById('reg-email').value.trim();
-    const password = document.getElementById('reg-password').value;
-    const role     = document.getElementById('reg-role').value;
-    const btn      = document.getElementById('btn-register');
-
-    if (!name || !email || !password) return showError('Alle Felder ausfüllen');
-    if (password.length < 8) return showError('Passwort mindestens 8 Zeichen');
-    setLoading(btn, true);
-
-    try {
-      const { token, user } = await api.register(email, password, role, name);
-      Auth.setToken(token);
-      Auth.setUser(user);
-      window.location.href = user.role + '.html';
-    } catch (err) {
-      btn.textContent = 'Konto erstellen';
-      btn.disabled = false;
-      showError(err.message);
-    }
-  });
-
-  // Toggle Login/Register
-  document.getElementById('show-register').addEventListener('click', e => {
-    e.preventDefault();
-    hideError();
-    document.getElementById('form-login').style.display = 'none';
-    document.getElementById('form-register').style.display = 'block';
-  });
-  document.getElementById('show-login').addEventListener('click', e => {
-    e.preventDefault();
-    hideError();
-    document.getElementById('form-register').style.display = 'none';
-    document.getElementById('form-login').style.display = 'block';
-  });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
 </script>
 </body>
 </html>
