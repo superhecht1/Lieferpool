@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LieferPool – Caterer</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <header class="hdr" id="app-header"></header>
+  <main class="main">
+    <div id="alerts"></div>
+
+    <!-- VIEW: Bedarf -->
+    <div id="view-bedarf" class="view">
+      <div class="grid4" style="margin-bottom:1rem" id="metrics-bedarf"></div>
+      <div class="card">
+        <div class="card-title">Neuen Bedarf einstellen</div>
+        <div id="bedarf-result"></div>
+        <div id="bedarf-form">
+          <div class="grid2">
+            <div class="form-group">
+              <label class="form-label">Produktgruppe</label>
+              <select class="form-control" id="b-produkt">
+                <option>Bio-Gemüse Mix</option>
+                <option>Karotten Bio</option>
+                <option>Kohlrabi Bio</option>
+                <option>Spinat frisch</option>
+                <option>Tomaten Bio</option>
+                <option>Kartoffeln</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Region</label>
+              <select class="form-control" id="b-region">
+                <option>NRW</option>
+                <option>Bayern</option>
+                <option>BW</option>
+                <option>Niedersachsen</option>
+                <option>Bundesweit</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid2">
+            <div class="form-group">
+              <label class="form-label">Menge (kg)</label>
+              <input class="form-control" type="number" id="b-menge" min="1" placeholder="z.B. 1000">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Max. Preis (€/kg)</label>
+              <input class="form-control" type="number" id="b-preis" step="0.1" min="0" placeholder="z.B. 2.40">
+            </div>
+          </div>
+          <div class="grid2">
+            <div class="form-group">
+              <label class="form-label">Lieferwoche (z.B. 2025-W20)</label>
+              <input class="form-control" id="b-kw" placeholder="2025-W22">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Deadline (Pool-Schluss)</label>
+              <input class="form-control" type="datetime-local" id="b-deadline">
+            </div>
+          </div>
+          <div id="bedarf-kosten-box" class="erloes-box" style="display:none"></div>
+          <button class="btn btn-primary" id="btn-bedarf" disabled>Pool erstellen</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW: Verträge -->
+    <div id="view-vertraege" class="view" style="display:none">
+      <div class="card">
+        <div class="section-hdr">
+          <span class="section-title">Lieferverträge</span>
+          <select class="form-control" id="filter-status" style="width:140px;padding:5px 8px">
+            <option value="">Alle</option>
+            <option value="offen">Offen</option>
+            <option value="geschlossen">Geschlossen</option>
+            <option value="geliefert">Geliefert</option>
+          </select>
+        </div>
+        <div id="vertraege-list"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- VIEW: Wareneingang -->
+    <div id="view-wareneingang" class="view" style="display:none">
+      <div class="grid2">
+        <!-- QR Scan -->
+        <div class="card">
+          <div class="card-title">QR-Code scannen</div>
+          <div id="scan-section">
+            <div class="scan-box" id="scan-trigger">
+              <div class="scan-icon">⬚</div>
+              <div style="font-size:14px;font-weight:500;margin-bottom:4px">Lieferschein scannen</div>
+              <div style="font-size:12px;color:var(--text2)">QR-Code vom Fahrer scannen</div>
+            </div>
+            <div style="margin-top:1rem;text-align:center;font-size:12px;color:var(--text3)">oder QR-Code manuell eingeben:</div>
+            <div style="display:flex;gap:.5rem;margin-top:.5rem">
+              <input class="form-control" id="qr-input" placeholder="LP-XXXXXXXX" style="font-family:'DM Mono',monospace;letter-spacing:.08em">
+              <button class="btn btn-primary btn-sm" id="btn-scan">Suchen</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Lieferdetails -->
+        <div class="card">
+          <div class="card-title">Lieferdetails</div>
+          <div id="lief-details" style="color:var(--text3);font-size:13px">
+            Bitte zuerst QR-Code scannen.
+          </div>
+        </div>
+      </div>
+
+      <!-- Wareneingang bestätigen -->
+      <div class="card" id="wi-form-card" style="display:none">
+        <div class="card-title">Wareneingang bestätigen</div>
+        <div id="wi-result"></div>
+        <div id="wi-form">
+          <div class="grid2">
+            <div class="form-group">
+              <label class="form-label">Gelieferte Menge (kg)</label>
+              <input class="form-control" type="number" id="wi-menge" placeholder="z.B. 987">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Qualitätsstufe</label>
+              <select class="form-control" id="wi-qualitaet">
+                <option value="A">A – Einwandfrei (kein Abzug)</option>
+                <option value="B">B – Gut (5% Abzug)</option>
+                <option value="C">C – Ausreichend (15% Abzug)</option>
+                <option value="abgelehnt">Abgelehnt (keine Zahlung)</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notiz (optional)</label>
+            <input class="form-control" id="wi-notiz" placeholder="Anmerkung zur Lieferung">
+          </div>
+          <button class="btn btn-primary" id="btn-wi-confirm">Wareneingang bestätigen</button>
+          <p style="font-size:11px;color:var(--text3);margin-top:.5rem">
+            Bestätigung löst automatisch alle Erzeuger-Auszahlungen aus.
+          </p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="api.js"></script>
+<script src="app.js"></script>
+<script>
+const user = requireAuth('caterer');
+if (!user) throw 'not auth';
+
+const NAV = [
+  { id: 'bedarf',      label: 'Bedarf einstellen' },
+  { id: 'vertraege',   label: 'Verträge' },
+  { id: 'wareneingang',label: 'Wareneingang' },
+];
+
+let currentLieferung = null;
+
+renderHeader('bedarf', NAV, (v) => {
+  showView(v);
+  loadView(v);
+});
+
+async function loadView(v) {
+  if (v === 'bedarf')      loadBedarf();
+  if (v === 'vertraege')   loadVertraege();
+}
+
+// ---- BEDARF ----
+async function loadBedarf() {
+  try {
+    const { pools } = await api.getPools();
+    const aktiv  = pools.filter(p => ['offen','geschlossen'].includes(p.status)).length;
+    const gelief = pools.filter(p => p.status === 'geliefert').length;
+    const erzeuger = Math.max(...pools.map(p => p.erzeuger_count || 0), 0);
+
+    document.getElementById('metrics-bedarf').innerHTML = `
+      <div class="metric"><div class="metric-label">Aktive Pools</div>
+        <div class="metric-val">${aktiv}</div></div>
+      <div class="metric"><div class="metric-label">Geliefert</div>
+        <div class="metric-val green">${gelief}</div></div>
+      <div class="metric"><div class="metric-label">Erzeuger max.</div>
+        <div class="metric-val">${erzeuger}</div></div>
+      <div class="metric"><div class="metric-label">Gesamt Pools</div>
+        <div class="metric-val">${pools.length}</div></div>
+    `;
+  } catch(e) {}
+}
+
+// Kostenvorschau
+function updateKostenvorschau() {
+  const menge = parseFloat(document.getElementById('b-menge')?.value || 0);
+  const preis = parseFloat(document.getElementById('b-preis')?.value || 0);
+  const btn   = document.getElementById('btn-bedarf');
+  const box   = document.getElementById('bedarf-kosten-box');
+
+  if (menge > 0 && preis > 0) {
+    const wert = menge * preis;
+    const fee  = wert * 0.01;
+    box.style.display = 'block';
+    box.innerHTML = `
+      <div class="erloes-row"><span class="lbl">Max. Warenwert</span><span>${fmt(wert)} €</span></div>
+      <div class="erloes-row"><span class="lbl">Plattformfee (1%)</span><span>${fmt(fee)} €</span></div>
+      <div class="erloes-row"><span class="lbl">Max. Gesamtkosten</span><span class="erloes-total">${fmt(wert + fee)} €</span></div>
+    `;
+    btn.disabled = false;
+  } else {
+    box.style.display = 'none';
+    btn.disabled = true;
+  }
+}
+
+['b-menge', 'b-preis'].forEach(id => {
+  document.getElementById(id)?.addEventListener('input', updateKostenvorschau);
+});
+
+document.getElementById('btn-bedarf')?.addEventListener('click', async () => {
+  const produkt  = document.getElementById('b-produkt').value;
+  const menge    = parseFloat(document.getElementById('b-menge').value);
+  const preis    = parseFloat(document.getElementById('b-preis').value);
+  const kw       = document.getElementById('b-kw').value.trim();
+  const deadline = document.getElementById('b-deadline').value;
+  const region   = document.getElementById('b-region').value;
+  const btn      = document.getElementById('btn-bedarf');
+
+  if (!menge || !preis || !kw || !deadline) {
+    return showAlert('alerts', 'error', 'Alle Pflichtfelder ausfüllen');
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Erstelle Pool...';
+
+  try {
+    const { pool, chain } = await api.createPool({
+      produkt, menge_ziel: menge, preis_pro_einheit: preis,
+      lieferwoche: kw, deadline: new Date(deadline).toISOString(), region,
+    });
+
+    document.getElementById('bedarf-result').innerHTML = `
+      <div class="success-box">
+        <div class="success-icon">✓</div>
+        <div class="success-title">Pool erstellt</div>
+        <div class="success-sub">${produkt} · ${menge} kg · ${kw}</div>
+        ${chainInfo(chain?.txHash)}
+      </div>
+    `;
+    document.getElementById('bedarf-form').style.display = 'none';
+  } catch (err) {
+    btn.textContent = 'Pool erstellen';
+    btn.disabled = false;
+    showAlert('alerts', 'error', err.message);
+  }
+});
+
+// ---- VERTRÄGE ----
+async function loadVertraege() {
+  try {
+    const params = {};
+    const fs = document.getElementById('filter-status')?.value;
+    if (fs) params.status = fs;
+
+    const { pools } = await api.getPools(params);
+    document.getElementById('vertraege-list').innerHTML = pools.length ? `
+      <table class="tbl">
+        <thead><tr><th>Produkt</th><th>Menge</th><th>Lieferwoche</th><th>Preis</th><th>Erzeuger</th><th>Status</th></tr></thead>
+        <tbody>${pools.map(p => `
+          <tr>
+            <td style="font-weight:500">${p.produkt}</td>
+            <td class="pool-meta">${Math.round(p.menge_committed)} / ${Math.round(p.menge_ziel)} kg</td>
+            <td class="pool-meta">${p.lieferwoche}</td>
+            <td class="pool-meta">${fmt(p.preis_pro_einheit)} €/kg</td>
+            <td class="pool-meta">${p.erzeuger_count || 0}</td>
+            <td>${statusBadge(p.status)}</td>
+          </tr>
+        `).join('')}</tbody>
+      </table>
+    ` : '<p style="color:var(--text3);font-size:13px">Keine Verträge gefunden</p>';
+  } catch (err) {
+    showAlert('alerts', 'error', err.message);
+  }
+}
+
+document.getElementById('filter-status')?.addEventListener('change', loadVertraege);
+
+// ---- WARENEINGANG ----
+async function scanQR(qr) {
+  qr = qr.trim().toUpperCase();
+  if (!qr) return;
+
+  try {
+    const { lieferung } = await api.scanQR(qr);
+    currentLieferung = lieferung;
+
+    document.getElementById('lief-details').innerHTML = `
+      <table class="tbl">
+        <tbody>
+          <tr><td style="color:var(--text2)">Produkt</td><td style="font-weight:500">${lieferung.produkt}</td></tr>
+          <tr><td style="color:var(--text2)">QR-Code</td>
+            <td><span class="qr-code">${lieferung.qr_code}</span></td></tr>
+          <tr><td style="color:var(--text2)">Bestellt</td><td>${Math.round(lieferung.menge_bestellt)} kg</td></tr>
+          <tr><td style="color:var(--text2)">Preis</td><td>${fmt(lieferung.preis_pro_einheit)} €/kg</td></tr>
+          <tr><td style="color:var(--text2)">Status</td><td>${statusBadge(lieferung.status)}</td></tr>
+        </tbody>
+      </table>
+    `;
+
+    if (lieferung.status === 'geplant' || lieferung.status === 'unterwegs') {
+      document.getElementById('wi-form-card').style.display = 'block';
+      document.getElementById('wi-menge').value = Math.round(lieferung.menge_bestellt);
+    } else {
+      document.getElementById('wi-form-card').style.display = 'none';
+    }
+  } catch (err) {
+    showAlert('alerts', 'error', 'QR-Code nicht gefunden: ' + err.message);
+  }
+}
+
+document.getElementById('scan-trigger')?.addEventListener('click', () => {
+  // In Produktion: echte Kamera-API (BarcodeDetector oder quagga.js)
+  const qr = prompt('QR-Code eingeben (Demo):');
+  if (qr) scanQR(qr);
+});
+
+document.getElementById('btn-scan')?.addEventListener('click', () => {
+  scanQR(document.getElementById('qr-input').value);
+});
+
+document.getElementById('qr-input')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') scanQR(e.target.value);
+});
+
+document.getElementById('btn-wi-confirm')?.addEventListener('click', async () => {
+  if (!currentLieferung) return;
+
+  const menge    = parseFloat(document.getElementById('wi-menge').value);
+  const qualit   = document.getElementById('wi-qualitaet').value;
+  const notiz    = document.getElementById('wi-notiz').value;
+  const btn      = document.getElementById('btn-wi-confirm');
+
+  if (!menge) return showAlert('alerts', 'error', 'Gelieferte Menge eingeben');
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Bestätige...';
+
+  try {
+    const res = await api.confirmWareneingang(currentLieferung.id, menge, qualit, notiz);
+    document.getElementById('wi-result').innerHTML = `
+      <div class="success-box">
+        <div class="success-icon">✓</div>
+        <div class="success-title">Wareneingang bestätigt</div>
+        <div class="success-sub">${menge} kg · ${res.auszahlungen} Erzeuger · ${res.gesamt_netto} € Gesamtnetto</div>
+        ${chainInfo(res.chain?.deliveryTx)}
+      </div>
+    `;
+    document.getElementById('wi-form').style.display = 'none';
+    currentLieferung = null;
+    toast('Auszahlungen ausgelöst');
+  } catch (err) {
+    btn.textContent = 'Wareneingang bestätigen';
+    btn.disabled = false;
+    showAlert('alerts', 'error', err.message);
+  }
+});
+
+loadBedarf();
+</script>
+</body>
+</html>

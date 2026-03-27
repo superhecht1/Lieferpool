@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LieferPool – Admin</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <header class="hdr" id="app-header"></header>
+  <main class="main">
+    <div id="alerts"></div>
+
+    <!-- VIEW: Übersicht -->
+    <div id="view-overview" class="view">
+      <div class="grid4" style="margin-bottom:1rem" id="sys-metrics"></div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">Aktive Pools</div>
+          <div id="admin-pools-list"><div class="spinner"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Ausstehende Zertifikate</div>
+          <div id="pending-quick"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW: Zertifikate -->
+    <div id="view-zertifikate" class="view" style="display:none">
+      <div class="card">
+        <div class="section-hdr">
+          <span class="section-title">Zertifikatsprüfung</span>
+          <button class="btn btn-sm" id="btn-reload-zerts">↻ Aktualisieren</button>
+        </div>
+        <div id="zert-admin-list"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- VIEW: Erzeuger -->
+    <div id="view-erzeuger" class="view" style="display:none">
+      <div class="card">
+        <div class="section-hdr">
+          <span class="section-title">Registrierte Erzeuger</span>
+          <input class="form-control" id="erzeuger-search" placeholder="Suchen..." style="width:200px;padding:5px 10px">
+        </div>
+        <div id="erzeuger-admin-list"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- VIEW: Lieferung anlegen -->
+    <div id="view-lieferung-neu" class="view" style="display:none">
+      <div class="card" style="max-width:560px">
+        <div class="card-title">Lieferschein erstellen</div>
+        <div id="lief-create-result"></div>
+        <div id="lief-create-form">
+          <div class="form-group">
+            <label class="form-label">Pool</label>
+            <select class="form-control" id="lief-pool-sel"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Lieferdatum</label>
+            <input class="form-control" type="date" id="lief-datum">
+          </div>
+          <button class="btn btn-primary" id="btn-create-lief">Lieferschein erstellen</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="api.js"></script>
+<script src="app.js"></script>
+<script>
+const user = requireAuth('admin');
+if (!user) throw 'not auth';
+
+const NAV = [
+  { id: 'overview',      label: 'Übersicht' },
+  { id: 'zertifikate',   label: 'Zertifikate' },
+  { id: 'erzeuger',      label: 'Erzeuger' },
+  { id: 'lieferung-neu', label: 'Lieferschein' },
+];
+
+renderHeader('overview', NAV, (v) => {
+  showView(v);
+  loadView(v);
+});
+
+async function loadView(v) {
+  if (v === 'overview')      loadOverview();
+  if (v === 'zertifikate')   loadZertifikate();
+  if (v === 'erzeuger')      loadErzeuger();
+  if (v === 'lieferung-neu') loadLieferungNeu();
+}
+
+// ---- ÜBERSICHT ----
+async function loadOverview() {
+  try {
+    const [poolsRes, erzeugerRes, certsRes] = await Promise.all([
+      api.getPools(),
+      api.getAllErzeuger(),
+      api.getPendingZertifikate(),
+    ]);
+
+    const { pools } = poolsRes;
+    const { erzeuger } = erzeugerRes;
+    const { zertifikate: pending } = certsRes;
+
+    const offene    = pools.filter(p => p.status === 'offen').length;
+    const gelief    = pools.filter(p => p.status === 'geliefert').length;
+    const volumen   = pools.reduce((s, p) => s + parseFloat(p.menge_committed || 0), 0);
+
+    document.getElementById('sys-metrics').innerHTML = `
+      <div class="metric"><div class="metric-label">Erzeuger</div>
+        <div class="metric-val green">${erzeuger.length}</div></div>
+      <div class="metric"><div class="metric-label">Offene Pools</div>
+        <div class="metric-val">${offene}</div></div>
+      <div class="metric"><div class="metric-label">Ausstehende Zerts</div>
+        <div class="metric-val amber">${pending.length}</div></div>
+      <div class="metric"><div class="metric-label">Gesamtvolumen (kg)</div>
+        <div class="metric-val">${Math.round(volumen)}</div></div>
+    `;
+
+    document.getElementById('admin-pools-list').innerHTML = pools.length ? pools.map(p => `
+      <div class="pool-item">
+        <div class="pool-row">
+          <span class="pool-name">${p.produkt}</span>
+          ${statusBadge(p.status)}
+        </div>
+        <div class="pool-meta">${p.lieferwoche} · ${p.erzeuger_count || 0} Erzeuger</div>
+        ${poolBar(p.menge_committed, p.menge_ziel)}
+      </div>
+    `).join('') : '<p style="color:var(--text3);font-size:13px">Keine Pools</p>';
+
+    document.getElementById('pending-quick').innerHTML = pending.length ? pending.slice(0, 5).map(z => `
+      <div class="pool-item">
+        <div class="pool-row">
+          <div>
+            <div style="font-size:13px;font-weight:500">${z.betrieb_name}</div>
+            <div class="pool-meta">${z.typ} · ${z.zert_nummer}</div>
+          </div>
+          <div style="display:flex;gap:.5rem">
+            <button class="btn btn-primary btn-sm" onclick="approveZert('${z.id}')">✓</button>
+            <button class="btn btn-sm btn-danger" onclick="rejectZert('${z.id}')">✗</button>
+          </div>
+        </div>
+      </div>
+    `).join('') : '<p style="color:var(--text3);font-size:13px">Keine ausstehenden Zertifikate</p>';
+
+  } catch (err) {
+    showAlert('alerts', 'error', err.message);
+  }
+}
+
+// ---- ZERTIFIKATE ----
+async function loadZertifikate() {
+  try {
+    const { zertifikate } = await api.getPendingZertifikate();
+    document.getElementById('zert-admin-list').innerHTML = zertifikate.length ? `
+      <table class="tbl">
+        <thead>
+          <tr><th>Betrieb</th><th>Typ</th><th>Nummer</th><th>Gültig bis</th><th>Eingereicht</th><th>Aktion</th></tr>
+        </thead>
+        <tbody>${zertifikate.map(z => `
+          <tr id="zrow-${z.id}">
+            <td style="font-weight:500">${z.betrieb_name}
+              <div style="font-size:11px;color:var(--text3)">${z.email}</div>
+            </td>
+            <td><span class="badge badge-gray">${z.typ}</span></td>
+            <td class="pool-meta">${z.zert_nummer}</td>
+            <td class="pool-meta">${z.gueltig_bis?.split('T')[0] || '—'}</td>
+            <td class="pool-meta">${new Date(z.created_at).toLocaleDateString('de-DE')}</td>
+            <td>
+              <div style="display:flex;gap:.5rem">
+                <button class="btn btn-primary btn-sm" onclick="approveZert('${z.id}')">Bestätigen</button>
+                <button class="btn btn-sm btn-danger" onclick="rejectZert('${z.id}')">Ablehnen</button>
+              </div>
+            </td>
+          </tr>
+        `).join('')}</tbody>
+      </table>
+    ` : '<p style="color:var(--text3);font-size:13px">Keine ausstehenden Zertifikate – alles geprüft ✓</p>';
+  } catch (err) {
+    showAlert('alerts', 'error', err.message);
+  }
+}
+
+async function approveZert(id) {
+  try {
+    await api.setZertifikatStatus(id, 'verified');
+    const row = document.getElementById('zrow-' + id);
+    if (row) row.innerHTML = `<td colspan="6" style="color:var(--green);font-family:'DM Mono',monospace;font-size:12px">✓ Bestätigt</td>`;
+    toast('Zertifikat bestätigt');
+  } catch (err) {
+    showAlert('alerts', 'error', err.message);
+  }
+}
+
+async function rejectZert(id) {
+  if (!confirm('Zertifikat ablehnen?')) return;
+  try {
+    await api.setZertifikatStatus(id, 'rejected');
+    const row = document.getElementById('zrow-' + id);
+    if (row) row.innerHTML = `<td colspan="6" style="color:var(--red);font-family:'DM Mono',monospace;font-size:12px">✗ Abgelehnt</td>`;
+    toast('Zertifikat abgelehnt', 'error');
+  } catch (err) {
+    showAlert('alerts', 'error', err.message);
+  }
+}
+
+document.getElementById('btn-reload-zerts')?.addEventListener('click', loadZertifikate);
+
+// ---- ERZEUGER ----
+let allErzeuger = [];
+
+async function loadErzeuger() {
+  try {
+    const { erzeuger } = await api.getAllErzeuger();
+    allErzeuger = erzeuger;
+    renderErzeuger(erzeuger);
+  } catch (err) {
+    showAlert('alerts', 'error', err.message);
+  }
+}
+
+function renderErzeuger(list) {
+  document.getElementById('erzeuger-admin-list').innerHTML = list.length ? `
+    <table class="tbl">
+      <thead>
+        <tr><th>Betrieb</th><th>E-Mail</th><th>Region</th><th>Zertifikate</th><th>Commitments</th></tr>
+      </thead>
+      <tbody>${list.map(e => `
+        <tr>
+          <td style="font-weight:500">${e.betrieb_name}</td>
+          <td class="pool-meta">${e.email}</td>
+          <td class="pool-meta">${e.region}</td>
+          <td>
+            <span class="badge ${e.zert_count > 0 ? 'badge-green' : 'badge-amber'}">
+              ${e.zert_count} verifiziert
+            </span>
+          </td>
+          <td class="pool-meta">${e.commitment_count}</td>
+        </tr>
+      `).join('')}</tbody>
+    </table>
+  ` : '<p style="color:var(--text3);font-size:13px">Keine Erzeuger gefunden</p>';
+}
+
+document.getElementById('erzeuger-search')?.addEventListener('input', e => {
+  const q = e.target.value.toLowerCase();
+  renderErzeuger(allErzeuger.filter(e =>
+    e.betrieb_name.toLowerCase().includes(q) ||
+    e.email.toLowerCase().includes(q)
+  ));
+});
+
+// ---- LIEFERSCHEIN ERSTELLEN ----
+async function loadLieferungNeu() {
+  try {
+    const { pools } = await api.getPools({ status: 'geschlossen' });
+    const sel = document.getElementById('lief-pool-sel');
+    sel.innerHTML = pools.length
+      ? pools.map(p => `<option value="${p.id}">${p.produkt} – ${p.lieferwoche} (${Math.round(p.menge_committed)} kg)</option>`).join('')
+      : '<option>Keine geschlossenen Pools</option>';
+  } catch (err) {
+    showAlert('alerts', 'error', err.message);
+  }
+}
+
+document.getElementById('btn-create-lief')?.addEventListener('click', async () => {
+  const pool_id  = document.getElementById('lief-pool-sel').value;
+  const lieferdatum = document.getElementById('lief-datum').value;
+  const btn = document.getElementById('btn-create-lief');
+
+  if (!pool_id) return showAlert('alerts', 'error', 'Pool auswählen');
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Erstelle...';
+
+  try {
+    const { lieferung } = await api.createLieferung(pool_id, lieferdatum || null);
+    document.getElementById('lief-create-result').innerHTML = `
+      <div class="success-box">
+        <div class="success-icon">✓</div>
+        <div class="success-title">Lieferschein erstellt</div>
+        <div class="success-sub">Nr: ${lieferung.lieferschein_nr}</div>
+        <div style="margin-top:.75rem">
+          <span class="qr-code">${lieferung.qr_code}</span>
+        </div>
+        <div class="success-sub" style="margin-top:.5rem">QR-Code für Fahrer</div>
+      </div>
+    `;
+    document.getElementById('lief-create-form').style.display = 'none';
+  } catch (err) {
+    btn.textContent = 'Lieferschein erstellen';
+    btn.disabled = false;
+    showAlert('alerts', 'error', err.message);
+  }
+});
+
+loadOverview();
+</script>
+</body>
+</html>
