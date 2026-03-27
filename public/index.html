@@ -12,17 +12,18 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 
 :root{
-  --bg:#0b0c0a;
-  --bg2:#111210;
-  --bg3:#181917;
-  --border:#232420;
-  --green:#7ab648;
-  --green-dim:#4d7a2a;
-  --green-bg:#111a0a;
-  --text:#e8e9e3;
-  --text2:#8a8d81;
-  --text3:#4a4d45;
-  --amber:#c8963a;
+  --mode:light;
+  --bg:#f7f6f2;
+  --bg2:#ffffff;
+  --bg3:#f0ede6;
+  --border:#dddbd4;
+  --green:#3d7a1a;
+  --green-dim:#5a9e2e;
+  --green-bg:#edf5e6;
+  --text:#1a1c17;
+  --text2:#5a5f52;
+  --text3:#9a9e93;
+  --amber:#9a6e1a;
 }
 
 html{scroll-behavior:smooth}
@@ -43,7 +44,7 @@ nav{
   transition:all .3s;
 }
 nav.scrolled{
-  background:rgba(11,12,10,.92);
+  background:rgba(247,246,242,.95);
   border-color:var(--border);
   backdrop-filter:blur(12px);
 }
@@ -71,7 +72,7 @@ nav.scrolled{
   font-family:'DM Mono',monospace;
   letter-spacing:.03em;
 }
-.nav-cta:hover{background:var(--green);color:#0b0c0a}
+.nav-cta:hover{background:var(--green);color:#fff}
 
 /* ---- HERO ---- */
 .hero{
@@ -88,8 +89,8 @@ nav.scrolled{
   content:'';
   position:absolute;inset:0;
   background:
-    radial-gradient(ellipse 60% 50% at 80% 30%, rgba(122,182,72,.06) 0%, transparent 70%),
-    radial-gradient(ellipse 40% 60% at 20% 70%, rgba(122,182,72,.04) 0%, transparent 60%);
+    radial-gradient(ellipse 60% 50% at 80% 30%, rgba(61,122,26,.08) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 60% at 20% 70%, rgba(61,122,26,.05) 0%, transparent 60%);
   pointer-events:none;
 }
 
@@ -154,13 +155,13 @@ nav.scrolled{
 .btn-hero-primary{
   padding:14px 28px;
   background:var(--green);
-  color:#0b0c0a;
+  color:#ffffff;
   font-weight:500;font-size:14px;
   border-radius:4px;text-decoration:none;
   transition:all .15s;
   letter-spacing:.01em;
 }
-.btn-hero-primary:hover{background:#8dcf55;transform:translateY(-1px)}
+.btn-hero-primary:hover{background:#4d9422;transform:translateY(-1px)}
 .btn-hero-secondary{
   font-size:13px;color:var(--text2);text-decoration:none;
   font-family:'DM Mono',monospace;letter-spacing:.03em;
@@ -392,10 +393,10 @@ section{padding:7rem 3rem}
 .cta-actions{display:flex;justify-content:center;gap:1rem;flex-wrap:wrap}
 .btn-cta-primary{
   padding:14px 32px;background:var(--green);
-  color:#0b0c0a;font-weight:500;font-size:14px;
+  color:#fff;font-weight:500;font-size:14px;
   border-radius:4px;text-decoration:none;transition:all .15s;
 }
-.btn-cta-primary:hover{background:#8dcf55;transform:translateY(-1px)}
+.btn-cta-primary:hover{background:#4d9422;transform:translateY(-1px)}
 .btn-cta-secondary{
   padding:14px 32px;border:1px solid var(--border);
   color:var(--text2);font-size:14px;
