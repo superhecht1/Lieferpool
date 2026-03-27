@@ -7,7 +7,7 @@
 // Auth-Guard: Wenn nicht eingeloggt → Login
 function requireAuth(expectedRole) {
   if (!Auth.isLoggedIn()) {
-    window.location.href = 'login.html';
+    window.location.href = '/login';
     return false;
   }
   const user = Auth.getUser();
@@ -46,7 +46,7 @@ function renderHeader(activeView, navItems, onNav) {
 
   document.getElementById('btn-logout').addEventListener('click', () => {
     Auth.clear();
-    window.location.href = 'login.html';
+    window.location.href = '/login';
   });
 }
 

@@ -26,7 +26,7 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' }));
 
-const apiLimiter = rateLimit({ windowMs: 15*60*1000, max: 100, standardHeaders: true, legacyHeaders: false, message: { error: 'Zu viele Anfragen' } });
+const apiLimiter   = rateLimit({ windowMs: 15*60*1000, max: 100, standardHeaders: true, legacyHeaders: false, message: { error: 'Zu viele Anfragen' } });
 const loginLimiter = rateLimit({ windowMs: 15*60*1000, max: 10, message: { error: 'Zu viele Login-Versuche' } });
 app.use('/api/', apiLimiter);
 app.use('/api/auth/login', loginLimiter);
@@ -40,12 +40,18 @@ app.use('/api/lieferungen', require('./routes/lieferungen'));
 // Health Check
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
 
-// Frontend – statische Dateien aus /public
-// Frontend-HTMLs/CSS/JS einfach in public/ legen, fertig.
+// Statische Dateien (CSS, JS, Bilder etc.)
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 app.use(express.static(PUBLIC_DIR));
 
-// Alle nicht-API Routen -> index.html
+// Explizite HTML-Routen
+app.get('/',              (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'index.html')));
+app.get('/login',         (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'login.html')));
+app.get('/erzeuger',      (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'erzeuger.html')));
+app.get('/caterer',       (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'caterer.html')));
+app.get('/admin',         (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'admin.html')));
+
+// Fallback → Landing
 app.get(/^(?!\/api)/, (req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
 });
@@ -58,7 +64,8 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`LieferPool lauft auf Port ${PORT}`);
-  console.log(`  Frontend: http://localhost:${PORT}`);
-  console.log(`  API:      http://localhost:${PORT}/api`);
+  console.log(`LieferPool läuft auf Port ${PORT}`);
+  console.log(`  /           → Landing Page (index.html)`);
+  console.log(`  /login      → Login (login.html)`);
+  console.log(`  /api        → REST API`);
 });
