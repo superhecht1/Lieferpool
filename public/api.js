@@ -32,7 +32,7 @@ async function req(method, path, body = null) {
 
   if (res.status === 401) {
     Auth.clear();
-    window.location.href = '/index.html';
+    window.location.href = '/login.html';
     return;
   }
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
