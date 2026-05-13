@@ -7,6 +7,10 @@ const path      = require('path');
 
 const app = express();
 
+// ── Render.com läuft hinter einem Reverse Proxy.
+// Ohne diese Zeile wirft express-rate-limit ERR_ERL_UNEXPECTED_X_FORWARDED_FOR.
+app.set('trust proxy', 1);
+
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -27,19 +31,23 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 
 const apiLimiter   = rateLimit({ windowMs: 15*60*1000, max: 100, standardHeaders: true, legacyHeaders: false, message: { error: 'Zu viele Anfragen' } });
-const loginLimiter = rateLimit({ windowMs: 15*60*1000, max: 10, message: { error: 'Zu viele Login-Versuche' } });
+const loginLimiter = rateLimit({ windowMs: 15*60*1000, max: 10,  standardHeaders: true, legacyHeaders: false, message: { error: 'Zu viele Login-Versuche' } });
 app.use('/api/', apiLimiter);
 app.use('/api/auth/login', loginLimiter);
 
-// ---- Core Routes ----
+// ── Core Routes ────────────────────────────────────────────────
 app.use('/api/auth',        require('./routes/auth'));
 app.use('/api/pools',       require('./routes/pools'));
 app.use('/api/erzeuger',    require('./routes/erzeuger'));
 app.use('/api/lieferungen', require('./routes/lieferungen'));
 
-// ---- Hub Module Routes ----
+// ── Hub Module Routes ──────────────────────────────────────────
 app.use('/api/lager',       require('./routes/lager'));
 app.use('/api/bedarf',      require('./routes/bedarf'));
+
+// ── Flow Module Routes ─────────────────────────────────────────
+app.use('/api/touren',      require('./routes/touren'));
+app.use('/api/fahrzeuge',   require('./routes/fahrzeuge'));
 
 // Health Check
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
@@ -48,19 +56,18 @@ app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date().toISOSt
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 app.use(express.static(PUBLIC_DIR));
 
-// Explizite HTML-Routen
+// HTML-Routen
 app.get('/',         (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'index.html')));
 app.get('/login',    (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'login.html')));
 app.get('/erzeuger', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'erzeuger.html')));
 app.get('/caterer',  (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'caterer.html')));
 app.get('/admin',    (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'admin.html')));
+app.get('/fahrer',   (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'fahrer.html')));
 
-// Fallback
 app.get(/^(?!\/api)/, (req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
 });
 
-// Error Handler
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
   res.status(500).json({ error: 'Interner Fehler' });
@@ -69,6 +76,5 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`LieferPool läuft auf Port ${PORT}`);
-  console.log(`  /api/lager  → Warenwirtschaft (Hub Modul)`);
-  console.log(`  /api/bedarf → Bedarfserfassung (Hub Modul)`);
+  console.log(`  trust proxy: aktiviert (Render.com)`);
 });
