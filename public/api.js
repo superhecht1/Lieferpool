@@ -1,19 +1,18 @@
 /**
  * api.js – Zentrale Backend-Kommunikation
- * Frontend und Backend laufen auf demselben Server/Port.
- * API_BASE ist relativ → kein Cross-Origin, kein CORS-Problem.
+ * Enthält Core + Hub Modul (Lager + Bedarf)
  */
 
 const API_BASE = '/api';
 
 // ---- Token-Verwaltung ----
 const Auth = {
-  getToken:  ()  => localStorage.getItem('lp_token'),
-  setToken:  (t) => localStorage.setItem('lp_token', t),
-  getUser:   ()  => JSON.parse(localStorage.getItem('lp_user') || 'null'),
-  setUser:   (u) => localStorage.setItem('lp_user', JSON.stringify(u)),
-  clear:     ()  => { localStorage.removeItem('lp_token'); localStorage.removeItem('lp_user'); },
-  isLoggedIn:()  => !!localStorage.getItem('lp_token'),
+  getToken:   () => localStorage.getItem('lp_token'),
+  setToken:   (t) => localStorage.setItem('lp_token', t),
+  getUser:    () => JSON.parse(localStorage.getItem('lp_user') || 'null'),
+  setUser:    (u) => localStorage.setItem('lp_user', JSON.stringify(u)),
+  clear:      () => { localStorage.removeItem('lp_token'); localStorage.removeItem('lp_user'); },
+  isLoggedIn: () => !!localStorage.getItem('lp_token'),
 };
 
 // ---- HTTP-Helfer ----
@@ -39,31 +38,51 @@ async function req(method, path, body = null) {
   return data;
 }
 
-const get  = (path)       => req('GET',  path);
-const post = (path, body) => req('POST', path, body);
-const put  = (path, body) => req('PUT',  path, body);
+const get    = (path)       => req('GET',    path);
+const post   = (path, body) => req('POST',   path, body);
+const put    = (path, body) => req('PUT',    path, body);
+const del    = (path)       => req('DELETE', path);
 
 const api = {
-  login:    (email, password)          => post('/auth/login',    { email, password }),
+  // ── AUTH ──────────────────────────────────────────────────────
+  login:    (email, password)             => post('/auth/login',    { email, password }),
   register: (email, password, role, name) => post('/auth/register', { email, password, role, name }),
 
-  getPools:         (params = {})      => { const q = new URLSearchParams(params).toString(); return get('/pools' + (q ? '?' + q : '')); },
-  getPool:          (id)               => get('/pools/' + id),
-  createPool:       (data)             => post('/pools', data),
-  commitQuantity:   (poolId, menge)    => post('/pools/' + poolId + '/commit', { menge }),
+  // ── POOLS ─────────────────────────────────────────────────────
+  getPools:       (params = {})     => { const q = new URLSearchParams(params).toString(); return get('/pools' + (q ? '?' + q : '')); },
+  getPool:        (id)              => get('/pools/' + id),
+  createPool:     (data)            => post('/pools', data),
+  commitQuantity: (poolId, menge)   => post('/pools/' + poolId + '/commit', { menge }),
 
-  getErzeugerMe:    ()                 => get('/erzeuger/me'),
-  updateErzeuger:   (data)             => put('/erzeuger/me', data),
-  addZertifikat:    (data)             => post('/erzeuger/zertifikate', data),
-  getAuszahlungen:  ()                 => get('/erzeuger/auszahlungen'),
-  getAllErzeuger:    ()                 => get('/erzeuger'),
-  getPendingZertifikate: ()            => get('/erzeuger/zertifikate/pending'),
-  setZertifikatStatus: (id, status)    => put('/erzeuger/zertifikate/' + id + '/status', { status }),
+  // ── ERZEUGER ──────────────────────────────────────────────────
+  getErzeugerMe:          ()                  => get('/erzeuger/me'),
+  updateErzeuger:         (data)              => put('/erzeuger/me', data),
+  addZertifikat:          (data)              => post('/erzeuger/zertifikate', data),
+  getAuszahlungen:        ()                  => get('/erzeuger/auszahlungen'),
+  getAllErzeuger:          ()                  => get('/erzeuger'),
+  getPendingZertifikate:  ()                  => get('/erzeuger/zertifikate/pending'),
+  setZertifikatStatus:    (id, status)        => put('/erzeuger/zertifikate/' + id + '/status', { status }),
 
-  createLieferung:     (pool_id, lieferdatum) => post('/lieferungen', { pool_id, lieferdatum }),
-  scanQR:              (qr)            => get('/lieferungen/scan/' + qr),
-  confirmWareneingang: (id, menge_geliefert, qualitaet, notiz) =>
-    post('/lieferungen/' + id + '/wareneingang', { menge_geliefert, qualitaet, notiz }),
+  // ── LIEFERUNGEN ───────────────────────────────────────────────
+  createLieferung:     (pool_id, lieferdatum)                     => post('/lieferungen', { pool_id, lieferdatum }),
+  scanQR:              (qr)                                        => get('/lieferungen/scan/' + qr),
+  confirmWareneingang: (id, menge_geliefert, qualitaet, notiz)    => post('/lieferungen/' + id + '/wareneingang', { menge_geliefert, qualitaet, notiz }),
+
+  // ── HUB: LAGER ────────────────────────────────────────────────
+  getLager:           (params = {})   => { const q = new URLSearchParams(params).toString(); return get('/lager' + (q ? '?' + q : '')); },
+  getLagerAlerts:     ()              => get('/lager/alerts'),
+  getLagerBewegungen: (params = {})   => { const q = new URLSearchParams(params).toString(); return get('/lager/bewegungen' + (q ? '?' + q : '')); },
+  lagerEingang:       (data)          => post('/lager/eingang', data),
+  lagerAusgang:       (data)          => post('/lager/ausgang', data),
+  lagerKorrektur:     (data)          => post('/lager/korrektur', data),
+  setMindestbestand:  (id, menge)     => put('/lager/' + id + '/mindestbestand', { mindestbestand: menge }),
+
+  // ── HUB: BEDARF ───────────────────────────────────────────────
+  getBedarfPrognosen:  ()              => get('/bedarf'),
+  getBedarfAggregiert: ()              => get('/bedarf/aggregiert'),
+  createBedarfPrognose:(data)          => post('/bedarf', data),
+  updateBedarfPrognose:(id, data)      => put('/bedarf/' + id, data),
+  deleteBedarfPrognose:(id)            => del('/bedarf/' + id),
 };
 
 window.api  = api;
