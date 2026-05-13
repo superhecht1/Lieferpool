@@ -31,27 +31,31 @@ const loginLimiter = rateLimit({ windowMs: 15*60*1000, max: 10, message: { error
 app.use('/api/', apiLimiter);
 app.use('/api/auth/login', loginLimiter);
 
-// API Routes
+// ---- Core Routes ----
 app.use('/api/auth',        require('./routes/auth'));
 app.use('/api/pools',       require('./routes/pools'));
 app.use('/api/erzeuger',    require('./routes/erzeuger'));
 app.use('/api/lieferungen', require('./routes/lieferungen'));
 
+// ---- Hub Module Routes ----
+app.use('/api/lager',       require('./routes/lager'));
+app.use('/api/bedarf',      require('./routes/bedarf'));
+
 // Health Check
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
 
-// Statische Dateien (CSS, JS, Bilder etc.)
+// Statische Dateien
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 app.use(express.static(PUBLIC_DIR));
 
 // Explizite HTML-Routen
-app.get('/',              (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'index.html')));
-app.get('/login',         (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'login.html')));
-app.get('/erzeuger',      (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'erzeuger.html')));
-app.get('/caterer',       (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'caterer.html')));
-app.get('/admin',         (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'admin.html')));
+app.get('/',         (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'index.html')));
+app.get('/login',    (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'login.html')));
+app.get('/erzeuger', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'erzeuger.html')));
+app.get('/caterer',  (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'caterer.html')));
+app.get('/admin',    (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'admin.html')));
 
-// Fallback → Landing
+// Fallback
 app.get(/^(?!\/api)/, (req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
 });
@@ -65,7 +69,6 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`LieferPool läuft auf Port ${PORT}`);
-  console.log(`  /           → Landing Page (index.html)`);
-  console.log(`  /login      → Login (login.html)`);
-  console.log(`  /api        → REST API`);
+  console.log(`  /api/lager  → Warenwirtschaft (Hub Modul)`);
+  console.log(`  /api/bedarf → Bedarfserfassung (Hub Modul)`);
 });
