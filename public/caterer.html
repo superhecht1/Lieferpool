@@ -513,14 +513,14 @@ async function loadVertraege() {
           <tr>
             <th>Produkt</th><th>Lieferwoche</th><th>Preis</th>
             <th>Menge Ziel</th><th>Committet</th><th>Füllstand</th>
-            <th>Erzeuger</th><th>Status</th>
+            <th>Erzeuger</th><th>Status</th><th></th>
           </tr>
         </thead>
         <tbody>
           ${pools.map(p => {
             const pct = poolPct(p.menge_committed, p.menge_ziel);
             return `
-              <tr class="pool-row-clickable" data-pool-id="${p.id}" style="cursor:pointer" title="Klicken für Details">
+              <tr>
                 <td style="font-weight:600;color:var(--text)">${p.produkt}</td>
                 <td class="pool-meta">${p.lieferwoche}</td>
                 <td class="pool-meta">${fmt(p.preis_pro_einheit)} €/kg</td>
@@ -536,17 +536,16 @@ async function loadVertraege() {
                 </td>
                 <td class="pool-meta">${p.erzeuger_count || 0}</td>
                 <td>${statusBadge(p.status)}</td>
+                <td><button class="btn btn-sm" data-action="detail" data-id="${p.id}">Details →</button></td>
               </tr>`;
           }).join('')}
         </tbody>
       </table>
-      <div class="pool-meta" style="margin-top:.75rem">Klick auf eine Zeile für Details</div>
     ` : '<p style="color:var(--text3);font-size:13px">Keine Pools gefunden</p>');
 
-    // Event-Delegation für Tabellenzeilen
     document.getElementById('vertraege-list')?.addEventListener('click', e => {
-      const row = e.target.closest('[data-pool-id]');
-      if (row) showPoolDetail(row.dataset.poolId);
+      const btn = e.target.closest('[data-action="detail"]');
+      if (btn) showPoolDetail(btn.dataset.id);
     });
 
   } catch (err) { showAlert('alerts', 'error', err.message); }
