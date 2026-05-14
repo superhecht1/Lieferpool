@@ -7,10 +7,6 @@ const path      = require('path');
 
 const app = express();
 
-// ── Render.com läuft hinter einem Reverse Proxy.
-// Ohne diese Zeile wirft express-rate-limit ERR_ERL_UNEXPECTED_X_FORWARDED_FOR.
-app.set('trust proxy', 1);
-
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -31,7 +27,7 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 
 const apiLimiter   = rateLimit({ windowMs: 15*60*1000, max: 100, standardHeaders: true, legacyHeaders: false, message: { error: 'Zu viele Anfragen' } });
-const loginLimiter = rateLimit({ windowMs: 15*60*1000, max: 10,  standardHeaders: true, legacyHeaders: false, message: { error: 'Zu viele Login-Versuche' } });
+const loginLimiter = rateLimit({ windowMs: 15*60*1000, max: 10, message: { error: 'Zu viele Login-Versuche' } });
 app.use('/api/', apiLimiter);
 app.use('/api/auth/login', loginLimiter);
 
@@ -76,5 +72,7 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`LieferPool läuft auf Port ${PORT}`);
-  console.log(`  trust proxy: aktiviert (Render.com)`);
+  console.log(`  /api/touren    → Tourenplanung (Flow)`);
+  console.log(`  /api/fahrzeuge → Fuhrpark (Flow)`);
+  console.log(`  /fahrer        → Fahrer-App (mobil)`);
 });
