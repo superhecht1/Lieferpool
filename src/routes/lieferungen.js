@@ -1,48 +1,69 @@
 const express = require('express');
-const { v4: uuidv4 } = require('uuid');
-const db = require('../db');
+const db      = require('../db');
 const { auth, role } = require('../middleware/auth');
-const chain = require('../services/chain');
-const { calculateAndCreatePayouts } = require('../services/payout');
+const payout  = require('../services/payout');
+const email   = require('../services/email');
 
 const router = express.Router();
 
-// ----------------------------------------------------------------
-// Hilfsfunktion: Wareneingang → Lagerbuchung
-// Wird intern nach Bestätigung aufgerufen
-// ----------------------------------------------------------------
-async function bucheWareneingang(client, { produkt, einheit = 'kg', menge, region = 'NRW',
-                                           pool_id, lieferung_id, qualitaet, user_id }) {
-  // Lager-Position holen oder anlegen
-  const { rows: [lager] } = await client.query(`
-    INSERT INTO lager_positionen (produkt, einheit, region)
-    VALUES ($1, $2, $3)
-    ON CONFLICT (produkt, region) DO UPDATE SET updated_at = NOW()
-    RETURNING *
-  `, [produkt, einheit, region]);
+// GET /api/lieferungen – Liste (Admin + Caterer)
+router.get('/', auth, async (req, res) => {
+  try {
+    const { pool_id, status, limit = 50 } = req.query;
+    const params = [parseInt(limit)];
+    const filters = [];
 
-  // Bestand erhöhen
-  const { rows: [updated] } = await client.query(`
-    UPDATE lager_positionen SET bestand = bestand + $1 WHERE id = $2 RETURNING bestand
-  `, [menge, lager.id]);
+    // Caterer sieht nur eigene Pools
+    if (req.user.role === 'caterer') {
+      const { rows: [cat] } = await db.query(
+        `SELECT id FROM caterer WHERE user_id = $1`, [req.user.id]
+      );
+      if (!cat) return res.json({ lieferungen: [] });
+      params.push(cat.id);
+      filters.push(`p.caterer_id = $${params.length}`);
+    }
 
-  // Bewegung buchen
-  await client.query(`
-    INSERT INTO lager_bewegungen
-      (lager_id, typ, menge, bestand_nach, pool_id, lieferung_id, qualitaet, notiz, erstellt_von)
-    VALUES ($1, 'eingang', $2, $3, $4, $5, $6, $7, $8)
-  `, [lager.id, menge, updated.bestand, pool_id, lieferung_id,
-      qualitaet, 'Automatisch bei Wareneingangsbestätigung', user_id]);
+    if (pool_id) { params.push(pool_id); filters.push(`l.pool_id = $${params.length}`); }
+    if (status)  { params.push(status);  filters.push(`l.status = $${params.length}`); }
 
-  return { bestand_aktuell: updated.bestand, unterbestand: updated.bestand <= lager.mindestbestand };
-}
+    const where = filters.length ? 'WHERE ' + filters.join(' AND ') : '';
 
-// ----------------------------------------------------------------
-// POST /api/lieferungen – Lieferschein erstellen
-// ----------------------------------------------------------------
+    const { rows } = await db.query(`
+      SELECT l.*, p.produkt, p.lieferwoche, p.caterer_id
+      FROM lieferungen l
+      JOIN pools p ON p.id = l.pool_id
+      ${where}
+      ORDER BY l.created_at DESC
+      LIMIT $1
+    `, params);
+
+    res.json({ lieferungen: rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Fehler beim Laden' });
+  }
+});
+
+// GET /api/lieferungen/scan/:qr
+router.get('/scan/:qr', auth, role('caterer', 'fahrer', 'admin'), async (req, res) => {
+  try {
+    const { rows: [l] } = await db.query(`
+      SELECT l.*, p.produkt, p.lieferwoche
+      FROM lieferungen l JOIN pools p ON p.id = l.pool_id
+      WHERE l.qr_code = $1
+    `, [req.params.qr.toUpperCase()]);
+
+    if (!l) return res.status(404).json({ error: 'Lieferschein nicht gefunden' });
+    res.json({ lieferung: l });
+  } catch (err) {
+    res.status(500).json({ error: 'Fehler beim Suchen' });
+  }
+});
+
+// POST /api/lieferungen – Lieferschein erstellen (Admin)
 router.post('/', auth, role('admin', 'caterer'), async (req, res) => {
   const { pool_id, lieferdatum } = req.body;
-  if (!pool_id) return res.status(400).json({ error: 'pool_id fehlt' });
+  if (!pool_id) return res.status(400).json({ error: 'pool_id erforderlich' });
 
   try {
     const { rows: [pool] } = await db.query(
@@ -50,145 +71,72 @@ router.post('/', auth, role('admin', 'caterer'), async (req, res) => {
     );
     if (!pool) return res.status(404).json({ error: 'Pool nicht gefunden' });
 
-    const qr = 'LP-' + uuidv4().slice(0, 8).toUpperCase();
-    const nr = 'LS-' + Date.now();
+    const nr  = 'LP-' + Date.now().toString(36).toUpperCase().slice(-8);
+    const qr  = 'QR-' + Math.random().toString(36).slice(2,10).toUpperCase();
+    const dat = lieferdatum || new Date().toISOString().split('T')[0];
 
     const { rows: [lief] } = await db.query(`
-      INSERT INTO lieferungen
-        (pool_id, lieferschein_nr, qr_code, menge_bestellt, lieferdatum)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO lieferungen (pool_id, lieferschein_nr, qr_code, lieferdatum, menge_bestellt, status)
+      VALUES ($1, $2, $3, $4, $5, 'offen')
       RETURNING *
-    `, [pool_id, nr, qr, pool.menge_committed, lieferdatum || null]);
+    `, [pool_id, nr, qr, dat, pool.menge_committed]);
 
-    res.status(201).json({ lieferung: lief });
+    res.status(201).json({ lieferung: { ...lief, produkt: pool.produkt, lieferwoche: pool.lieferwoche } });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Lieferschein konnte nicht erstellt werden' });
   }
 });
 
-// ----------------------------------------------------------------
-// GET /api/lieferungen/scan/:qr – QR-Code scannen
-// ----------------------------------------------------------------
-router.get('/scan/:qr', auth, role('caterer', 'admin'), async (req, res) => {
-  try {
-    const { rows: [lief] } = await db.query(`
-      SELECT l.*, p.produkt, p.preis_pro_einheit, c.firma_name AS caterer_name
-      FROM lieferungen l
-      JOIN pools p ON p.id = l.pool_id
-      LEFT JOIN caterer c ON c.id = p.caterer_id
-      WHERE l.qr_code = $1
-    `, [req.params.qr.toUpperCase()]);
-
-    if (!lief) return res.status(404).json({ error: 'QR-Code nicht gefunden' });
-    res.json({ lieferung: lief });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Scan fehlgeschlagen' });
-  }
-});
-
-// ----------------------------------------------------------------
 // POST /api/lieferungen/:id/wareneingang
-// Caterer bestätigt Wareneingang → Auszahlungen + Lagerbuchung
-// ----------------------------------------------------------------
 router.post('/:id/wareneingang', auth, role('caterer', 'admin'), async (req, res) => {
   const { menge_geliefert, qualitaet = 'A', notiz } = req.body;
+  if (!menge_geliefert) return res.status(400).json({ error: 'menge_geliefert erforderlich' });
 
-  if (!menge_geliefert) return res.status(400).json({ error: 'menge_geliefert fehlt' });
-  if (!['A', 'B', 'C', 'abgelehnt'].includes(qualitaet)) {
-    return res.status(400).json({ error: 'Ungültige Qualitätsstufe' });
-  }
-
-  const client = await db.pool.connect();
-  try {
-    await client.query('BEGIN');
-
-    // Lieferung + Pool laden
-    const { rows: [lief] } = await client.query(`
-      SELECT l.*, p.produkt, p.einheit, p.region
-      FROM lieferungen l
-      JOIN pools p ON p.id = l.pool_id
-      WHERE l.id = $1
-    `, [req.params.id]);
-
-    if (!lief) return res.status(404).json({ error: 'Lieferung nicht gefunden' });
-    if (lief.status === 'eingegangen') {
-      return res.status(400).json({ error: 'Wareneingang bereits bestätigt' });
-    }
-
-    const lieferschein_hash = '0x' + Buffer.from(lief.lieferschein_nr + menge_geliefert)
-      .toString('hex').slice(0, 64);
-
-    // On-chain bestätigen
-    const { txHash: deliveryTx } = await chain.confirmDelivery(
-      lief.id, lief.pool_id, menge_geliefert, qualitaet
-    );
-
-    // Lieferung aktualisieren
-    await client.query(`
-      UPDATE lieferungen
-      SET menge_geliefert = $1, qualitaet = $2, status = 'eingegangen',
-          wareneingang_at = NOW(), bestaetigt_von = $3,
-          lieferschein_hash = $4, chain_tx = $5, notiz = $6
-      WHERE id = $7
-    `, [menge_geliefert, qualitaet, req.user.id, lieferschein_hash, deliveryTx, notiz, lief.id]);
-
-    // ── NEU: Automatische Lagerbuchung ──────────────────────────
-    let lagerInfo = null;
-    if (qualitaet !== 'abgelehnt') {
-      lagerInfo = await bucheWareneingang(client, {
-        produkt:     lief.produkt,
-        einheit:     lief.einheit,
-        menge:       parseFloat(menge_geliefert),
-        region:      lief.region || 'NRW',
-        pool_id:     lief.pool_id,
-        lieferung_id: lief.id,
-        qualitaet,
-        user_id:     req.user.id,
-      });
-    }
-    // ─────────────────────────────────────────────────────────────
-
-    await client.query('COMMIT');
-
-    // Auszahlungen berechnen (außerhalb der Transaktion, eigene Transaktion intern)
-    const { payouts, txHash: payoutTx } = qualitaet !== 'abgelehnt'
-      ? await calculateAndCreatePayouts(lief.id)
-      : { payouts: [], txHash: null };
-
-    res.json({
-      message: 'Wareneingang bestätigt',
-      auszahlungen: payouts.length,
-      gesamt_netto: payouts.reduce((s, p) => s + p.netto, 0).toFixed(2),
-      lager: lagerInfo,
-      chain: { deliveryTx, payoutTx },
-    });
-  } catch (err) {
-    await client.query('ROLLBACK');
-    console.error(err);
-    res.status(500).json({ error: 'Wareneingang fehlgeschlagen' });
-  } finally {
-    client.release();
-  }
-});
-
-// ----------------------------------------------------------------
-// GET /api/lieferungen/:id
-// ----------------------------------------------------------------
-router.get('/:id', auth, async (req, res) => {
   try {
     const { rows: [lief] } = await db.query(`
-      SELECT l.*, p.produkt, p.preis_pro_einheit
-      FROM lieferungen l
-      JOIN pools p ON p.id = l.pool_id
-      WHERE l.id = $1
-    `, [req.params.id]);
+      UPDATE lieferungen
+      SET menge_geliefert = $1, qualitaet = $2, notiz = $3,
+          status = 'eingegangen', wareneingang_at = NOW()
+      WHERE id = $4 RETURNING *
+    `, [menge_geliefert, qualitaet, notiz, req.params.id]);
 
-    if (!lief) return res.status(404).json({ error: 'Nicht gefunden' });
-    res.json({ lieferung: lief });
+    if (!lief) return res.status(404).json({ error: 'Lieferung nicht gefunden' });
+
+    // Auszahlungen berechnen
+    let payoutResult = null;
+    try {
+      payoutResult = await payout.calculateAndCreatePayouts(lief.id);
+    } catch (payErr) {
+      console.warn('[wareneingang payout]', payErr.message);
+    }
+
+    // Erzeuger per E-Mail benachrichtigen
+    try {
+      const { rows: erzeuger } = await db.query(`
+        SELECT DISTINCT u.email, e.betrieb_name, $2 AS produkt
+        FROM commitments c
+        JOIN erzeuger e ON e.id = c.erzeuger_id
+        JOIN users u ON u.id = e.user_id
+        JOIN pools p ON p.id = c.pool_id
+        WHERE c.pool_id = $1 AND c.status IN ('aktiv','geliefert')
+      `, [lief.pool_id, lief.produkt || '']);
+
+      for (const e of erzeuger) {
+        email.sendWareneingangBestaetigt({
+          erzeugerEmail: e.email,
+          erzeugerName:  e.betrieb_name,
+          lieferung: { ...lief, produkt: e.produkt },
+        }).catch(err => console.warn('[email wareneingang]', err.message));
+      }
+    } catch (emailErr) {
+      console.warn('[email]', emailErr.message);
+    }
+
+    res.json({ lieferung: lief, payouts: payoutResult?.payouts || [] });
   } catch (err) {
-    res.status(500).json({ error: 'Fehler' });
+    console.error(err);
+    res.status(500).json({ error: 'Wareneingang fehlgeschlagen' });
   }
 });
 
