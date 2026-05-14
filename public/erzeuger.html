@@ -12,26 +12,28 @@
   <main class="main">
     <div id="alerts"></div>
 
-    <!-- VIEW: Pools -->
+    <!-- POOLS -->
     <div id="view-pools" class="view">
       <div class="grid4" style="margin-bottom:1rem" id="metrics-pools"></div>
-      <div class="card" id="card-pools">
-        <div class="card-title">Offene Lieferpools</div>
-        <div id="pools-list"><div class="spinner"></div></div>
-      </div>
-      <div class="card" id="card-meine">
-        <div class="card-title">Meine Commitments</div>
-        <div id="commitments-list"><div class="spinner"></div></div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">Offene Lieferpools</div>
+          <div id="pools-list"><div class="spinner"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Meine Zusagen</div>
+          <div id="commitments-list"><div class="spinner"></div></div>
+        </div>
       </div>
     </div>
 
-    <!-- VIEW: Zusagen -->
+    <!-- ZUSAGEN -->
     <div id="view-zusagen" class="view" style="display:none">
       <div class="card">
-        <div class="card-title">Pool-Füllstand</div>
+        <div class="card-title">Verfügbare Pools</div>
         <div id="pool-status-list"></div>
       </div>
-      <div class="card" id="commit-form-card">
+      <div class="card">
         <div class="card-title">Menge zusagen</div>
         <div id="commit-result"></div>
         <div id="commit-form">
@@ -46,7 +48,7 @@
             </div>
             <div class="form-group">
               <label class="form-label">Erwarteter Erlös</label>
-              <div class="form-control" id="erloes-preview" style="color:var(--green);font-family:'DM Mono',monospace">
+              <div class="form-control" id="erloes-preview" style="color:var(--green);font-family:'DM Mono',monospace;background:var(--bg)">
                 — €
               </div>
             </div>
@@ -57,27 +59,36 @@
       </div>
     </div>
 
-    <!-- VIEW: Auszahlungen -->
+    <!-- AUSZAHLUNGEN -->
     <div id="view-auszahlung" class="view" style="display:none">
       <div class="grid2" style="margin-bottom:1rem" id="az-metrics"></div>
       <div class="card">
-        <div class="card-title">Auszahlungshistorie</div>
+        <div class="section-hdr">
+          <span class="section-title">Auszahlungshistorie</span>
+          <button class="btn btn-sm" id="btn-export-az">↓ CSV Export</button>
+        </div>
         <div id="az-list"></div>
       </div>
       <div class="card">
-        <div class="card-title">Zahlungsweg</div>
-        <div class="auszahl-row">
-          <span>SEPA Instant</span>
-          <span class="badge badge-green">aktiv</span>
-        </div>
-        <p style="font-size:12px;color:var(--text2);margin-top:.75rem">
-          Auszahlung innerhalb von Sekunden nach Wareneingangsbestätigung.
-          Kein Zahlungsziel, kein 30-Tage-Warten.
+        <div class="card-title">Abrechnung</div>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:1rem;line-height:1.6">
+          Erstelle eine druckbare Abrechnung aller deiner Auszahlungen für deine Buchhaltung.
         </p>
+        <div class="grid2" style="margin-bottom:1rem">
+          <div class="form-group">
+            <label class="form-label">Von</label>
+            <input class="form-control" type="date" id="az-von">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Bis</label>
+            <input class="form-control" type="date" id="az-bis">
+          </div>
+        </div>
+        <button class="btn btn-primary" id="btn-abrechnung">Abrechnung öffnen (druckbar)</button>
       </div>
     </div>
 
-    <!-- VIEW: Profil -->
+    <!-- PROFIL -->
     <div id="view-profil" class="view" style="display:none">
       <div class="grid2">
         <div class="card">
@@ -94,11 +105,13 @@
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">IBAN</label>
+            <label class="form-label">IBAN (für SEPA-Auszahlung)</label>
             <input class="form-control" id="p-iban" placeholder="DE89 3704 0044...">
           </div>
           <button class="btn btn-primary btn-sm" id="btn-save-profil">Speichern</button>
+          <div id="profil-result" style="margin-top:.75rem"></div>
         </div>
+
         <div class="card">
           <div class="card-title">Zertifikat einreichen</div>
           <div class="form-group">
@@ -117,8 +130,10 @@
           </div>
           <button class="btn btn-primary btn-sm" id="btn-zert">Einreichen</button>
           <div id="zert-result" style="margin-top:.75rem"></div>
-          <div class="card-title" style="margin-top:1.5rem">Meine Zertifikate</div>
-          <div id="zert-list"></div>
+          <div style="margin-top:1.5rem">
+            <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:.75rem">Meine Zertifikate</div>
+            <div id="zert-list"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -133,53 +148,52 @@ const user = requireAuth('erzeuger');
 if (!user) throw 'not auth';
 
 const NAV = [
-  { id: 'pools',     label: 'Pools' },
-  { id: 'zusagen',   label: 'Menge zusagen' },
-  { id: 'auszahlung',label: 'Auszahlung' },
-  { id: 'profil',    label: 'Profil & Zertifikate' },
+  { id: 'pools',      label: 'Pools' },
+  { id: 'zusagen',    label: 'Menge zusagen' },
+  { id: 'auszahlung', label: 'Auszahlungen' },
+  { id: 'profil',     label: 'Profil & Zertifikate' },
 ];
 
-let currentView = 'pools';
 let openPools = [];
-let profil = null;
+let erzeugerProfil = null;
 
-renderHeader('pools', NAV, (v) => {
-  currentView = v;
-  showView(v);
-  loadView(v);
-});
+renderHeader('pools', NAV, (v) => { showView(v); loadView(v); });
 
-// ---- Daten laden ----
-async function loadView(v) {
-  if (v === 'pools')      return loadPools();
-  if (v === 'zusagen')    return loadZusagen();
-  if (v === 'auszahlung') return loadAuszahlungen();
-  if (v === 'profil')     return loadProfil();
+function setHTML(id, html) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = html;
 }
 
-// ---- POOLS ----
+async function loadView(v) {
+  if (v === 'pools')      loadPools();
+  if (v === 'zusagen')    loadZusagen();
+  if (v === 'auszahlung') loadAuszahlungen();
+  if (v === 'profil')     loadProfil();
+}
+
+// ── POOLS ─────────────────────────────────────────────────────
 async function loadPools() {
   try {
-    const { pools } = await api.getPools({ status: 'offen' });
+    const [{ pools }, me] = await Promise.all([
+      api.getPools({ status: 'offen' }),
+      api.getErzeugerMe(),
+    ]);
     openPools = pools;
-    const me = await api.getErzeugerMe();
 
-    // Metrics
-    document.getElementById('metrics-pools').innerHTML = `
-      <div class="metric"><div class="metric-label">Offene Pools</div>
-        <div class="metric-val green">${pools.length}</div></div>
-      <div class="metric"><div class="metric-label">Meine Zusagen</div>
-        <div class="metric-val">${me.commitments.filter(c => c.status === 'aktiv').length}</div></div>
-      <div class="metric"><div class="metric-label">Geliefert</div>
-        <div class="metric-val">${me.commitments.filter(c => c.status === 'geliefert').length}</div></div>
+    const aktiveCommitments  = me.commitments.filter(c => c.status === 'aktiv').length;
+    const geliefertCount     = me.commitments.filter(c => c.status === 'geliefert').length;
+    const verifZerts         = me.zertifikate.filter(z => z.status === 'verified').length;
+    const gesamtErloes       = me.auszahlungen?.reduce((s, a) => s + parseFloat(a.netto || 0), 0) || 0;
+
+    setHTML('metrics-pools', `
+      <div class="metric"><div class="metric-label">Offene Pools</div><div class="metric-val green">${pools.length}</div></div>
+      <div class="metric"><div class="metric-label">Aktive Zusagen</div><div class="metric-val">${aktiveCommitments}</div></div>
+      <div class="metric"><div class="metric-label">Geliefert</div><div class="metric-val">${geliefertCount}</div></div>
       <div class="metric"><div class="metric-label">Zertifikate</div>
-        <div class="metric-val ${me.zertifikate.some(z => z.status === 'verified') ? 'green' : 'amber'}">
-          ${me.zertifikate.filter(z => z.status === 'verified').length} / ${me.zertifikate.length}
-        </div></div>
-    `;
+        <div class="metric-val ${verifZerts > 0 ? 'green' : 'amber'}">${verifZerts}</div></div>
+    `);
 
-    // Pool-Liste
-    document.getElementById('pools-list').innerHTML = pools.length ? pools.map(p => `
+    setHTML('pools-list', pools.length ? pools.map(p => `
       <div class="pool-item">
         <div class="pool-row">
           <span class="pool-name">${p.produkt}</span>
@@ -191,10 +205,9 @@ async function loadPools() {
         </div>
         ${poolBar(p.menge_committed, p.menge_ziel)}
       </div>
-    `).join('') : '<p style="color:var(--text3);font-size:13px">Keine offenen Pools</p>';
+    `).join('') : '<p style="color:var(--text3);font-size:13px">Keine offenen Pools</p>');
 
-    // Meine Commitments
-    document.getElementById('commitments-list').innerHTML = me.commitments.length ? `
+    setHTML('commitments-list', me.commitments.length ? `
       <table class="tbl">
         <thead><tr><th>Produkt</th><th>KW</th><th>Menge</th><th>Status</th></tr></thead>
         <tbody>${me.commitments.map(c => `
@@ -203,42 +216,38 @@ async function loadPools() {
             <td class="pool-meta">${c.lieferwoche}</td>
             <td class="pool-meta">${fmt(c.menge, 0)} kg</td>
             <td>${statusBadge(c.status)}</td>
-          </tr>
-        `).join('')}</tbody>
+          </tr>`).join('')}
+        </tbody>
       </table>
-    ` : '<p style="color:var(--text3);font-size:13px">Noch keine Zusagen</p>';
+    ` : '<p style="color:var(--text3);font-size:13px">Noch keine Zusagen</p>');
 
-  } catch (err) {
-    showAlert('alerts', 'error', 'Fehler beim Laden: ' + err.message);
-  }
+  } catch (err) { showAlert('alerts', 'error', err.message); }
 }
 
-// ---- ZUSAGEN ----
+// ── ZUSAGEN ───────────────────────────────────────────────────
 async function loadZusagen() {
   try {
     const { pools } = await api.getPools({ status: 'offen' });
     openPools = pools;
 
-    // Pool-Status-Liste
-    document.getElementById('pool-status-list').innerHTML = pools.length ? pools.map(p => `
+    setHTML('pool-status-list', pools.length ? pools.map(p => `
       <div class="pool-item">
         <div class="pool-row">
           <span class="pool-name">${p.produkt}</span>
           <span class="pool-meta">${fmt(p.preis_pro_einheit)} €/kg</span>
         </div>
-        <span class="pool-meta">${p.lieferwoche} · Ziel: ${Math.round(p.menge_ziel)} kg</span>
+        <span class="pool-meta">${p.lieferwoche} · Ziel: ${Math.round(p.menge_ziel)} kg · Deadline: ${new Date(p.deadline).toLocaleDateString('de-DE')}</span>
         ${poolBar(p.menge_committed, p.menge_ziel)}
       </div>
-    `).join('') : '<p style="color:var(--text3);font-size:13px">Keine offenen Pools</p>';
+    `).join('') : '<p style="color:var(--text3);font-size:13px">Keine offenen Pools</p>');
 
-    // Dropdown
     const sel = document.getElementById('commit-pool-sel');
-    sel.innerHTML = pools.map(p => `<option value="${p.id}" data-preis="${p.preis_pro_einheit}">${p.produkt} (${p.lieferwoche})</option>`).join('');
+    if (sel) sel.innerHTML = pools.length
+      ? pools.map(p => `<option value="${p.id}" data-preis="${p.preis_pro_einheit}">${p.produkt} (${p.lieferwoche}) · ${fmt(p.preis_pro_einheit)} €/kg</option>`).join('')
+      : '<option>Keine offenen Pools</option>';
 
     updateErloes();
-  } catch (err) {
-    showAlert('alerts', 'error', err.message);
-  }
+  } catch (err) { showAlert('alerts', 'error', err.message); }
 }
 
 function updateErloes() {
@@ -253,18 +262,17 @@ function updateErloes() {
     const brutto = menge * preis;
     const fee    = brutto * 0.01;
     const netto  = brutto - fee;
-    prev.textContent = fmt(netto) + ' €';
-    box.style.display = 'block';
-    box.innerHTML = `
+    if (prev) prev.textContent = fmt(netto) + ' €';
+    if (box)  { box.style.display = 'block'; box.innerHTML = `
       <div class="erloes-row"><span class="lbl">Brutto</span><span>${fmt(brutto)} €</span></div>
       <div class="erloes-row"><span class="lbl">Plattformfee (1%)</span><span>−${fmt(fee)} €</span></div>
-      <div class="erloes-row"><span class="lbl">Netto</span><span class="erloes-total">${fmt(netto)} €</span></div>
-    `;
-    btn.disabled = false;
+      <div class="erloes-row"><span class="lbl">Netto (SEPA Instant)</span><span class="erloes-total">${fmt(netto)} €</span></div>
+    `; }
+    if (btn) btn.disabled = false;
   } else {
-    prev.textContent = '— €';
-    box.style.display = 'none';
-    btn.disabled = true;
+    if (prev) prev.textContent = '— €';
+    if (box)  box.style.display = 'none';
+    if (btn)  btn.disabled = true;
   }
 }
 
@@ -276,70 +284,80 @@ document.getElementById('btn-commit')?.addEventListener('click', async () => {
   const menge  = parseFloat(document.getElementById('commit-menge').value);
   const btn    = document.getElementById('btn-commit');
   if (!poolId || !menge) return;
-
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Sende...';
-
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Sende...';
   try {
     const res = await api.commitQuantity(poolId, menge);
-    document.getElementById('commit-result').innerHTML = `
+    setHTML('commit-result', `
       <div class="success-box">
         <div class="success-icon">✓</div>
         <div class="success-title">Commitment erfolgreich</div>
         <div class="success-sub">${menge} kg · Pool ${res.pool_fuellstand}% gefüllt</div>
         ${chainInfo(res.chain?.txHash)}
-      </div>
-    `;
-    document.getElementById('commit-form').style.display = 'none';
+      </div>`);
+    const form = document.getElementById('commit-form');
+    if (form) form.style.display = 'none';
+    document.getElementById('commit-menge').value = '';
     loadZusagen();
   } catch (err) {
-    btn.textContent = 'Commitment absenden';
-    btn.disabled = false;
+    btn.textContent = 'Commitment absenden'; btn.disabled = false;
     showAlert('alerts', 'error', err.message);
   }
 });
 
-// ---- AUSZAHLUNGEN ----
+// ── AUSZAHLUNGEN ──────────────────────────────────────────────
 async function loadAuszahlungen() {
   try {
     const { auszahlungen, gesamt, ausstehend } = await api.getAuszahlungen();
+    setHTML('az-metrics', `
+      <div class="metric"><div class="metric-label">Gesamt ausgezahlt</div><div class="metric-val green">${fmt(gesamt)} €</div></div>
+      <div class="metric"><div class="metric-label">Ausstehend</div><div class="metric-val amber">${fmt(ausstehend)} €</div></div>
+    `);
 
-    document.getElementById('az-metrics').innerHTML = `
-      <div class="metric"><div class="metric-label">Gesamt ausgezahlt</div>
-        <div class="metric-val green">${fmt(gesamt)} €</div></div>
-      <div class="metric"><div class="metric-label">Ausstehend</div>
-        <div class="metric-val amber">${fmt(ausstehend)} €</div></div>
-    `;
+    setHTML('az-list', auszahlungen.length ? `
+      <table class="tbl">
+        <thead><tr><th>Datum</th><th>Produkt</th><th>KW</th><th>Menge</th><th>Netto</th><th>Status</th></tr></thead>
+        <tbody>${auszahlungen.map(a => `
+          <tr>
+            <td class="pool-meta">${new Date(a.created_at).toLocaleDateString('de-DE')}</td>
+            <td style="font-weight:500">${a.produkt || '—'}</td>
+            <td class="pool-meta">${a.lieferwoche || '—'}</td>
+            <td class="pool-meta">${fmt(a.commitment_menge || 0, 0)} kg</td>
+            <td style="font-family:'DM Mono',monospace;color:var(--green);font-weight:500">${fmt(a.netto)} €</td>
+            <td>${statusBadge(a.status)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    ` : '<p style="color:var(--text3);font-size:13px">Noch keine Auszahlungen</p>');
 
-    document.getElementById('az-list').innerHTML = auszahlungen.length ? auszahlungen.map(a => `
-      <div class="auszahl-row">
-        <div>
-          <div style="font-weight:500">${a.produkt || 'Produkt'}</div>
-          <div class="pool-meta">${a.lieferwoche || ''} · ${fmt(a.commitment_menge || 0, 0)} kg</div>
-        </div>
-        <div style="text-align:right">
-          ${a.netto > 0 ? `<div class="auszahl-amount">${fmt(a.netto)} €</div>` : ''}
-          ${statusBadge(a.status)}
-        </div>
-      </div>
-    `).join('') : '<p style="color:var(--text3);font-size:13px">Noch keine Auszahlungen</p>';
-
-  } catch (err) {
-    showAlert('alerts', 'error', err.message);
-  }
+  } catch (err) { showAlert('alerts', 'error', err.message); }
 }
 
-// ---- PROFIL ----
+document.getElementById('btn-export-az')?.addEventListener('click', () => {
+  api.downloadAuszahlungenCSV();
+});
+
+document.getElementById('btn-abrechnung')?.addEventListener('click', async () => {
+  try {
+    const me = await api.getErzeugerMe();
+    const von = document.getElementById('az-von').value || undefined;
+    const bis = document.getElementById('az-bis').value || undefined;
+    api.openAbrechnung(me.erzeuger.id, { von, bis });
+  } catch (err) { showAlert('alerts', 'error', err.message); }
+});
+
+// ── PROFIL ────────────────────────────────────────────────────
 async function loadProfil() {
   try {
     const { erzeuger, zertifikate } = await api.getErzeugerMe();
-    profil = erzeuger;
+    erzeugerProfil = erzeuger;
+    const nameEl = document.getElementById('p-name');
+    const regionEl = document.getElementById('p-region');
+    const ibanEl = document.getElementById('p-iban');
+    if (nameEl)   nameEl.value   = erzeuger.betrieb_name || '';
+    if (regionEl) regionEl.value = erzeuger.region       || 'NRW';
+    if (ibanEl)   ibanEl.value   = erzeuger.iban         || '';
 
-    document.getElementById('p-name').value   = erzeuger.betrieb_name || '';
-    document.getElementById('p-region').value = erzeuger.region || 'NRW';
-    document.getElementById('p-iban').value   = erzeuger.iban || '';
-
-    document.getElementById('zert-list').innerHTML = zertifikate.length ? zertifikate.map(z => `
+    setHTML('zert-list', zertifikate.length ? zertifikate.map(z => `
       <div class="auszahl-row">
         <div>
           <div style="font-size:13px;font-weight:500">${z.typ} · ${z.zert_nummer}</div>
@@ -348,54 +366,50 @@ async function loadProfil() {
         </div>
         ${statusBadge(z.status)}
       </div>
-    `).join('') : '<p style="color:var(--text3);font-size:13px">Noch keine Zertifikate</p>';
+    `).join('') : '<p style="color:var(--text3);font-size:13px">Noch keine Zertifikate</p>');
 
-  } catch (err) {
-    showAlert('alerts', 'error', err.message);
-  }
+  } catch (err) { showAlert('alerts', 'error', err.message); }
 }
 
 document.getElementById('btn-save-profil')?.addEventListener('click', async () => {
+  const btn = document.getElementById('btn-save-profil');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
   try {
     await api.updateErzeuger({
       betrieb_name: document.getElementById('p-name').value,
       region:       document.getElementById('p-region').value,
       iban:         document.getElementById('p-iban').value,
     });
-    toast('Profil gespeichert');
+    setHTML('profil-result', '<div class="alert alert-success">✓ Profil gespeichert</div>');
+    btn.textContent = 'Speichern'; btn.disabled = false;
+    setTimeout(() => setHTML('profil-result', ''), 3000);
   } catch (err) {
+    btn.textContent = 'Speichern'; btn.disabled = false;
     showAlert('alerts', 'error', err.message);
   }
 });
 
 document.getElementById('btn-zert')?.addEventListener('click', async () => {
-  const typ      = document.getElementById('z-typ').value;
-  const zert_nr  = document.getElementById('z-nr').value.trim();
-  const datum    = document.getElementById('z-datum').value;
-  const btn      = document.getElementById('btn-zert');
-
-  if (!zert_nr) return showAlert('alerts', 'error', 'Zertifikat-Nummer eingeben');
+  const typ    = document.getElementById('z-typ').value;
+  const nr     = document.getElementById('z-nr').value.trim();
+  const datum  = document.getElementById('z-datum').value;
+  const btn    = document.getElementById('btn-zert');
+  if (!nr) return showAlert('alerts', 'error', 'Zertifikat-Nummer eingeben');
   btn.disabled = true;
-
   try {
-    const { zertifikat } = await api.addZertifikat({
-      typ, zert_nummer: zert_nr, gueltig_bis: datum || null,
-    });
-    document.getElementById('zert-result').innerHTML = `
-      <div class="alert alert-success">Eingereicht · Prüfung ausstehend
-        ${chainInfo(zertifikat.chain_tx)}
-      </div>`;
+    await api.addZertifikat({ typ, zert_nummer: nr, gueltig_bis: datum || null });
+    setHTML('zert-result', '<div class="alert alert-success">Eingereicht · Prüfung ausstehend</div>');
     document.getElementById('z-nr').value = '';
+    btn.disabled = false;
     loadProfil();
   } catch (err) {
-    showAlert('alerts', 'error', err.message);
-  } finally {
     btn.disabled = false;
+    showAlert('alerts', 'error', err.message);
   }
 });
 
-// Init
-loadView('pools');
+// ── INIT ──────────────────────────────────────────────────────
+loadPools();
 </script>
 </body>
 </html>
