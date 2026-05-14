@@ -233,20 +233,20 @@ async function showPoolDetail(poolId) {
       if (lRes.ok) { const d = await lRes.json(); lieferungen = d.lieferungen || []; }
     } catch(e) {}
 
-    // Auszahlungen für diesen Pool
+    // Auszahlungen nur für Admin laden
     let auszahlungen = [];
-    try {
-      const azRes = await fetch(`/api/auszahlungen?limit=50`, {
-        headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
-      });
-      if (azRes.ok) {
-        const d = await azRes.json();
-        auszahlungen = (d.auszahlungen || []).filter(a => {
-          // Filtern per pool_id via commitment
-          return commitments.some(c => c.id === a.commitment_id);
+    if (Auth.getUser()?.role === 'admin') {
+      try {
+        const azRes = await fetch(`/api/auszahlungen?limit=200`, {
+          headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
         });
-      }
-    } catch(e) {}
+        if (azRes.ok) {
+          const d = await azRes.json();
+          const cmtIds = new Set(commitments.map(c => c.id));
+          auszahlungen = (d.auszahlungen || []).filter(a => cmtIds.has(a.commitment_id));
+        }
+      } catch(e) {}
+    }
 
     const pct = poolPct(pool.menge_committed, pool.menge_ziel);
     const wertGesamt = parseFloat(pool.menge_committed) * parseFloat(pool.preis_pro_einheit);
