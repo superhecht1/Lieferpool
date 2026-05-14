@@ -7,7 +7,6 @@ const path      = require('path');
 
 const app = express();
 
-// Render.com läuft hinter einem Reverse Proxy
 app.set('trust proxy', 1);
 
 app.use(helmet({
@@ -30,33 +29,34 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' }));
 
-const apiLimiter   = rateLimit({ windowMs: 15*60*1000, max: 100, standardHeaders: true, legacyHeaders: false, message: { error: 'Zu viele Anfragen' } });
+const apiLimiter   = rateLimit({ windowMs: 15*60*1000, max: 200, standardHeaders: true, legacyHeaders: false, message: { error: 'Zu viele Anfragen' } });
 const loginLimiter = rateLimit({ windowMs: 15*60*1000, max: 10,  standardHeaders: true, legacyHeaders: false, message: { error: 'Zu viele Login-Versuche' } });
 app.use('/api/', apiLimiter);
 app.use('/api/auth/login', loginLimiter);
 
-// ── Core Routes ────────────────────────────────────────────────
-app.use('/api/auth',        require('./routes/auth'));
-app.use('/api/pools',       require('./routes/pools'));
-app.use('/api/erzeuger',    require('./routes/erzeuger'));
-app.use('/api/lieferungen', require('./routes/lieferungen'));
+// ── Core ───────────────────────────────────────────────────────
+app.use('/api/auth',          require('./routes/auth'));
+app.use('/api/pools',         require('./routes/pools'));
+app.use('/api/erzeuger',      require('./routes/erzeuger'));
+app.use('/api/lieferungen',   require('./routes/lieferungen'));
 
-// ── Hub Module Routes ──────────────────────────────────────────
-app.use('/api/lager',       require('./routes/lager'));
-app.use('/api/bedarf',      require('./routes/bedarf'));
+// ── Hub ────────────────────────────────────────────────────────
+app.use('/api/lager',         require('./routes/lager'));
+app.use('/api/bedarf',        require('./routes/bedarf'));
 
-// ── Flow Module Routes ─────────────────────────────────────────
-app.use('/api/touren',      require('./routes/touren'));
-app.use('/api/fahrzeuge',   require('./routes/fahrzeuge'));
+// ── Flow ───────────────────────────────────────────────────────
+app.use('/api/touren',        require('./routes/touren'));
+app.use('/api/fahrzeuge',     require('./routes/fahrzeuge'));
 
-// Health Check
+// ── Neu: Auszahlungen + Reports ────────────────────────────────
+app.use('/api/auszahlungen',  require('./routes/auszahlungen'));
+app.use('/api/reports',       require('./routes/reports'));
+
 app.get('/health', (req, res) => res.json({ status: 'ok', ts: new Date().toISOString() }));
 
-// Statische Dateien
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 app.use(express.static(PUBLIC_DIR));
 
-// HTML-Routen
 app.get('/',         (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'index.html')));
 app.get('/login',    (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'login.html')));
 app.get('/erzeuger', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'erzeuger.html')));
@@ -64,9 +64,7 @@ app.get('/caterer',  (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'caterer.h
 app.get('/admin',    (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'admin.html')));
 app.get('/fahrer',   (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'fahrer.html')));
 
-app.get(/^(?!\/api)/, (req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
-});
+app.get(/^(?!\/api)/, (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'index.html')));
 
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
@@ -74,6 +72,4 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`LieferPool läuft auf Port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`LieferPool :${PORT}`));
