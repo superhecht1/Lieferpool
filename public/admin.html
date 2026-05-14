@@ -12,7 +12,7 @@
   <main class="main">
     <div id="alerts"></div>
 
-    <!-- VIEW: Übersicht -->
+    <!-- ── ÜBERSICHT ── -->
     <div id="view-overview" class="view">
       <div class="grid4" style="margin-bottom:1rem" id="sys-metrics"></div>
       <div class="grid2">
@@ -27,7 +27,7 @@
       </div>
     </div>
 
-    <!-- VIEW: Zertifikate -->
+    <!-- ── ZERTIFIKATE ── -->
     <div id="view-zertifikate" class="view" style="display:none">
       <div class="card">
         <div class="section-hdr">
@@ -38,7 +38,7 @@
       </div>
     </div>
 
-    <!-- VIEW: Erzeuger -->
+    <!-- ── ERZEUGER ── -->
     <div id="view-erzeuger" class="view" style="display:none">
       <div class="card">
         <div class="section-hdr">
@@ -49,7 +49,7 @@
       </div>
     </div>
 
-    <!-- VIEW: Lieferung anlegen -->
+    <!-- ── LIEFERSCHEIN ── -->
     <div id="view-lieferung-neu" class="view" style="display:none">
       <div class="card" style="max-width:560px">
         <div class="card-title">Lieferschein erstellen</div>
@@ -68,9 +68,8 @@
       </div>
     </div>
 
-    <!-- VIEW: Lager (Hub Modul) -->
+    <!-- ── LAGER (Hub) ── -->
     <div id="view-lager" class="view" style="display:none">
-
       <div class="card">
         <div class="section-hdr">
           <span class="section-title">Lagerbestand</span>
@@ -82,7 +81,6 @@
         <div id="lager-alerts" style="margin-bottom:1rem"></div>
         <div id="lager-list"><div class="spinner"></div></div>
       </div>
-
       <div class="card" id="eingang-form-card" style="display:none">
         <div class="card-title">Manuellen Wareneingang buchen</div>
         <div id="eingang-result"></div>
@@ -94,7 +92,7 @@
             </div>
             <div class="form-group">
               <label class="form-label">Menge (kg)</label>
-              <input class="form-control" type="number" id="eg-menge" min="0.1" step="0.1" placeholder="z.B. 250">
+              <input class="form-control" type="number" id="eg-menge" min="0.1" step="0.1">
             </div>
           </div>
           <div class="grid2">
@@ -117,12 +115,10 @@
           </div>
         </div>
       </div>
-
       <div class="card">
         <div class="card-title">Bedarfsabgleich – Lager vs. Wochenbedarf</div>
         <div id="bedarf-abgleich"><div class="spinner"></div></div>
       </div>
-
       <div class="card">
         <div class="section-hdr">
           <span class="section-title">Letzte Lagerbewegungen</span>
@@ -135,8 +131,160 @@
         </div>
         <div id="bewegungen-list"><div class="spinner"></div></div>
       </div>
-
     </div>
+
+    <!-- ── LOGISTIK (Flow) ── -->
+    <div id="view-logistik" class="view" style="display:none">
+
+      <!-- Heutige Touren -->
+      <div class="card">
+        <div class="section-hdr">
+          <span class="section-title">Touren heute</span>
+          <div style="display:flex;gap:.5rem">
+            <button class="btn btn-sm" id="btn-reload-touren">↻</button>
+            <button class="btn btn-primary btn-sm" id="btn-show-tour-form">+ Neue Tour</button>
+          </div>
+        </div>
+        <div id="touren-heute-list"><div class="spinner"></div></div>
+      </div>
+
+      <!-- Neue Tour anlegen -->
+      <div class="card" id="tour-form-card" style="display:none">
+        <div class="card-title">Neue Tour anlegen</div>
+        <div id="tour-form-result"></div>
+        <div class="grid2">
+          <div class="form-group">
+            <label class="form-label">Datum</label>
+            <input class="form-control" type="date" id="tf-datum">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Typ</label>
+            <select class="form-control" id="tf-typ">
+              <option value="abholung">Abholung (Erzeuger → Hub)</option>
+              <option value="auslieferung">Auslieferung (Hub → Caterer)</option>
+              <option value="gemischt">Gemischt</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid2">
+          <div class="form-group">
+            <label class="form-label">Fahrer</label>
+            <select class="form-control" id="tf-fahrer">
+              <option value="">— kein Fahrer —</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Fahrzeug</label>
+            <select class="form-control" id="tf-fahrzeug">
+              <option value="">— kein Fahrzeug —</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid2">
+          <div class="form-group">
+            <label class="form-label">Startzeit</label>
+            <input class="form-control" type="time" id="tf-startzeit" value="06:30">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notiz</label>
+            <input class="form-control" id="tf-notiz" placeholder="optional">
+          </div>
+        </div>
+        <div style="display:flex;gap:.5rem">
+          <button class="btn btn-primary" id="btn-tour-create">Tour anlegen</button>
+          <button class="btn" id="btn-tour-cancel">Abbrechen</button>
+        </div>
+      </div>
+
+      <!-- Tour-Detail (Stopps verwalten) -->
+      <div class="card" id="tour-detail-card" style="display:none">
+        <div class="section-hdr">
+          <span class="section-title" id="tour-detail-title">Tour-Detail</span>
+          <div style="display:flex;gap:.5rem">
+            <button class="btn btn-sm" id="btn-optimiere" title="Route optimieren">⚡ Optimieren</button>
+            <button class="btn btn-sm" id="btn-stopp-add">+ Stopp</button>
+            <button class="btn btn-sm" id="btn-detail-close">✕</button>
+          </div>
+        </div>
+        <div id="optimier-result" style="margin-bottom:.5rem"></div>
+        <div id="tour-stopps-list"><div class="spinner"></div></div>
+
+        <!-- Stopp hinzufügen Form -->
+        <div id="stopp-add-card" style="display:none;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
+          <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:.75rem">Stopp hinzufügen</div>
+          <div class="grid2">
+            <div class="form-group">
+              <label class="form-label">Typ</label>
+              <select class="form-control" id="sa-typ">
+                <option value="abholung">Abholung</option>
+                <option value="auslieferung">Auslieferung</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Name / Betrieb</label>
+              <input class="form-control" id="sa-name" placeholder="z.B. Hof Brüggemann">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Adresse</label>
+            <input class="form-control" id="sa-adresse" placeholder="Musterstr. 1, 50969 Köln">
+          </div>
+          <div class="grid2">
+            <div class="form-group">
+              <label class="form-label">Produkt</label>
+              <input class="form-control" id="sa-produkt" placeholder="z.B. Karotten Bio">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Menge (kg)</label>
+              <input class="form-control" type="number" id="sa-menge" min="0">
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" id="btn-stopp-save">Stopp speichern</button>
+        </div>
+      </div>
+
+      <!-- Fuhrpark -->
+      <div class="card">
+        <div class="section-hdr">
+          <span class="section-title">Fuhrpark</span>
+          <button class="btn btn-primary btn-sm" id="btn-show-fahrzeug-form">+ Fahrzeug</button>
+        </div>
+        <div id="fahrzeuge-list"><div class="spinner"></div></div>
+
+        <div id="fahrzeug-form-card" style="display:none;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
+          <div class="grid2">
+            <div class="form-group">
+              <label class="form-label">Bezeichnung</label>
+              <input class="form-control" id="fz-bezeichnung" placeholder="z.B. Sprinter #1">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Typ</label>
+              <select class="form-control" id="fz-typ">
+                <option value="transporter">Transporter</option>
+                <option value="lkw">LKW</option>
+                <option value="e_auto">E-Auto</option>
+                <option value="e_lastenrad">E-Lastenrad</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid2">
+            <div class="form-group">
+              <label class="form-label">Kennzeichen</label>
+              <input class="form-control" id="fz-kennzeichen" placeholder="K-LP 123">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Max. Zuladung (kg)</label>
+              <input class="form-control" type="number" id="fz-zuladung">
+            </div>
+          </div>
+          <div style="display:flex;gap:.5rem">
+            <button class="btn btn-primary btn-sm" id="btn-fahrzeug-save">Speichern</button>
+            <button class="btn btn-sm" id="btn-fahrzeug-cancel">Abbrechen</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /view-logistik -->
 
   </main>
 </div>
@@ -153,12 +301,10 @@ const NAV = [
   { id: 'erzeuger',      label: 'Erzeuger' },
   { id: 'lieferung-neu', label: 'Lieferschein' },
   { id: 'lager',         label: 'Lager' },
+  { id: 'logistik',      label: 'Logistik' },
 ];
 
-renderHeader('overview', NAV, (v) => {
-  showView(v);
-  loadView(v);
-});
+renderHeader('overview', NAV, (v) => { showView(v); loadView(v); });
 
 async function loadView(v) {
   if (v === 'overview')      loadOverview();
@@ -166,54 +312,38 @@ async function loadView(v) {
   if (v === 'erzeuger')      loadErzeuger();
   if (v === 'lieferung-neu') loadLieferungNeu();
   if (v === 'lager')         loadLager();
+  if (v === 'logistik')      loadLogistik();
 }
 
 // ── ÜBERSICHT ─────────────────────────────────────────────────────
 async function loadOverview() {
   try {
     const [poolsRes, erzeugerRes, certsRes] = await Promise.all([
-      api.getPools(),
-      api.getAllErzeuger(),
-      api.getPendingZertifikate(),
+      api.getPools(), api.getAllErzeuger(), api.getPendingZertifikate(),
     ]);
-
-    const { pools }                = poolsRes;
-    const { erzeuger }             = erzeugerRes;
+    const { pools } = poolsRes;
+    const { erzeuger } = erzeugerRes;
     const { zertifikate: pending } = certsRes;
-
     const offene  = pools.filter(p => p.status === 'offen').length;
     const gelief  = pools.filter(p => p.status === 'geliefert').length;
     const volumen = pools.reduce((s, p) => s + parseFloat(p.menge_committed || 0), 0);
-
     document.getElementById('sys-metrics').innerHTML = `
-      <div class="metric"><div class="metric-label">Erzeuger</div>
-        <div class="metric-val green">${erzeuger.length}</div></div>
-      <div class="metric"><div class="metric-label">Offene Pools</div>
-        <div class="metric-val">${offene}</div></div>
-      <div class="metric"><div class="metric-label">Ausstehende Zerts</div>
-        <div class="metric-val amber">${pending.length}</div></div>
-      <div class="metric"><div class="metric-label">Gesamtvolumen (kg)</div>
-        <div class="metric-val">${Math.round(volumen)}</div></div>
+      <div class="metric"><div class="metric-label">Erzeuger</div><div class="metric-val green">${erzeuger.length}</div></div>
+      <div class="metric"><div class="metric-label">Offene Pools</div><div class="metric-val">${offene}</div></div>
+      <div class="metric"><div class="metric-label">Ausstehende Zerts</div><div class="metric-val amber">${pending.length}</div></div>
+      <div class="metric"><div class="metric-label">Gesamtvolumen (kg)</div><div class="metric-val">${Math.round(volumen)}</div></div>
     `;
-
     document.getElementById('admin-pools-list').innerHTML = pools.length ? pools.map(p => `
       <div class="pool-item">
-        <div class="pool-row">
-          <span class="pool-name">${p.produkt}</span>
-          ${statusBadge(p.status)}
-        </div>
+        <div class="pool-row"><span class="pool-name">${p.produkt}</span>${statusBadge(p.status)}</div>
         <div class="pool-meta">${p.lieferwoche} · ${p.erzeuger_count || 0} Erzeuger</div>
         ${poolBar(p.menge_committed, p.menge_ziel)}
       </div>
     `).join('') : '<p style="color:var(--text3);font-size:13px">Keine Pools</p>';
-
-    document.getElementById('pending-quick').innerHTML = pending.length ? pending.slice(0, 5).map(z => `
+    document.getElementById('pending-quick').innerHTML = pending.length ? pending.slice(0,5).map(z => `
       <div class="pool-item">
         <div class="pool-row">
-          <div>
-            <div style="font-size:13px;font-weight:500">${z.betrieb_name}</div>
-            <div class="pool-meta">${z.typ} · ${z.zert_nummer}</div>
-          </div>
+          <div><div style="font-size:13px;font-weight:500">${z.betrieb_name}</div><div class="pool-meta">${z.typ} · ${z.zert_nummer}</div></div>
           <div style="display:flex;gap:.5rem">
             <button class="btn btn-primary btn-sm" onclick="approveZert('${z.id}')">✓</button>
             <button class="btn btn-sm btn-danger" onclick="rejectZert('${z.id}')">✗</button>
@@ -221,10 +351,7 @@ async function loadOverview() {
         </div>
       </div>
     `).join('') : '<p style="color:var(--text3);font-size:13px">Keine ausstehenden Zertifikate</p>';
-
-  } catch (err) {
-    showAlert('alerts', 'error', err.message);
-  }
+  } catch (err) { showAlert('alerts','error',err.message); }
 }
 
 // ── ZERTIFIKATE ───────────────────────────────────────────────────
@@ -232,340 +359,340 @@ async function loadZertifikate() {
   try {
     const { zertifikate } = await api.getPendingZertifikate();
     document.getElementById('zert-admin-list').innerHTML = zertifikate.length ? `
-      <table class="tbl">
-        <thead>
-          <tr><th>Betrieb</th><th>Typ</th><th>Nummer</th><th>Gültig bis</th><th>Eingereicht</th><th>Aktion</th></tr>
-        </thead>
-        <tbody>${zertifikate.map(z => `
-          <tr id="zrow-${z.id}">
-            <td style="font-weight:500">${z.betrieb_name}
-              <div style="font-size:11px;color:var(--text3)">${z.email}</div>
-            </td>
-            <td><span class="badge badge-gray">${z.typ}</span></td>
-            <td class="pool-meta">${z.zert_nummer}</td>
-            <td class="pool-meta">${z.gueltig_bis?.split('T')[0] || '—'}</td>
-            <td class="pool-meta">${new Date(z.created_at).toLocaleDateString('de-DE')}</td>
-            <td>
-              <div style="display:flex;gap:.5rem">
-                <button class="btn btn-primary btn-sm" onclick="approveZert('${z.id}')">Bestätigen</button>
-                <button class="btn btn-sm btn-danger" onclick="rejectZert('${z.id}')">Ablehnen</button>
-              </div>
-            </td>
-          </tr>
-        `).join('')}</tbody>
-      </table>
-    ` : '<p style="color:var(--text3);font-size:13px">Keine ausstehenden Zertifikate – alles geprüft ✓</p>';
-  } catch (err) {
-    showAlert('alerts', 'error', err.message);
-  }
+      <table class="tbl"><thead><tr><th>Betrieb</th><th>Typ</th><th>Nummer</th><th>Gültig bis</th><th>Eingereicht</th><th>Aktion</th></tr></thead>
+      <tbody>${zertifikate.map(z => `
+        <tr id="zrow-${z.id}">
+          <td style="font-weight:500">${z.betrieb_name}<div style="font-size:11px;color:var(--text3)">${z.email}</div></td>
+          <td><span class="badge badge-gray">${z.typ}</span></td>
+          <td class="pool-meta">${z.zert_nummer}</td>
+          <td class="pool-meta">${z.gueltig_bis?.split('T')[0]||'—'}</td>
+          <td class="pool-meta">${new Date(z.created_at).toLocaleDateString('de-DE')}</td>
+          <td><div style="display:flex;gap:.5rem">
+            <button class="btn btn-primary btn-sm" onclick="approveZert('${z.id}')">Bestätigen</button>
+            <button class="btn btn-sm btn-danger" onclick="rejectZert('${z.id}')">Ablehnen</button>
+          </div></td>
+        </tr>`).join('')}</tbody></table>
+    ` : '<p style="color:var(--text3);font-size:13px">Alles geprüft ✓</p>';
+  } catch (err) { showAlert('alerts','error',err.message); }
 }
-
 async function approveZert(id) {
-  try {
-    await api.setZertifikatStatus(id, 'verified');
-    const row = document.getElementById('zrow-' + id);
-    if (row) row.innerHTML = `<td colspan="6" style="color:var(--green);font-family:'DM Mono',monospace;font-size:12px">✓ Bestätigt</td>`;
-    toast('Zertifikat bestätigt');
-  } catch (err) {
-    showAlert('alerts', 'error', err.message);
-  }
+  try { await api.setZertifikatStatus(id,'verified'); document.getElementById('zrow-'+id).innerHTML=`<td colspan="6" style="color:var(--green);font-size:12px">✓ Bestätigt</td>`; toast('Zertifikat bestätigt'); } catch(e){showAlert('alerts','error',e.message);}
 }
-
 async function rejectZert(id) {
-  if (!confirm('Zertifikat ablehnen?')) return;
-  try {
-    await api.setZertifikatStatus(id, 'rejected');
-    const row = document.getElementById('zrow-' + id);
-    if (row) row.innerHTML = `<td colspan="6" style="color:var(--red);font-family:'DM Mono',monospace;font-size:12px">✗ Abgelehnt</td>`;
-    toast('Zertifikat abgelehnt', 'error');
-  } catch (err) {
-    showAlert('alerts', 'error', err.message);
-  }
+  if(!confirm('Zertifikat ablehnen?'))return;
+  try { await api.setZertifikatStatus(id,'rejected'); document.getElementById('zrow-'+id).innerHTML=`<td colspan="6" style="color:var(--red);font-size:12px">✗ Abgelehnt</td>`; toast('Abgelehnt','error'); } catch(e){showAlert('alerts','error',e.message);}
 }
-
 document.getElementById('btn-reload-zerts')?.addEventListener('click', loadZertifikate);
 
 // ── ERZEUGER ──────────────────────────────────────────────────────
 let allErzeuger = [];
-
 async function loadErzeuger() {
-  try {
-    const { erzeuger } = await api.getAllErzeuger();
-    allErzeuger = erzeuger;
-    renderErzeuger(erzeuger);
-  } catch (err) {
-    showAlert('alerts', 'error', err.message);
-  }
+  try { const { erzeuger } = await api.getAllErzeuger(); allErzeuger=erzeuger; renderErzeuger(erzeuger); } catch(e){showAlert('alerts','error',e.message);}
 }
-
 function renderErzeuger(list) {
   document.getElementById('erzeuger-admin-list').innerHTML = list.length ? `
-    <table class="tbl">
-      <thead>
-        <tr><th>Betrieb</th><th>E-Mail</th><th>Region</th><th>Zertifikate</th><th>Commitments</th></tr>
-      </thead>
-      <tbody>${list.map(e => `
-        <tr>
-          <td style="font-weight:500">${e.betrieb_name}</td>
-          <td class="pool-meta">${e.email}</td>
-          <td class="pool-meta">${e.region}</td>
-          <td>
-            <span class="badge ${e.zert_count > 0 ? 'badge-green' : 'badge-amber'}">
-              ${e.zert_count} verifiziert
-            </span>
-          </td>
-          <td class="pool-meta">${e.commitment_count}</td>
-        </tr>
-      `).join('')}</tbody>
-    </table>
-  ` : '<p style="color:var(--text3);font-size:13px">Keine Erzeuger gefunden</p>';
+    <table class="tbl"><thead><tr><th>Betrieb</th><th>E-Mail</th><th>Region</th><th>Zertifikate</th><th>Commitments</th></tr></thead>
+    <tbody>${list.map(e=>`<tr><td style="font-weight:500">${e.betrieb_name}</td><td class="pool-meta">${e.email}</td><td class="pool-meta">${e.region}</td><td><span class="badge ${e.zert_count>0?'badge-green':'badge-amber'}">${e.zert_count} verifiziert</span></td><td class="pool-meta">${e.commitment_count}</td></tr>`).join('')}</tbody></table>
+  ` : '<p style="color:var(--text3);font-size:13px">Keine Erzeuger</p>';
 }
-
 document.getElementById('erzeuger-search')?.addEventListener('input', e => {
-  const q = e.target.value.toLowerCase();
-  renderErzeuger(allErzeuger.filter(e =>
-    e.betrieb_name.toLowerCase().includes(q) || e.email.toLowerCase().includes(q)
-  ));
+  const q=e.target.value.toLowerCase();
+  renderErzeuger(allErzeuger.filter(e=>e.betrieb_name.toLowerCase().includes(q)||e.email.toLowerCase().includes(q)));
 });
 
 // ── LIEFERSCHEIN ──────────────────────────────────────────────────
 async function loadLieferungNeu() {
   try {
-    const { pools } = await api.getPools({ status: 'geschlossen' });
+    const { pools } = await api.getPools({ status:'geschlossen' });
     const sel = document.getElementById('lief-pool-sel');
-    sel.innerHTML = pools.length
-      ? pools.map(p => `<option value="${p.id}">${p.produkt} – ${p.lieferwoche} (${Math.round(p.menge_committed)} kg)</option>`).join('')
-      : '<option>Keine geschlossenen Pools</option>';
-  } catch (err) {
-    showAlert('alerts', 'error', err.message);
-  }
+    sel.innerHTML = pools.length ? pools.map(p=>`<option value="${p.id}">${p.produkt} – ${p.lieferwoche} (${Math.round(p.menge_committed)} kg)</option>`).join('') : '<option>Keine geschlossenen Pools</option>';
+  } catch(e){showAlert('alerts','error',e.message);}
 }
-
 document.getElementById('btn-create-lief')?.addEventListener('click', async () => {
-  const pool_id     = document.getElementById('lief-pool-sel').value;
-  const lieferdatum = document.getElementById('lief-datum').value;
-  const btn         = document.getElementById('btn-create-lief');
-
-  if (!pool_id) return showAlert('alerts', 'error', 'Pool auswählen');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Erstelle...';
-
+  const pool_id=document.getElementById('lief-pool-sel').value;
+  const lieferdatum=document.getElementById('lief-datum').value;
+  const btn=document.getElementById('btn-create-lief');
+  if(!pool_id)return showAlert('alerts','error','Pool auswählen');
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>';
   try {
-    const { lieferung } = await api.createLieferung(pool_id, lieferdatum || null);
-    document.getElementById('lief-create-result').innerHTML = `
-      <div class="success-box">
-        <div class="success-icon">✓</div>
-        <div class="success-title">Lieferschein erstellt</div>
-        <div class="success-sub">Nr: ${lieferung.lieferschein_nr}</div>
-        <div style="margin-top:.75rem">
-          <span class="qr-code">${lieferung.qr_code}</span>
-        </div>
-        <div class="success-sub" style="margin-top:.5rem">QR-Code für Fahrer</div>
-      </div>
-    `;
-    document.getElementById('lief-create-form').style.display = 'none';
-  } catch (err) {
-    btn.textContent = 'Lieferschein erstellen';
-    btn.disabled = false;
-    showAlert('alerts', 'error', err.message);
-  }
+    const { lieferung } = await api.createLieferung(pool_id,lieferdatum||null);
+    document.getElementById('lief-create-result').innerHTML=`<div class="success-box"><div class="success-icon">✓</div><div class="success-title">Lieferschein erstellt</div><div class="success-sub">Nr: ${lieferung.lieferschein_nr}</div><div style="margin-top:.75rem"><span class="qr-code">${lieferung.qr_code}</span></div></div>`;
+    document.getElementById('lief-create-form').style.display='none';
+  } catch(e){btn.textContent='Lieferschein erstellen';btn.disabled=false;showAlert('alerts','error',e.message);}
 });
 
-// ── LAGER (Hub Modul) ─────────────────────────────────────────────
-async function loadLager() {
-  loadLagerBestand();
-  loadBedarfAbgleich();
-  loadBewegungen();
-}
+// ── LAGER (Hub) ───────────────────────────────────────────────────
+async function loadLager() { loadLagerBestand(); loadBedarfAbgleich(); loadBewegungen(); }
 
 async function loadLagerBestand() {
   try {
-    const [{ lager }, { alerts }] = await Promise.all([
-      api.getLager(),
-      api.getLagerAlerts(),
-    ]);
-
-    const alertsEl = document.getElementById('lager-alerts');
-    if (alerts.length > 0) {
-      alertsEl.innerHTML = `
-        <div class="alert alert-info">
-          ⚠ ${alerts.length} Produkt${alerts.length > 1 ? 'e' : ''} unter Mindestbestand:
-          ${alerts.map(a => `<strong>${a.produkt}</strong> (${fmt(a.bestand,1)} ${a.einheit})`).join(', ')}
-        </div>`;
-    } else {
-      alertsEl.innerHTML = '';
-    }
-
+    const [{ lager },{ alerts }] = await Promise.all([api.getLager(), api.getLagerAlerts()]);
+    const el = document.getElementById('lager-alerts');
+    el.innerHTML = alerts.length ? `<div class="alert alert-info">⚠ ${alerts.length} Produkt${alerts.length>1?'e':''} unter Mindestbestand: ${alerts.map(a=>`<strong>${a.produkt}</strong> (${fmt(a.bestand,1)} ${a.einheit})`).join(', ')}</div>` : '';
     document.getElementById('lager-list').innerHTML = lager.length ? `
-      <table class="tbl">
-        <thead>
-          <tr>
-            <th>Produkt</th>
-            <th>Bestand</th>
-            <th>Mindestbestand</th>
-            <th>Eingang 7d</th>
-            <th>Ausgang 7d</th>
-            <th>Status</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          ${lager.map(l => `
-            <tr>
-              <td style="font-weight:500">${l.produkt}</td>
-              <td style="font-family:'DM Mono',monospace">${fmt(l.bestand,1)} ${l.einheit}</td>
-              <td style="font-family:'DM Mono',monospace;color:var(--text2)">${fmt(l.mindestbestand,1)} ${l.einheit}</td>
-              <td style="color:var(--green);font-family:'DM Mono',monospace">+${fmt(l.eingang_7d,1)}</td>
-              <td style="color:var(--amber);font-family:'DM Mono',monospace">-${fmt(l.ausgang_7d,1)}</td>
-              <td>${l.unterbestand
-                ? '<span class="badge badge-red">Unterbestand</span>'
-                : '<span class="badge badge-green">OK</span>'}</td>
-              <td>
-                <button class="btn btn-sm"
-                  onclick="setMindestbestand('${l.id}','${l.produkt}',${l.mindestbestand})">
-                  Min. setzen
-                </button>
-              </td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    ` : '<p style="color:var(--text3);font-size:13px">Noch keine Lagereinträge. Wareneingänge werden automatisch beim Bestätigen einer Lieferung gebucht.</p>';
-  } catch (err) {
-    showAlert('alerts', 'error', err.message);
-  }
+      <table class="tbl"><thead><tr><th>Produkt</th><th>Bestand</th><th>Mindestbestand</th><th>Eingang 7d</th><th>Ausgang 7d</th><th>Status</th><th></th></tr></thead>
+      <tbody>${lager.map(l=>`<tr>
+        <td style="font-weight:500">${l.produkt}</td>
+        <td style="font-family:'DM Mono',monospace">${fmt(l.bestand,1)} ${l.einheit}</td>
+        <td style="font-family:'DM Mono',monospace;color:var(--text2)">${fmt(l.mindestbestand,1)} ${l.einheit}</td>
+        <td style="color:var(--green);font-family:'DM Mono',monospace">+${fmt(l.eingang_7d,1)}</td>
+        <td style="color:var(--amber);font-family:'DM Mono',monospace">-${fmt(l.ausgang_7d,1)}</td>
+        <td>${l.unterbestand?'<span class="badge badge-red">Unterbestand</span>':'<span class="badge badge-green">OK</span>'}</td>
+        <td><button class="btn btn-sm" onclick="setMindestbestand('${l.id}','${l.produkt}',${l.mindestbestand})">Min.</button></td>
+      </tr>`).join('')}</tbody></table>
+    ` : '<p style="color:var(--text3);font-size:13px">Noch keine Lagereinträge</p>';
+  } catch(e){showAlert('alerts','error',e.message);}
 }
 
 async function loadBedarfAbgleich() {
   try {
     const { aggregiert } = await api.getBedarfAggregiert();
     document.getElementById('bedarf-abgleich').innerHTML = aggregiert.length ? `
-      <table class="tbl">
-        <thead>
-          <tr>
-            <th>Produkt</th>
-            <th>Wochenbedarf</th>
-            <th>Aktueller Bestand</th>
-            <th>Reichweite</th>
-            <th>Abnehmer</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${aggregiert.map(r => `
-            <tr>
-              <td style="font-weight:500">${r.produkt}</td>
-              <td style="font-family:'DM Mono',monospace">${fmt(r.gesamt_pro_woche,1)} ${r.einheit}</td>
-              <td style="font-family:'DM Mono',monospace">
-                ${r.bestand_aktuell != null ? fmt(r.bestand_aktuell,1) + ' ' + r.einheit : '—'}
-              </td>
-              <td>
-                ${r.deckung_tage != null
-                  ? `<span class="badge ${r.deckung_tage < 3 ? 'badge-red' : r.deckung_tage < 7 ? 'badge-amber' : 'badge-green'}">
-                      ${r.deckung_tage} Tage
-                    </span>`
-                  : '<span class="badge badge-gray">—</span>'}
-              </td>
-              <td class="pool-meta">${r.caterer_anzahl}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    ` : '<p style="color:var(--text3);font-size:13px">Keine Bedarfsprognosen erfasst. Caterer können unter "Bedarfsprognose" ihren Wochenbedarf eintragen.</p>';
-  } catch (err) {
-    document.getElementById('bedarf-abgleich').innerHTML =
-      '<p style="color:var(--text3);font-size:13px">Keine Daten</p>';
-  }
+      <table class="tbl"><thead><tr><th>Produkt</th><th>Wochenbedarf</th><th>Bestand</th><th>Reichweite</th><th>Abnehmer</th></tr></thead>
+      <tbody>${aggregiert.map(r=>`<tr>
+        <td style="font-weight:500">${r.produkt}</td>
+        <td style="font-family:'DM Mono',monospace">${fmt(r.gesamt_pro_woche,1)} ${r.einheit}</td>
+        <td style="font-family:'DM Mono',monospace">${r.bestand_aktuell!=null?fmt(r.bestand_aktuell,1)+' '+r.einheit:'—'}</td>
+        <td>${r.deckung_tage!=null?`<span class="badge ${r.deckung_tage<3?'badge-red':r.deckung_tage<7?'badge-amber':'badge-green'}">${r.deckung_tage} Tage</span>`:'<span class="badge badge-gray">—</span>'}</td>
+        <td class="pool-meta">${r.caterer_anzahl}</td>
+      </tr>`).join('')}</tbody></table>
+    ` : '<p style="color:var(--text3);font-size:13px">Keine Bedarfsprognosen</p>';
+  } catch(e){ document.getElementById('bedarf-abgleich').innerHTML='<p style="color:var(--text3);font-size:13px">Keine Daten</p>'; }
 }
 
 async function loadBewegungen() {
   try {
     const typ = document.getElementById('filter-bewegung-typ')?.value;
-    const { bewegungen } = await api.getLagerBewegungen({ typ, limit: 30 });
-
+    const { bewegungen } = await api.getLagerBewegungen({ typ, limit:30 });
     document.getElementById('bewegungen-list').innerHTML = bewegungen.length ? `
-      <table class="tbl">
-        <thead>
-          <tr><th>Zeit</th><th>Produkt</th><th>Typ</th><th>Menge</th><th>Bestand danach</th><th>Notiz</th></tr>
-        </thead>
-        <tbody>
-          ${bewegungen.map(m => `
-            <tr>
-              <td class="pool-meta">${new Date(m.created_at).toLocaleString('de-DE', { dateStyle:'short', timeStyle:'short' })}</td>
-              <td style="font-weight:500">${m.produkt}</td>
-              <td>${m.typ === 'eingang'
-                    ? '<span class="badge badge-green">Eingang</span>'
-                    : m.typ === 'ausgang'
-                    ? '<span class="badge badge-amber">Ausgang</span>'
-                    : '<span class="badge badge-gray">Korrektur</span>'}</td>
-              <td style="font-family:'DM Mono',monospace;${m.typ==='eingang'?'color:var(--green)':m.typ==='ausgang'?'color:var(--amber)':''}">
-                ${m.typ==='eingang'?'+':m.typ==='ausgang'?'-':''}${fmt(Math.abs(m.menge),1)} ${m.einheit}
-              </td>
-              <td class="pool-meta">${m.bestand_nach != null ? fmt(m.bestand_nach,1)+' '+m.einheit : '—'}</td>
-              <td class="pool-meta" style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${m.notiz || '—'}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
+      <table class="tbl"><thead><tr><th>Zeit</th><th>Produkt</th><th>Typ</th><th>Menge</th><th>Bestand danach</th><th>Notiz</th></tr></thead>
+      <tbody>${bewegungen.map(m=>`<tr>
+        <td class="pool-meta">${new Date(m.created_at).toLocaleString('de-DE',{dateStyle:'short',timeStyle:'short'})}</td>
+        <td style="font-weight:500">${m.produkt}</td>
+        <td>${m.typ==='eingang'?'<span class="badge badge-green">Eingang</span>':m.typ==='ausgang'?'<span class="badge badge-amber">Ausgang</span>':'<span class="badge badge-gray">Korrektur</span>'}</td>
+        <td style="font-family:'DM Mono',monospace;${m.typ==='eingang'?'color:var(--green)':m.typ==='ausgang'?'color:var(--amber)':''}">${m.typ==='eingang'?'+':m.typ==='ausgang'?'-':''}${fmt(Math.abs(m.menge),1)} ${m.einheit}</td>
+        <td class="pool-meta">${m.bestand_nach!=null?fmt(m.bestand_nach,1)+' '+m.einheit:'—'}</td>
+        <td class="pool-meta" style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${m.notiz||'—'}</td>
+      </tr>`).join('')}</tbody></table>
     ` : '<p style="color:var(--text3);font-size:13px">Keine Bewegungen</p>';
-  } catch (err) {
-    showAlert('alerts', 'error', err.message);
-  }
+  } catch(e){showAlert('alerts','error',e.message);}
 }
 
-async function setMindestbestand(id, produkt, aktuell) {
-  const neu = prompt(`Mindestbestand für "${produkt}" (aktuell: ${aktuell} kg):`, aktuell);
-  if (neu == null || isNaN(parseFloat(neu))) return;
-  try {
-    await api.setMindestbestand(id, parseFloat(neu));
-    toast(`Mindestbestand für ${produkt} gesetzt`);
-    loadLagerBestand();
-  } catch (err) {
-    showAlert('alerts', 'error', err.message);
-  }
+async function setMindestbestand(id,produkt,aktuell) {
+  const neu=prompt(`Mindestbestand für "${produkt}" (aktuell: ${aktuell} kg):`,aktuell);
+  if(neu==null||isNaN(parseFloat(neu)))return;
+  try{await api.setMindestbestand(id,parseFloat(neu));toast(`Mindestbestand für ${produkt} gesetzt`);loadLagerBestand();}catch(e){showAlert('alerts','error',e.message);}
 }
 
-document.getElementById('btn-show-eingang-form')?.addEventListener('click', () => {
-  document.getElementById('eingang-form-card').style.display = 'block';
-  document.getElementById('eingang-form-card').scrollIntoView({ behavior: 'smooth' });
+document.getElementById('btn-show-eingang-form')?.addEventListener('click',()=>{document.getElementById('eingang-form-card').style.display='block';document.getElementById('eingang-form-card').scrollIntoView({behavior:'smooth'});});
+document.getElementById('btn-eingang-cancel')?.addEventListener('click',()=>{document.getElementById('eingang-form-card').style.display='none';});
+document.getElementById('btn-eingang-submit')?.addEventListener('click',async()=>{
+  const produkt=document.getElementById('eg-produkt').value.trim();
+  const menge=parseFloat(document.getElementById('eg-menge').value);
+  const qualitaet=document.getElementById('eg-qualitaet').value;
+  const notiz=document.getElementById('eg-notiz').value.trim();
+  const btn=document.getElementById('btn-eingang-submit');
+  if(!produkt||!menge)return showAlert('alerts','error','Produkt und Menge erforderlich');
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span>';
+  try{
+    const res=await api.lagerEingang({produkt,menge,qualitaet,notiz});
+    document.getElementById('eingang-result').innerHTML=`<div class="alert alert-success">✓ ${menge} kg ${produkt} eingebucht · Bestand: ${fmt(res.bestand_aktuell,1)} kg</div>`;
+    document.getElementById('eg-produkt').value='';document.getElementById('eg-menge').value='';document.getElementById('eg-notiz').value='';
+    btn.textContent='Buchen';btn.disabled=false;loadLagerBestand();loadBewegungen();
+  }catch(e){btn.textContent='Buchen';btn.disabled=false;showAlert('alerts','error',e.message);}
 });
+document.getElementById('filter-bewegung-typ')?.addEventListener('change',loadBewegungen);
+document.getElementById('btn-reload-lager')?.addEventListener('click',loadLager);
 
-document.getElementById('btn-eingang-cancel')?.addEventListener('click', () => {
-  document.getElementById('eingang-form-card').style.display = 'none';
-});
+// ── LOGISTIK (Flow) ───────────────────────────────────────────────
+let aktiveTourId = null;
 
-document.getElementById('btn-eingang-submit')?.addEventListener('click', async () => {
-  const produkt   = document.getElementById('eg-produkt').value.trim();
-  const menge     = parseFloat(document.getElementById('eg-menge').value);
-  const qualitaet = document.getElementById('eg-qualitaet').value;
-  const notiz     = document.getElementById('eg-notiz').value.trim();
-  const btn       = document.getElementById('btn-eingang-submit');
+async function loadLogistik() {
+  loadTourenHeute();
+  loadFahrzeuge();
+  prefillTourFormDropdowns();
+}
 
-  if (!produkt || !menge) return showAlert('alerts', 'error', 'Produkt und Menge erforderlich');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>';
-
+async function loadTourenHeute() {
   try {
-    const res = await api.lagerEingang({ produkt, menge, qualitaet, notiz });
-    document.getElementById('eingang-result').innerHTML = `
-      <div class="alert alert-success">
-        ✓ ${menge} kg ${produkt} eingebucht · Bestand jetzt: ${fmt(res.bestand_aktuell,1)} kg
-      </div>`;
-    document.getElementById('eg-produkt').value = '';
-    document.getElementById('eg-menge').value   = '';
-    document.getElementById('eg-notiz').value   = '';
-    btn.textContent = 'Buchen';
-    btn.disabled = false;
-    loadLagerBestand();
-    loadBewegungen();
-  } catch (err) {
-    btn.textContent = 'Buchen';
-    btn.disabled = false;
-    showAlert('alerts', 'error', err.message);
-  }
+    const heute = new Date().toISOString().split('T')[0];
+    const { touren } = await api.getTouren({ datum: heute });
+    document.getElementById('touren-heute-list').innerHTML = touren.length ? `
+      <table class="tbl">
+        <thead><tr><th>Typ</th><th>Fahrer</th><th>Fahrzeug</th><th>Start</th><th>Stopps</th><th>Status</th><th></th></tr></thead>
+        <tbody>${touren.map(t=>`
+          <tr>
+            <td style="font-weight:500">${t.typ==='abholung'?'🌾 Abholung':t.typ==='auslieferung'?'🚚 Auslieferung':'🔄 Gemischt'}</td>
+            <td class="pool-meta">${t.fahrer_name||'—'}</td>
+            <td class="pool-meta">${t.fahrzeug_bezeichnung||'—'}</td>
+            <td class="pool-meta">${t.startzeit?t.startzeit.slice(0,5)+' Uhr':'—'}</td>
+            <td class="pool-meta">${t.stopps_done||0} / ${t.stopp_anzahl||0}</td>
+            <td>${statusBadge(t.status)}</td>
+            <td><button class="btn btn-sm" onclick="openTourDetail('${t.id}','${t.typ} · ${t.fahrer_name||'kein Fahrer'}')">Detail</button></td>
+          </tr>
+        `).join('')}</tbody>
+      </table>
+    ` : '<p style="color:var(--text3);font-size:13px">Keine Touren heute</p>';
+  } catch(e){showAlert('alerts','error',e.message);}
+}
+
+async function openTourDetail(id, label) {
+  aktiveTourId = id;
+  document.getElementById('tour-detail-title').textContent = label;
+  document.getElementById('tour-detail-card').style.display = 'block';
+  document.getElementById('stopp-add-card').style.display = 'none';
+  document.getElementById('tour-detail-card').scrollIntoView({ behavior:'smooth' });
+  loadTourStopps(id);
+}
+
+async function loadTourStopps(id) {
+  try {
+    const { stopps } = await api.getTour(id);
+    const el = document.getElementById('tour-stopps-list');
+    if (!stopps.length) { el.innerHTML='<p style="color:var(--text3);font-size:13px">Noch keine Stopps</p>'; return; }
+    el.innerHTML = `
+      <table class="tbl">
+        <thead><tr><th>#</th><th>Typ</th><th>Name</th><th>Adresse</th><th>Produkt</th><th>Status</th><th>Distanz</th><th></th></tr></thead>
+        <tbody>${stopps.map(s=>`
+          <tr>
+            <td class="pool-meta">${s.reihenfolge}</td>
+            <td>${s.typ==='abholung'?'<span class="badge badge-amber">Abholung</span>':'<span class="badge badge-green">Auslieferung</span>'}</td>
+            <td style="font-weight:500">${s.name}</td>
+            <td class="pool-meta">${s.adresse||'—'}</td>
+            <td class="pool-meta">${s.produkt?s.produkt+' · '+(s.menge_geplant_kg||'?')+' kg':'—'}</td>
+            <td>${statusBadge(s.status)}</td>
+            <td class="pool-meta">${s.distanz_hub_km!=null?s.distanz_hub_km+' km':'—'}</td>
+            <td><button class="btn btn-sm btn-danger btn-sm" onclick="deleteStopp('${id}','${s.id}')">✕</button></td>
+          </tr>
+        `).join('')}</tbody>
+      </table>`;
+  } catch(e){showAlert('alerts','error',e.message);}
+}
+
+async function deleteStopp(tourId, stoppId) {
+  if(!confirm('Stopp entfernen?'))return;
+  try{await api.deleteStopp(tourId,stoppId);loadTourStopps(tourId);}catch(e){showAlert('alerts','error',e.message);}
+}
+
+document.getElementById('btn-detail-close')?.addEventListener('click',()=>{
+  document.getElementById('tour-detail-card').style.display='none';
+  aktiveTourId=null;
 });
 
-document.getElementById('filter-bewegung-typ')?.addEventListener('change', loadBewegungen);
-document.getElementById('btn-reload-lager')?.addEventListener('click', loadLager);
+document.getElementById('btn-stopp-add')?.addEventListener('click',()=>{
+  const c=document.getElementById('stopp-add-card');
+  c.style.display = c.style.display==='none' ? 'block' : 'none';
+});
+
+document.getElementById('btn-stopp-save')?.addEventListener('click',async()=>{
+  if(!aktiveTourId)return;
+  const typ=document.getElementById('sa-typ').value;
+  const name=document.getElementById('sa-name').value.trim();
+  const adresse=document.getElementById('sa-adresse').value.trim();
+  const produkt=document.getElementById('sa-produkt').value.trim();
+  const menge=parseFloat(document.getElementById('sa-menge').value)||null;
+  if(!name)return showAlert('alerts','error','Name erforderlich');
+  try{
+    await api.addStopp(aktiveTourId,{typ,name,adresse,produkt,menge_geplant_kg:menge});
+    document.getElementById('sa-name').value='';document.getElementById('sa-adresse').value='';
+    document.getElementById('sa-produkt').value='';document.getElementById('sa-menge').value='';
+    document.getElementById('stopp-add-card').style.display='none';
+    loadTourStopps(aktiveTourId);toast('Stopp hinzugefügt');
+  }catch(e){showAlert('alerts','error',e.message);}
+});
+
+document.getElementById('btn-optimiere')?.addEventListener('click',async()=>{
+  if(!aktiveTourId)return;
+  try{
+    const res=await api.optimiereTour(aktiveTourId);
+    document.getElementById('optimier-result').innerHTML=`<div class="alert alert-${res.e_lastenrad_ok?'success':'info'}">${res.message}</div>`;
+    loadTourStopps(aktiveTourId);
+  }catch(e){showAlert('alerts','error',e.message);}
+});
+
+// Tour anlegen
+document.getElementById('btn-show-tour-form')?.addEventListener('click',()=>{
+  document.getElementById('tour-form-card').style.display='block';
+  document.getElementById('tour-form-card').scrollIntoView({behavior:'smooth'});
+  // Datum auf heute setzen
+  document.getElementById('tf-datum').value=new Date().toISOString().split('T')[0];
+});
+document.getElementById('btn-tour-cancel')?.addEventListener('click',()=>{document.getElementById('tour-form-card').style.display='none';});
+
+async function prefillTourFormDropdowns() {
+  try{
+    const [{ fahrer }, { fahrzeuge }] = await Promise.all([api.getFahrerListe(), api.getFahrzeuge()]);
+    const fSel=document.getElementById('tf-fahrer');
+    fSel.innerHTML='<option value="">— kein Fahrer —</option>' + fahrer.map(f=>`<option value="${f.id}">${f.name}</option>`).join('');
+    const fzSel=document.getElementById('tf-fahrzeug');
+    fzSel.innerHTML='<option value="">— kein Fahrzeug —</option>' + fahrzeuge.map(f=>`<option value="${f.id}">${f.bezeichnung} (${f.typ})</option>`).join('');
+  }catch(e){}
+}
+
+document.getElementById('btn-tour-create')?.addEventListener('click',async()=>{
+  const datum=document.getElementById('tf-datum').value;
+  const typ=document.getElementById('tf-typ').value;
+  const fahrer_id=document.getElementById('tf-fahrer').value||null;
+  const fahrzeug_id=document.getElementById('tf-fahrzeug').value||null;
+  const startzeit=document.getElementById('tf-startzeit').value||null;
+  const notiz=document.getElementById('tf-notiz').value.trim()||null;
+  if(!datum)return showAlert('alerts','error','Datum erforderlich');
+  const btn=document.getElementById('btn-tour-create');
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span>';
+  try{
+    const {tour}=await api.createTour({datum,typ,fahrer_id,fahrzeug_id,startzeit,notiz});
+    document.getElementById('tour-form-result').innerHTML=`<div class="alert alert-success">✓ Tour angelegt (${tour.typ} · ${tour.datum})</div>`;
+    btn.textContent='Tour anlegen';btn.disabled=false;
+    loadTourenHeute();
+    setTimeout(()=>{document.getElementById('tour-form-card').style.display='none';},1500);
+  }catch(e){btn.textContent='Tour anlegen';btn.disabled=false;showAlert('alerts','error',e.message);}
+});
+
+// Fuhrpark
+async function loadFahrzeuge() {
+  try{
+    const { fahrzeuge } = await api.getFahrzeuge();
+    const ICONS={lkw:'🚛',transporter:'🚐',e_auto:'🔋',e_lastenrad:'🚲'};
+    document.getElementById('fahrzeuge-list').innerHTML = fahrzeuge.length ? `
+      <table class="tbl">
+        <thead><tr><th>Fahrzeug</th><th>Typ</th><th>Kennzeichen</th><th>Max. Zuladung</th><th>Touren heute</th><th></th></tr></thead>
+        <tbody>${fahrzeuge.map(f=>`<tr>
+          <td style="font-weight:500">${ICONS[f.typ]||'🚗'} ${f.bezeichnung}</td>
+          <td><span class="badge badge-gray">${f.typ.replace('_',' ')}</span></td>
+          <td class="pool-meta">${f.kennzeichen||'—'}</td>
+          <td class="pool-meta">${f.max_zuladung_kg?f.max_zuladung_kg+' kg':'—'}</td>
+          <td class="pool-meta">${f.touren_heute||0}</td>
+          <td><button class="btn btn-sm btn-danger" onclick="deaktiviereF('${f.id}','${f.bezeichnung}')">Deaktivieren</button></td>
+        </tr>`).join('')}</tbody>
+      </table>
+    ` : '<p style="color:var(--text3);font-size:13px">Noch keine Fahrzeuge</p>';
+  }catch(e){showAlert('alerts','error',e.message);}
+}
+
+async function deaktiviereF(id,name){
+  if(!confirm(`"${name}" deaktivieren?`))return;
+  try{await api.deleteFahrzeug(id);toast('Fahrzeug deaktiviert');loadFahrzeuge();}catch(e){showAlert('alerts','error',e.message);}
+}
+
+document.getElementById('btn-show-fahrzeug-form')?.addEventListener('click',()=>{
+  const c=document.getElementById('fahrzeug-form-card');c.style.display=c.style.display==='none'?'block':'none';
+});
+document.getElementById('btn-fahrzeug-cancel')?.addEventListener('click',()=>{document.getElementById('fahrzeug-form-card').style.display='none';});
+document.getElementById('btn-fahrzeug-save')?.addEventListener('click',async()=>{
+  const bezeichnung=document.getElementById('fz-bezeichnung').value.trim();
+  const typ=document.getElementById('fz-typ').value;
+  const kennzeichen=document.getElementById('fz-kennzeichen').value.trim()||null;
+  const max_zuladung_kg=parseFloat(document.getElementById('fz-zuladung').value)||null;
+  if(!bezeichnung)return showAlert('alerts','error','Bezeichnung erforderlich');
+  try{
+    await api.createFahrzeug({bezeichnung,typ,kennzeichen,max_zuladung_kg});
+    document.getElementById('fz-bezeichnung').value='';document.getElementById('fz-kennzeichen').value='';document.getElementById('fz-zuladung').value='';
+    document.getElementById('fahrzeug-form-card').style.display='none';
+    loadFahrzeuge();toast('Fahrzeug gespeichert');
+  }catch(e){showAlert('alerts','error',e.message);}
+});
+
+document.getElementById('btn-reload-touren')?.addEventListener('click',loadTourenHeute);
 
 // ── INIT ──────────────────────────────────────────────────────────
 loadOverview();
