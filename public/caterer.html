@@ -12,192 +12,193 @@
   <main class="main">
     <div id="alerts"></div>
 
-    <!-- VIEW: Pool erstellen -->
-    <div id="view-bedarf" class="view">
-      <div class="grid4" style="margin-bottom:1rem" id="metrics-bedarf"></div>
-      <div class="card">
-        <div class="card-title">Neuen Pool erstellen</div>
-        <div id="bedarf-result"></div>
-        <div id="bedarf-form">
+    <!-- ÜBERSICHT -->
+    <div id="view-overview" class="view">
+      <div class="grid4" style="margin-bottom:1rem" id="cat-metrics"></div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">Meine Pools – Klicken für Details</div>
+          <div id="cat-pools-list"><div class="spinner"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Letzte Wareneingänge</div>
+          <div id="cat-recent-lief"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- POOL ERSTELLEN -->
+    <div id="view-pool-neu" class="view" style="display:none">
+      <div class="card" style="max-width:620px">
+        <div class="card-title">Neuen Lieferpool erstellen</div>
+        <div id="pool-create-result"></div>
+        <div id="pool-create-form">
           <div class="grid2">
             <div class="form-group">
               <label class="form-label">Produkt</label>
-              <select class="form-control" id="b-produkt">
-                <option>Bio-Gemüse Mix</option>
-                <option>Karotten Bio</option>
-                <option>Kohlrabi Bio</option>
-                <option>Spinat frisch</option>
-                <option>Tomaten Bio</option>
-                <option>Kartoffeln</option>
-                <option>Paprika Bio</option>
-                <option>Zucchini Bio</option>
+              <input class="form-control" id="pf-produkt" placeholder="z.B. Karotten Bio">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Einheit</label>
+              <select class="form-control" id="pf-einheit">
+                <option value="kg">kg</option>
+                <option value="Stück">Stück</option>
+                <option value="Liter">Liter</option>
               </select>
             </div>
+          </div>
+          <div class="grid2">
+            <div class="form-group">
+              <label class="form-label">Mindestmenge (kg)</label>
+              <input class="form-control" type="number" id="pf-menge" min="1" placeholder="z.B. 200">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Preis (€/kg)</label>
+              <input class="form-control" type="number" id="pf-preis" step="0.01" min="0.01" placeholder="z.B. 1.20">
+            </div>
+          </div>
+          <div class="grid2">
+            <div class="form-group">
+              <label class="form-label">Lieferwoche (z.B. KW 22/2025)</label>
+              <input class="form-control" id="pf-lieferwoche" placeholder="KW 22/2025">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Deadline für Zusagen</label>
+              <input class="form-control" type="date" id="pf-deadline">
+            </div>
+          </div>
+          <div class="grid2">
             <div class="form-group">
               <label class="form-label">Region</label>
-              <select class="form-control" id="b-region">
-                <option>NRW</option>
-                <option>Bayern</option>
-                <option>BW</option>
-                <option>Niedersachsen</option>
-                <option>Bundesweit</option>
+              <select class="form-control" id="pf-region">
+                <option value="NRW">NRW</option>
+                <option value="Bayern">Bayern</option>
+                <option value="BW">Baden-Württemberg</option>
+                <option value="Niedersachsen">Niedersachsen</option>
+                <option value="Bundesweit">Bundesweit</option>
               </select>
-            </div>
-          </div>
-          <div class="grid2">
-            <div class="form-group">
-              <label class="form-label">Menge (kg)</label>
-              <input class="form-control" type="number" id="b-menge" min="1" placeholder="z.B. 1000">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Max. Preis (€/kg)</label>
-              <input class="form-control" type="number" id="b-preis" step="0.10" min="0" placeholder="z.B. 2.40">
-            </div>
-          </div>
-          <div class="grid2">
-            <div class="form-group">
-              <label class="form-label">Lieferdatum</label>
-              <input class="form-control" type="date" id="b-lieferdatum">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Deadline für Erzeuger-Zusagen</label>
-              <input class="form-control" type="datetime-local" id="b-deadline">
-            </div>
-          </div>
-          <div id="bedarf-kosten-box" class="erloes-box" style="display:none"></div>
-          <button class="btn btn-primary" id="btn-bedarf" disabled>Pool erstellen</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- VIEW: Verträge -->
-    <div id="view-vertraege" class="view" style="display:none">
-      <div class="card">
-        <div class="section-hdr">
-          <span class="section-title">Lieferverträge</span>
-          <select class="form-control" id="filter-status" style="width:140px;padding:5px 8px">
-            <option value="">Alle</option>
-            <option value="offen">Offen</option>
-            <option value="geschlossen">Geschlossen</option>
-            <option value="geliefert">Geliefert</option>
-          </select>
-        </div>
-        <div id="vertraege-list"><div class="spinner"></div></div>
-      </div>
-    </div>
-
-    <!-- VIEW: Wareneingang -->
-    <div id="view-wareneingang" class="view" style="display:none">
-      <div class="grid2">
-        <div class="card">
-          <div class="card-title">QR-Code scannen</div>
-          <div class="scan-box" id="scan-trigger">
-            <div class="scan-icon">⬚</div>
-            <div style="font-size:14px;font-weight:500;margin-bottom:4px">Lieferschein scannen</div>
-            <div style="font-size:12px;color:var(--text2)">QR-Code vom Fahrer scannen</div>
-          </div>
-          <div style="margin-top:1rem;text-align:center;font-size:12px;color:var(--text3)">oder manuell eingeben:</div>
-          <div style="display:flex;gap:.5rem;margin-top:.5rem">
-            <input class="form-control" id="qr-input" placeholder="LP-XXXXXXXX"
-                   style="font-family:'DM Mono',monospace;letter-spacing:.08em">
-            <button class="btn btn-primary btn-sm" id="btn-scan">Suchen</button>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-title">Lieferdetails</div>
-          <div id="lief-details" style="color:var(--text3);font-size:13px">
-            Bitte zuerst QR-Code scannen.
-          </div>
-        </div>
-      </div>
-      <div class="card" id="wi-form-card" style="display:none">
-        <div class="card-title">Wareneingang bestätigen</div>
-        <div id="wi-result"></div>
-        <div id="wi-form">
-          <div class="grid2">
-            <div class="form-group">
-              <label class="form-label">Gelieferte Menge (kg)</label>
-              <input class="form-control" type="number" id="wi-menge" placeholder="z.B. 987">
             </div>
             <div class="form-group">
               <label class="form-label">Qualitätsstufe</label>
-              <select class="form-control" id="wi-qualitaet">
-                <option value="A">A – Einwandfrei (kein Abzug)</option>
-                <option value="B">B – Gut (5% Abzug)</option>
-                <option value="C">C – Ausreichend (15% Abzug)</option>
-                <option value="abgelehnt">Abgelehnt (keine Zahlung)</option>
+              <select class="form-control" id="pf-qualitaet">
+                <option value="A">A – Einwandfrei</option>
+                <option value="B">B – Gut</option>
               </select>
             </div>
           </div>
-          <div class="form-group">
-            <label class="form-label">Notiz (optional)</label>
-            <input class="form-control" id="wi-notiz" placeholder="Anmerkung zur Lieferung">
+          <div id="pool-cost-preview" style="display:none;margin-bottom:1rem;padding:.875rem 1rem;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius)">
+            <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:.5rem">Kostenschätzung (bei voller Füllung)</div>
+            <div style="display:flex;justify-content:space-between;font-size:13px">
+              <span style="color:var(--text2)">Gesamtwarenwert</span>
+              <span id="preview-wert" style="font-family:'DM Mono',monospace;font-weight:500">—</span>
+            </div>
           </div>
-          <button class="btn btn-primary" id="btn-wi-confirm">Wareneingang bestätigen</button>
-          <p style="font-size:11px;color:var(--text3);margin-top:.5rem">
-            Bestätigung löst automatisch Erzeuger-Auszahlungen und Lagerbuchung aus.
-          </p>
+          <button class="btn btn-primary" id="btn-create-pool">Pool erstellen</button>
         </div>
       </div>
     </div>
 
-    <!-- VIEW: Bedarfsprognose -->
-    <div id="view-bedarf-prognose" class="view" style="display:none">
-      <div class="card">
-        <div class="section-hdr">
-          <span class="section-title">Meine Bedarfsprognosen</span>
-          <button class="btn btn-primary btn-sm" id="btn-show-prognose-form">+ Neue Prognose</button>
+    <!-- WARENEINGANG -->
+    <div id="view-wareneingang" class="view" style="display:none">
+      <div class="card" style="max-width:560px">
+        <div class="card-title">QR-Code scannen / eingeben</div>
+        <div id="scan-result"></div>
+        <div class="scan-box" id="scan-box">
+          <div class="scan-icon">📷</div>
+          <div style="font-size:14px;font-weight:500;color:var(--text2);margin-bottom:.5rem">QR-Code hier eingeben</div>
+          <input class="form-control" id="qr-input" placeholder="LP-XXXXXXXX" style="max-width:220px;margin:0 auto;text-align:center;font-family:'DM Mono',monospace;text-transform:uppercase">
+          <button class="btn btn-primary" id="btn-scan" style="margin-top:.75rem">Lieferschein laden</button>
         </div>
-        <p style="font-size:12px;color:var(--text2);margin-bottom:1rem;line-height:1.6">
-          Teile dem Food Hub mit, wie viel du wöchentlich von welchem Produkt benötigst.
-          Das hilft bei der Planung und Pool-Erstellung.
-        </p>
-        <div id="prognosen-list"><div class="spinner"></div></div>
       </div>
-
-      <div class="card" id="prognose-form-card" style="display:none">
-        <div class="card-title">Neue Bedarfsprognose</div>
-        <div id="prognose-result"></div>
-        <div id="prognose-form">
+      <div class="card" id="wareneingang-form-card" style="display:none">
+        <div class="card-title">Wareneingang bestätigen</div>
+        <div id="lief-detail"></div>
+        <div id="wareneingang-result"></div>
+        <div id="wareneingang-form">
           <div class="grid2">
             <div class="form-group">
-              <label class="form-label">Produkt</label>
-              <select class="form-control" id="bp-produkt">
-                <option>Bio-Gemüse Mix</option>
-                <option>Karotten Bio</option>
-                <option>Kohlrabi Bio</option>
-                <option>Spinat frisch</option>
-                <option>Tomaten Bio</option>
-                <option>Kartoffeln</option>
-                <option>Paprika Bio</option>
-                <option>Zucchini Bio</option>
-              </select>
+              <label class="form-label">Tatsächliche Menge (kg)</label>
+              <input class="form-control" type="number" id="wi-menge" step="0.1" min="0">
             </div>
             <div class="form-group">
-              <label class="form-label">Menge pro Woche (kg)</label>
-              <input class="form-control" type="number" id="bp-menge" min="1" placeholder="z.B. 80">
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Gewünschte Liefertage</label>
-            <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:.5rem">
-              <label style="display:flex;align-items:center;gap:.35rem;font-size:13px;cursor:pointer"><input type="checkbox" class="liefertag-cb" value="Montag"> Montag</label>
-              <label style="display:flex;align-items:center;gap:.35rem;font-size:13px;cursor:pointer"><input type="checkbox" class="liefertag-cb" value="Dienstag"> Dienstag</label>
-              <label style="display:flex;align-items:center;gap:.35rem;font-size:13px;cursor:pointer"><input type="checkbox" class="liefertag-cb" value="Mittwoch"> Mittwoch</label>
-              <label style="display:flex;align-items:center;gap:.35rem;font-size:13px;cursor:pointer"><input type="checkbox" class="liefertag-cb" value="Donnerstag"> Donnerstag</label>
-              <label style="display:flex;align-items:center;gap:.35rem;font-size:13px;cursor:pointer"><input type="checkbox" class="liefertag-cb" value="Freitag"> Freitag</label>
+              <label class="form-label">Qualität</label>
+              <select class="form-control" id="wi-qualitaet">
+                <option value="A">A – Einwandfrei</option>
+                <option value="B">B – Gut</option>
+                <option value="C">C – Ausreichend</option>
+                <option value="abgelehnt">Abgelehnt</option>
+              </select>
             </div>
           </div>
           <div class="form-group">
             <label class="form-label">Notiz (optional)</label>
-            <input class="form-control" id="bp-notiz" placeholder="z.B. Schnittgemüse bevorzugt">
+            <input class="form-control" id="wi-notiz" placeholder="Bemerkungen zur Lieferung">
           </div>
-          <div id="bp-vorschau" class="erloes-box" style="display:none"></div>
+          <button class="btn btn-primary" id="btn-wareneingang">Wareneingang bestätigen</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- BEDARFSPLANUNG -->
+    <div id="view-bedarf" class="view" style="display:none">
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">Wöchentlicher Bedarf erfassen</div>
+          <div id="bedarf-create-result"></div>
+          <div class="form-group">
+            <label class="form-label">Produkt</label>
+            <input class="form-control" id="bd-produkt" placeholder="z.B. Karotten Bio">
+          </div>
+          <div class="grid2">
+            <div class="form-group">
+              <label class="form-label">Menge pro Woche</label>
+              <input class="form-control" type="number" id="bd-menge" min="1" placeholder="kg">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Einheit</label>
+              <select class="form-control" id="bd-einheit">
+                <option value="kg">kg</option>
+                <option value="Stück">Stück</option>
+                <option value="Liter">Liter</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Qualitätspräferenz</label>
+            <select class="form-control" id="bd-qualitaet">
+              <option value="A">A – Einwandfrei</option>
+              <option value="B">B – Gut</option>
+              <option value="beide">A oder B</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" id="btn-bedarf-create">Bedarf speichern</button>
+        </div>
+        <div class="card">
+          <div class="section-hdr">
+            <span class="section-title">Meine Bedarfsprognosen</span>
+            <button class="btn btn-sm" id="btn-reload-bedarf">↻</button>
+          </div>
+          <div id="bedarf-list"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VERTRÄGE / POOLS -->
+    <div id="view-vertraege" class="view" style="display:none">
+      <div class="card">
+        <div class="section-hdr">
+          <span class="section-title">Alle meine Pools – Klicken für Details</span>
           <div style="display:flex;gap:.5rem">
-            <button class="btn btn-primary" id="btn-prognose-submit">Prognose speichern</button>
-            <button class="btn" id="btn-prognose-cancel">Abbrechen</button>
+            <select class="form-control" id="filter-pool-status" style="width:140px;padding:5px 8px">
+              <option value="">Alle</option>
+              <option value="offen">Offen</option>
+              <option value="geschlossen">Geschlossen</option>
+              <option value="geliefert">Geliefert</option>
+            </select>
+            <button class="btn btn-sm" id="btn-reload-vertraege">↻</button>
           </div>
         </div>
+        <div id="vertraege-list"><div class="spinner"></div></div>
       </div>
     </div>
 
@@ -211,309 +212,351 @@ const user = requireAuth('caterer');
 if (!user) throw 'not auth';
 
 const NAV = [
-  { id: 'bedarf',          label: 'Pool erstellen' },
-  { id: 'vertraege',       label: 'Verträge' },
-  { id: 'wareneingang',    label: 'Wareneingang' },
-  { id: 'bedarf-prognose', label: 'Bedarfsprognose' },
+  { id: 'overview',     label: 'Übersicht'      },
+  { id: 'pool-neu',     label: 'Pool erstellen'  },
+  { id: 'wareneingang', label: 'Wareneingang'    },
+  { id: 'bedarf',       label: 'Bedarfsplanung'  },
+  { id: 'vertraege',    label: 'Verträge'        },
 ];
 
-let currentLieferung = null;
+renderHeader('overview', NAV, (v) => { showView(v); loadView(v); });
 
-renderHeader('bedarf', NAV, (v) => { showView(v); loadView(v); });
+function setHTML(id, html) { const el = document.getElementById(id); if (el) el.innerHTML = html; }
 
 async function loadView(v) {
-  if (v === 'bedarf')          loadBedarf();
-  if (v === 'vertraege')       loadVertraege();
-  if (v === 'bedarf-prognose') loadBedarfPrognose();
+  if (v === 'overview')     loadOverview();
+  if (v === 'pool-neu')     initPoolForm();
+  if (v === 'wareneingang') resetScan();
+  if (v === 'bedarf')       loadBedarf();
+  if (v === 'vertraege')    loadVertraege();
 }
 
-// ── Lieferwoche aus Datum berechnen ────────────────────────────
-function getISOWeek(dateStr) {
-  const d = new Date(dateStr);
-  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  const dayNum = date.getUTCDay() || 7;
-  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-  const week = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
-  return `${date.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
-}
-
-// ── POOL ERSTELLEN ────────────────────────────────────────────
-async function loadBedarf() {
+// ── ÜBERSICHT ─────────────────────────────────────────────────
+async function loadOverview() {
   try {
     const { pools } = await api.getPools();
-    const aktiv  = pools.filter(p => ['offen','geschlossen'].includes(p.status)).length;
-    const gelief = pools.filter(p => p.status === 'geliefert').length;
-    const erz    = pools.length ? Math.max(...pools.map(p => p.erzeuger_count || 0)) : 0;
-    document.getElementById('metrics-bedarf').innerHTML = `
-      <div class="metric"><div class="metric-label">Aktive Pools</div><div class="metric-val">${aktiv}</div></div>
-      <div class="metric"><div class="metric-label">Geliefert</div><div class="metric-val green">${gelief}</div></div>
-      <div class="metric"><div class="metric-label">Erzeuger max.</div><div class="metric-val">${erz}</div></div>
-      <div class="metric"><div class="metric-label">Pools gesamt</div><div class="metric-val">${pools.length}</div></div>
-    `;
-  } catch(e) {}
+
+    const meinePools  = pools;
+    const offen       = meinePools.filter(p => p.status === 'offen').length;
+    const geschlossen = meinePools.filter(p => p.status === 'geschlossen').length;
+    const geliefert   = meinePools.filter(p => p.status === 'geliefert').length;
+    const volumen     = meinePools.reduce((s,p) => s + parseFloat(p.menge_committed||0), 0);
+
+    setHTML('cat-metrics', `
+      <div class="metric"><div class="metric-label">Offene Pools</div><div class="metric-val amber">${offen}</div></div>
+      <div class="metric"><div class="metric-label">Geschlossen</div><div class="metric-val green">${geschlossen}</div></div>
+      <div class="metric"><div class="metric-label">Geliefert</div><div class="metric-val">${geliefert}</div></div>
+      <div class="metric"><div class="metric-label">Volumen (kg)</div><div class="metric-val">${Math.round(volumen)}</div></div>
+    `);
+
+    setHTML('cat-pools-list', meinePools.length ? meinePools.slice(0,6).map(p => `
+      <div class="pool-item" data-pool-id="${p.id}" title="Klicken für Details">
+        <div class="pool-row">
+          <span class="pool-name">${p.produkt}</span>
+          ${statusBadge(p.status)}
+        </div>
+        <div class="pool-row" style="margin-top:3px">
+          <span class="pool-meta">${p.lieferwoche} · ${fmt(p.preis_pro_einheit)} €/kg</span>
+          <span class="pool-meta">${p.erzeuger_count || 0} Erzeuger</span>
+        </div>
+        ${poolBar(p.menge_committed, p.menge_ziel)}
+      </div>
+    `).join('') : `
+      <div style="text-align:center;padding:2rem 1rem;color:var(--text3)">
+        <div style="font-size:2rem;margin-bottom:.5rem">🌱</div>
+        <div style="font-size:13px">Noch keine Pools erstellt</div>
+        <button class="btn btn-primary btn-sm" style="margin-top:.75rem" id="btn-goto-neu">Ersten Pool erstellen</button>
+      </div>
+    `);
+
+    document.getElementById('btn-goto-neu')?.addEventListener('click', () => { showView('pool-neu'); loadView('pool-neu'); });
+
+    // Letzte Lieferungen
+    try {
+      const res = await fetch('/api/lieferungen?limit=5', {
+        headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
+      });
+      const data = res.ok ? await res.json() : { lieferungen: [] };
+      const lief = data.lieferungen || [];
+      setHTML('cat-recent-lief', lief.length ? lief.map(l => `
+        <div class="auszahl-row">
+          <div>
+            <div style="font-size:13px;font-weight:500">${l.produkt || l.lieferschein_nr}</div>
+            <div class="pool-meta">${l.lieferwoche||''} · Nr. ${l.lieferschein_nr}</div>
+          </div>
+          <div style="text-align:right">
+            ${statusBadge(l.status)}
+            ${l.menge_geliefert ? `<div class="pool-meta" style="margin-top:3px">${fmt(l.menge_geliefert,0)} kg</div>` : ''}
+          </div>
+        </div>
+      `).join('') : '<p style="color:var(--text3);font-size:13px">Noch keine Lieferungen</p>');
+    } catch(e) { setHTML('cat-recent-lief', '<p style="color:var(--text3);font-size:13px">—</p>'); }
+
+  } catch (err) { showAlert('alerts', 'error', err.message); }
 }
 
-// Deadline → Lieferdatum auto-fill
-document.getElementById('b-deadline')?.addEventListener('change', e => {
-  const lieferdatum = document.getElementById('b-lieferdatum');
-  if (e.target.value && !lieferdatum.value) {
-    const d = new Date(e.target.value);
-    d.setDate(d.getDate() + 2); // 2 Tage nach Deadline
-    lieferdatum.value = d.toISOString().split('T')[0];
+// ── POOL ERSTELLEN ─────────────────────────────────────────────
+function initPoolForm() {
+  // Lieferwoche auto aus heutigem Datum vorausfüllen
+  const now = new Date();
+  const kw  = getKW(now);
+  const pf = document.getElementById('pf-lieferwoche');
+  if (pf && !pf.value) pf.value = `KW ${kw}/${now.getFullYear()}`;
+  const dd = document.getElementById('pf-deadline');
+  if (dd && !dd.value) {
+    const d = new Date(); d.setDate(d.getDate() + 7);
+    dd.value = d.toISOString().split('T')[0];
   }
-  updateKostenvorschau();
-});
+}
 
-function updateKostenvorschau() {
-  const menge    = parseFloat(document.getElementById('b-menge')?.value || 0);
-  const preis    = parseFloat(document.getElementById('b-preis')?.value || 0);
-  const deadline = document.getElementById('b-deadline')?.value;
-  const btn      = document.getElementById('btn-bedarf');
-  const box      = document.getElementById('bedarf-kosten-box');
+function getKW(d) {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day  = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  return Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+}
 
-  if (menge > 0 && preis > 0 && deadline) {
-    const wert = menge * preis;
-    const fee  = wert * 0.01;
+function updateCostPreview() {
+  const menge = parseFloat(document.getElementById('pf-menge')?.value || 0);
+  const preis = parseFloat(document.getElementById('pf-preis')?.value || 0);
+  const box   = document.getElementById('pool-cost-preview');
+  const val   = document.getElementById('preview-wert');
+  if (menge > 0 && preis > 0 && box && val) {
     box.style.display = 'block';
-    box.innerHTML = `
-      <div class="erloes-row"><span class="lbl">Max. Warenwert</span><span>${fmt(wert)} €</span></div>
-      <div class="erloes-row"><span class="lbl">Plattformfee (1%)</span><span>${fmt(fee)} €</span></div>
-      <div class="erloes-row"><span class="lbl">Max. Gesamtkosten</span><span class="erloes-total">${fmt(wert + fee)} €</span></div>
-    `;
-    btn.disabled = false;
-  } else {
+    val.textContent   = fmt(menge * preis) + ' €';
+  } else if (box) {
     box.style.display = 'none';
-    btn.disabled = true;
   }
 }
 
-['b-menge', 'b-preis'].forEach(id => {
-  document.getElementById(id)?.addEventListener('input', updateKostenvorschau);
-});
+document.getElementById('pf-menge')?.addEventListener('input', updateCostPreview);
+document.getElementById('pf-preis')?.addEventListener('input', updateCostPreview);
 
-document.getElementById('btn-bedarf')?.addEventListener('click', async () => {
-  const produkt     = document.getElementById('b-produkt').value;
-  const region      = document.getElementById('b-region').value;
-  const menge       = parseFloat(document.getElementById('b-menge').value);
-  const preis       = parseFloat(document.getElementById('b-preis').value);
-  const lieferdatum = document.getElementById('b-lieferdatum').value;
-  const deadline    = document.getElementById('b-deadline').value;
-  const btn         = document.getElementById('btn-bedarf');
+document.getElementById('btn-create-pool')?.addEventListener('click', async () => {
+  const produkt       = document.getElementById('pf-produkt').value.trim();
+  const einheit       = document.getElementById('pf-einheit').value;
+  const menge_ziel    = parseFloat(document.getElementById('pf-menge').value);
+  const preis         = parseFloat(document.getElementById('pf-preis').value);
+  const lieferwoche   = document.getElementById('pf-lieferwoche').value.trim();
+  const deadline      = document.getElementById('pf-deadline').value;
+  const region        = document.getElementById('pf-region').value;
+  const qualitaet_stufe = document.getElementById('pf-qualitaet').value;
+  const btn           = document.getElementById('btn-create-pool');
 
-  if (!menge || !preis || !deadline) {
-    return showAlert('alerts', 'error', 'Bitte Menge, Preis und Deadline ausfüllen');
+  if (!produkt || !menge_ziel || !preis || !lieferwoche || !deadline) {
+    return showAlert('alerts', 'error', 'Bitte alle Pflichtfelder ausfüllen');
   }
 
-  // Lieferwoche automatisch berechnen
-  const kw = lieferdatum ? getISOWeek(lieferdatum) : getISOWeek(deadline);
-
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Erstelle Pool...';
-
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Erstelle...';
   try {
-    const { pool, chain } = await api.createPool({
-      produkt,
-      menge_ziel:        menge,
-      preis_pro_einheit: preis,
-      lieferwoche:       kw,
-      deadline:          new Date(deadline).toISOString(),
-      region,
+    const { pool } = await api.createPool({
+      produkt, einheit, menge_ziel, preis_pro_einheit: preis,
+      lieferwoche, deadline, region, qualitaet_stufe,
     });
-    document.getElementById('bedarf-result').innerHTML = `
+
+    setHTML('pool-create-result', `
       <div class="success-box">
         <div class="success-icon">✓</div>
         <div class="success-title">Pool erstellt</div>
-        <div class="success-sub">${produkt} · ${menge} kg · ${kw}</div>
-        ${chainInfo(chain?.txHash)}
-      </div>`;
-    document.getElementById('bedarf-form').style.display = 'none';
+        <div class="success-sub">${pool.produkt} · ${pool.lieferwoche} · Ziel: ${Math.round(pool.menge_ziel)} kg</div>
+        <div style="margin-top:.75rem">
+          <button class="btn btn-sm" id="btn-detail-new-pool" data-pool-id="${pool.id}">Pool-Details anzeigen →</button>
+        </div>
+      </div>
+    `);
+
+    const form = document.getElementById('pool-create-form');
+    if (form) form.style.display = 'none';
+    btn.textContent = 'Pool erstellen'; btn.disabled = false;
+
+    document.getElementById('btn-detail-new-pool')?.addEventListener('click', () => showPoolDetail(pool.id));
+
   } catch (err) {
-    btn.textContent = 'Pool erstellen';
-    btn.disabled = false;
+    btn.textContent = 'Pool erstellen'; btn.disabled = false;
     showAlert('alerts', 'error', err.message);
   }
 });
+
+// ── WARENEINGANG ──────────────────────────────────────────────
+let aktiveLieferungId = null;
+
+function resetScan() {
+  const qr = document.getElementById('qr-input'); if (qr) qr.value = '';
+  setHTML('scan-result', '');
+  const wCard = document.getElementById('wareneingang-form-card');
+  if (wCard) wCard.style.display = 'none';
+}
+
+document.getElementById('btn-scan')?.addEventListener('click', scanQR);
+document.getElementById('qr-input')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') scanQR();
+});
+
+async function scanQR() {
+  const qr  = document.getElementById('qr-input')?.value.trim().toUpperCase();
+  const btn = document.getElementById('btn-scan');
+  if (!qr) return showAlert('alerts', 'error', 'QR-Code eingeben');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+  try {
+    const { lieferung } = await api.scanQR(qr);
+    aktiveLieferungId = lieferung.id;
+
+    setHTML('lief-detail', `
+      <div style="padding:.875rem 1rem;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:1rem">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;font-size:13px">
+          <div><span class="pool-meta">Produkt</span><br><strong>${lieferung.produkt || '—'}</strong></div>
+          <div><span class="pool-meta">Lieferschein</span><br><strong>${lieferung.lieferschein_nr}</strong></div>
+          <div><span class="pool-meta">Bestellmenge</span><br><strong>${fmt(lieferung.menge_bestellt,0)} kg</strong></div>
+          <div><span class="pool-meta">Status</span><br>${statusBadge(lieferung.status)}</div>
+        </div>
+      </div>
+    `);
+
+    const menge = document.getElementById('wi-menge');
+    if (menge) menge.value = lieferung.menge_bestellt;
+
+    const card = document.getElementById('wareneingang-form-card');
+    if (card) { card.style.display = 'block'; card.scrollIntoView({ behavior: 'smooth' }); }
+
+    btn.textContent = 'Lieferschein laden'; btn.disabled = false;
+  } catch (err) {
+    btn.textContent = 'Lieferschein laden'; btn.disabled = false;
+    showAlert('alerts', 'error', err.message);
+  }
+}
+
+document.getElementById('btn-wareneingang')?.addEventListener('click', async () => {
+  if (!aktiveLieferungId) return;
+  const menge    = parseFloat(document.getElementById('wi-menge').value);
+  const qualitaet= document.getElementById('wi-qualitaet').value;
+  const notiz    = document.getElementById('wi-notiz')?.value.trim() || null;
+  const btn      = document.getElementById('btn-wareneingang');
+  if (!menge) return showAlert('alerts', 'error', 'Menge eingeben');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+  try {
+    await api.confirmWareneingang(aktiveLieferungId, menge, qualitaet, notiz);
+    setHTML('wareneingang-result', `
+      <div class="success-box">
+        <div class="success-icon">✓</div>
+        <div class="success-title">Wareneingang bestätigt</div>
+        <div class="success-sub">${menge} kg · Qualität ${qualitaet}</div>
+      </div>
+    `);
+    const form = document.getElementById('wareneingang-form'); if (form) form.style.display = 'none';
+    btn.textContent = 'Wareneingang bestätigen'; btn.disabled = false;
+  } catch (err) {
+    btn.textContent = 'Wareneingang bestätigen'; btn.disabled = false;
+    showAlert('alerts', 'error', err.message);
+  }
+});
+
+// ── BEDARFSPLANUNG ────────────────────────────────────────────
+async function loadBedarf() {
+  try {
+    const { prognosen } = await api.getBedarfPrognosen();
+    setHTML('bedarf-list', prognosen?.length ? `
+      <table class="tbl">
+        <thead><tr><th>Produkt</th><th>Bedarf/Woche</th><th>Qualität</th><th></th></tr></thead>
+        <tbody>${prognosen.map(b => `
+          <tr>
+            <td style="font-weight:500">${b.produkt}</td>
+            <td style="font-family:'DM Mono',monospace">${fmt(b.menge_pro_woche,0)} ${b.einheit}</td>
+            <td><span class="badge badge-gray">${b.qualitaet_praeferenz}</span></td>
+            <td><button class="btn btn-sm btn-danger" data-action="del-bedarf" data-id="${b.id}">✕</button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    ` : '<p style="color:var(--text3);font-size:13px">Noch keine Bedarfsprognosen</p>');
+
+    document.getElementById('bedarf-list')?.addEventListener('click', async e => {
+      const btn = e.target.closest('[data-action="del-bedarf"]');
+      if (!btn || !confirm('Löschen?')) return;
+      try { await api.deleteBedarfPrognose(btn.dataset.id); loadBedarf(); }
+      catch (err) { showAlert('alerts', 'error', err.message); }
+    });
+  } catch (err) { showAlert('alerts', 'error', err.message); }
+}
+
+document.getElementById('btn-bedarf-create')?.addEventListener('click', async () => {
+  const produkt  = document.getElementById('bd-produkt').value.trim();
+  const menge    = parseFloat(document.getElementById('bd-menge').value);
+  const einheit  = document.getElementById('bd-einheit').value;
+  const qualitaet= document.getElementById('bd-qualitaet').value;
+  const btn      = document.getElementById('btn-bedarf-create');
+  if (!produkt || !menge) return showAlert('alerts', 'error', 'Produkt und Menge erforderlich');
+  btn.disabled = true;
+  try {
+    await api.createBedarfPrognose({ produkt, menge_pro_woche: menge, einheit, qualitaet_praeferenz: qualitaet });
+    setHTML('bedarf-create-result', '<div class="alert alert-success">✓ Gespeichert</div>');
+    document.getElementById('bd-produkt').value = '';
+    document.getElementById('bd-menge').value   = '';
+    btn.disabled = false;
+    loadBedarf();
+    setTimeout(() => setHTML('bedarf-create-result', ''), 3000);
+  } catch (err) {
+    btn.disabled = false; showAlert('alerts', 'error', err.message);
+  }
+});
+
+document.getElementById('btn-reload-bedarf')?.addEventListener('click', loadBedarf);
 
 // ── VERTRÄGE ──────────────────────────────────────────────────
 async function loadVertraege() {
   try {
-    const params = {};
-    const fs = document.getElementById('filter-status')?.value;
-    if (fs) params.status = fs;
-    const { pools } = await api.getPools(params);
-    document.getElementById('vertraege-list').innerHTML = pools.length ? `
+    const status = document.getElementById('filter-pool-status')?.value;
+    const { pools } = await api.getPools(status ? { status } : {});
+
+    setHTML('vertraege-list', pools.length ? `
       <table class="tbl">
-        <thead><tr><th>Produkt</th><th>Menge</th><th>Lieferwoche</th><th>Preis</th><th>Erzeuger</th><th>Status</th></tr></thead>
-        <tbody>${pools.map(p => `
+        <thead>
           <tr>
-            <td style="font-weight:500">${p.produkt}</td>
-            <td class="pool-meta">${Math.round(p.menge_committed)} / ${Math.round(p.menge_ziel)} kg</td>
-            <td class="pool-meta">${p.lieferwoche}</td>
-            <td class="pool-meta">${fmt(p.preis_pro_einheit)} €/kg</td>
-            <td class="pool-meta">${p.erzeuger_count || 0}</td>
-            <td>${statusBadge(p.status)}</td>
-          </tr>`).join('')}
-        </tbody>
-      </table>
-    ` : '<p style="color:var(--text3);font-size:13px">Keine Verträge gefunden</p>';
-  } catch (err) { showAlert('alerts', 'error', err.message); }
-}
-
-document.getElementById('filter-status')?.addEventListener('change', loadVertraege);
-
-// ── WARENEINGANG ──────────────────────────────────────────────
-async function scanQR(qr) {
-  qr = qr.trim().toUpperCase();
-  if (!qr) return;
-  try {
-    const { lieferung } = await api.scanQR(qr);
-    currentLieferung = lieferung;
-    document.getElementById('lief-details').innerHTML = `
-      <table class="tbl">
+            <th>Produkt</th><th>Lieferwoche</th><th>Preis</th>
+            <th>Menge Ziel</th><th>Committet</th><th>Füllstand</th>
+            <th>Erzeuger</th><th>Status</th>
+          </tr>
+        </thead>
         <tbody>
-          <tr><td style="color:var(--text2)">Produkt</td><td style="font-weight:500">${lieferung.produkt}</td></tr>
-          <tr><td style="color:var(--text2)">QR-Code</td><td><span class="qr-code">${lieferung.qr_code}</span></td></tr>
-          <tr><td style="color:var(--text2)">Bestellt</td><td>${Math.round(lieferung.menge_bestellt)} kg</td></tr>
-          <tr><td style="color:var(--text2)">Preis</td><td>${fmt(lieferung.preis_pro_einheit)} €/kg</td></tr>
-          <tr><td style="color:var(--text2)">Status</td><td>${statusBadge(lieferung.status)}</td></tr>
-        </tbody>
-      </table>`;
-    if (['geplant','unterwegs'].includes(lieferung.status)) {
-      document.getElementById('wi-form-card').style.display = 'block';
-      document.getElementById('wi-menge').value = Math.round(lieferung.menge_bestellt);
-    } else {
-      document.getElementById('wi-form-card').style.display = 'none';
-    }
-  } catch (err) { showAlert('alerts', 'error', 'QR-Code nicht gefunden: ' + err.message); }
-}
-
-document.getElementById('scan-trigger')?.addEventListener('click', () => {
-  const qr = prompt('QR-Code eingeben:');
-  if (qr) scanQR(qr);
-});
-document.getElementById('btn-scan')?.addEventListener('click', () => {
-  scanQR(document.getElementById('qr-input').value);
-});
-document.getElementById('qr-input')?.addEventListener('keydown', e => {
-  if (e.key === 'Enter') scanQR(e.target.value);
-});
-
-document.getElementById('btn-wi-confirm')?.addEventListener('click', async () => {
-  if (!currentLieferung) return;
-  const menge  = parseFloat(document.getElementById('wi-menge').value);
-  const qualit = document.getElementById('wi-qualitaet').value;
-  const notiz  = document.getElementById('wi-notiz').value;
-  const btn    = document.getElementById('btn-wi-confirm');
-  if (!menge) return showAlert('alerts', 'error', 'Gelieferte Menge eingeben');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Bestätige...';
-  try {
-    const res = await api.confirmWareneingang(currentLieferung.id, menge, qualit, notiz);
-    document.getElementById('wi-result').innerHTML = `
-      <div class="success-box">
-        <div class="success-icon">✓</div>
-        <div class="success-title">Wareneingang bestätigt</div>
-        <div class="success-sub">${menge} kg · ${res.auszahlungen} Erzeuger · ${res.gesamt_netto} € Gesamtnetto</div>
-        ${chainInfo(res.chain?.deliveryTx)}
-      </div>`;
-    document.getElementById('wi-form').style.display = 'none';
-    currentLieferung = null;
-    toast('Auszahlungen und Lagerbuchung ausgelöst');
-  } catch (err) {
-    btn.textContent = 'Wareneingang bestätigen';
-    btn.disabled = false;
-    showAlert('alerts', 'error', err.message);
-  }
-});
-
-// ── BEDARFSPROGNOSE ───────────────────────────────────────────
-async function loadBedarfPrognose() {
-  try {
-    const { prognosen } = await api.getBedarfPrognosen();
-    document.getElementById('prognosen-list').innerHTML = prognosen.length ? `
-      <table class="tbl">
-        <thead><tr><th>Produkt</th><th>Wochenbedarf</th><th>Liefertage</th><th>Jahresbedarf</th><th>Notiz</th><th></th></tr></thead>
-        <tbody>${prognosen.map(p => `
-          <tr id="prow-${p.id}">
-            <td style="font-weight:500">${p.produkt}</td>
-            <td style="font-family:'DM Mono',monospace">${fmt(p.menge_pro_woche,0)} kg</td>
-            <td class="pool-meta">${p.liefertage?.join(', ') || '—'}</td>
-            <td class="pool-meta">${fmt(p.menge_pro_woche * 52, 0)} kg</td>
-            <td class="pool-meta">${p.notiz || '—'}</td>
-            <td><button class="btn btn-sm btn-danger" onclick="deletePrognose('${p.id}','${p.produkt}')">Entfernen</button></td>
-          </tr>`).join('')}
+          ${pools.map(p => {
+            const pct = poolPct(p.menge_committed, p.menge_ziel);
+            return `
+              <tr class="pool-row-clickable" data-pool-id="${p.id}" style="cursor:pointer" title="Klicken für Details">
+                <td style="font-weight:600;color:var(--text)">${p.produkt}</td>
+                <td class="pool-meta">${p.lieferwoche}</td>
+                <td class="pool-meta">${fmt(p.preis_pro_einheit)} €/kg</td>
+                <td style="font-family:'DM Mono',monospace">${Math.round(p.menge_ziel)} kg</td>
+                <td style="font-family:'DM Mono',monospace">${Math.round(p.menge_committed)} kg</td>
+                <td>
+                  <div style="display:flex;align-items:center;gap:8px">
+                    <div style="width:80px;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden">
+                      <div style="width:${pct}%;height:100%;background:${pct>=100?'var(--green)':pct>=50?'var(--amber)':'var(--red)'};border-radius:3px"></div>
+                    </div>
+                    <span class="pool-meta">${pct}%</span>
+                  </div>
+                </td>
+                <td class="pool-meta">${p.erzeuger_count || 0}</td>
+                <td>${statusBadge(p.status)}</td>
+              </tr>`;
+          }).join('')}
         </tbody>
       </table>
-      <div style="margin-top:1rem;padding:1rem;background:var(--bg3);border-radius:6px">
-        <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:.4rem">Gesamtbedarf / Woche</div>
-        <div style="font-size:22px;font-weight:300;color:var(--green)">${fmt(prognosen.reduce((s,p) => s + parseFloat(p.menge_pro_woche), 0), 0)} kg</div>
-      </div>
-    ` : `<div style="text-align:center;padding:2rem;color:var(--text3)">
-        <div style="font-size:2rem;margin-bottom:.5rem">📋</div>
-        <div style="font-size:13px">Noch keine Prognosen. Füge deinen Wochenbedarf hinzu.</div>
-      </div>`;
+      <div class="pool-meta" style="margin-top:.75rem">Klick auf eine Zeile für Details</div>
+    ` : '<p style="color:var(--text3);font-size:13px">Keine Pools gefunden</p>');
+
+    // Event-Delegation für Tabellenzeilen
+    document.getElementById('vertraege-list')?.addEventListener('click', e => {
+      const row = e.target.closest('[data-pool-id]');
+      if (row) showPoolDetail(row.dataset.poolId);
+    });
+
   } catch (err) { showAlert('alerts', 'error', err.message); }
 }
 
-async function deletePrognose(id, produkt) {
-  if (!confirm(`Prognose für "${produkt}" entfernen?`)) return;
-  try {
-    await api.deleteBedarfPrognose(id);
-    toast('Prognose entfernt');
-    loadBedarfPrognose();
-  } catch (err) { showAlert('alerts', 'error', err.message); }
-}
-
-document.getElementById('btn-show-prognose-form')?.addEventListener('click', () => {
-  document.getElementById('prognose-form-card').style.display = 'block';
-  document.getElementById('prognose-form-card').scrollIntoView({ behavior: 'smooth' });
-});
-document.getElementById('btn-prognose-cancel')?.addEventListener('click', () => {
-  document.getElementById('prognose-form-card').style.display = 'none';
-});
-
-document.getElementById('bp-menge')?.addEventListener('input', () => {
-  const menge = parseFloat(document.getElementById('bp-menge').value || 0);
-  const box   = document.getElementById('bp-vorschau');
-  if (menge > 0) {
-    box.style.display = 'block';
-    box.innerHTML = `
-      <div class="erloes-row"><span class="lbl">Pro Woche</span><span>${fmt(menge,0)} kg</span></div>
-      <div class="erloes-row"><span class="lbl">Pro Monat</span><span>${fmt(menge*4,0)} kg</span></div>
-      <div class="erloes-row"><span class="lbl">Pro Jahr</span><span class="erloes-total">${fmt(menge*52,0)} kg</span></div>`;
-  } else { box.style.display = 'none'; }
-});
-
-document.getElementById('btn-prognose-submit')?.addEventListener('click', async () => {
-  const produkt    = document.getElementById('bp-produkt').value;
-  const menge      = parseFloat(document.getElementById('bp-menge').value);
-  const notiz      = document.getElementById('bp-notiz').value.trim();
-  const liefertage = [...document.querySelectorAll('.liefertag-cb:checked')].map(cb => cb.value);
-  const btn        = document.getElementById('btn-prognose-submit');
-  if (!menge || menge <= 0) return showAlert('alerts', 'error', 'Menge eingeben');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span>';
-  try {
-    await api.createBedarfPrognose({ produkt, menge_pro_woche: menge, liefertage, notiz });
-    document.getElementById('prognose-result').innerHTML =
-      `<div class="alert alert-success">✓ Prognose für ${produkt} gespeichert</div>`;
-    document.getElementById('bp-menge').value = '';
-    document.getElementById('bp-notiz').value = '';
-    document.querySelectorAll('.liefertag-cb').forEach(cb => cb.checked = false);
-    document.getElementById('bp-vorschau').style.display = 'none';
-    btn.textContent = 'Prognose speichern';
-    btn.disabled = false;
-    loadBedarfPrognose();
-  } catch (err) {
-    btn.textContent = 'Prognose speichern';
-    btn.disabled = false;
-    showAlert('alerts', 'error', err.message);
-  }
-});
+document.getElementById('filter-pool-status')?.addEventListener('change', loadVertraege);
+document.getElementById('btn-reload-vertraege')?.addEventListener('click', loadVertraege);
 
 // ── INIT ──────────────────────────────────────────────────────
-loadBedarf();
+loadOverview();
 </script>
 </body>
 </html>

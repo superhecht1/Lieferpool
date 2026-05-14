@@ -342,7 +342,7 @@ async function loadOverview() {
     `);
 
     setHTML('admin-pools-list', pools.length ? pools.slice(0,5).map(p => `
-      <div class="pool-item">
+      <div class="pool-item" data-pool-id="${p.id}" title="Klicken für Details">
         <div class="pool-row"><span class="pool-name">${p.produkt}</span>${statusBadge(p.status)}</div>
         <div class="pool-meta">${p.lieferwoche} · ${p.erzeuger_count || 0} Erzeuger</div>
         ${poolBar(p.menge_committed, p.menge_ziel)}
