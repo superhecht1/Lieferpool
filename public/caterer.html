@@ -12,16 +12,16 @@
   <main class="main">
     <div id="alerts"></div>
 
-    <!-- VIEW: Bedarf einstellen -->
+    <!-- VIEW: Pool erstellen -->
     <div id="view-bedarf" class="view">
       <div class="grid4" style="margin-bottom:1rem" id="metrics-bedarf"></div>
       <div class="card">
-        <div class="card-title">Neuen Bedarf einstellen</div>
+        <div class="card-title">Neuen Pool erstellen</div>
         <div id="bedarf-result"></div>
         <div id="bedarf-form">
           <div class="grid2">
             <div class="form-group">
-              <label class="form-label">Produktgruppe</label>
+              <label class="form-label">Produkt</label>
               <select class="form-control" id="b-produkt">
                 <option>Bio-Gemüse Mix</option>
                 <option>Karotten Bio</option>
@@ -29,6 +29,8 @@
                 <option>Spinat frisch</option>
                 <option>Tomaten Bio</option>
                 <option>Kartoffeln</option>
+                <option>Paprika Bio</option>
+                <option>Zucchini Bio</option>
               </select>
             </div>
             <div class="form-group">
@@ -49,16 +51,16 @@
             </div>
             <div class="form-group">
               <label class="form-label">Max. Preis (€/kg)</label>
-              <input class="form-control" type="number" id="b-preis" step="0.1" min="0" placeholder="z.B. 2.40">
+              <input class="form-control" type="number" id="b-preis" step="0.10" min="0" placeholder="z.B. 2.40">
             </div>
           </div>
           <div class="grid2">
             <div class="form-group">
-              <label class="form-label">Lieferwoche (z.B. 2025-W20)</label>
-              <input class="form-control" id="b-kw" placeholder="2025-W22">
+              <label class="form-label">Lieferdatum</label>
+              <input class="form-control" type="date" id="b-lieferdatum">
             </div>
             <div class="form-group">
-              <label class="form-label">Deadline (Pool-Schluss)</label>
+              <label class="form-label">Deadline für Erzeuger-Zusagen</label>
               <input class="form-control" type="datetime-local" id="b-deadline">
             </div>
           </div>
@@ -89,18 +91,16 @@
       <div class="grid2">
         <div class="card">
           <div class="card-title">QR-Code scannen</div>
-          <div id="scan-section">
-            <div class="scan-box" id="scan-trigger">
-              <div class="scan-icon">⬚</div>
-              <div style="font-size:14px;font-weight:500;margin-bottom:4px">Lieferschein scannen</div>
-              <div style="font-size:12px;color:var(--text2)">QR-Code vom Fahrer scannen</div>
-            </div>
-            <div style="margin-top:1rem;text-align:center;font-size:12px;color:var(--text3)">oder QR-Code manuell eingeben:</div>
-            <div style="display:flex;gap:.5rem;margin-top:.5rem">
-              <input class="form-control" id="qr-input" placeholder="LP-XXXXXXXX"
-                     style="font-family:'DM Mono',monospace;letter-spacing:.08em">
-              <button class="btn btn-primary btn-sm" id="btn-scan">Suchen</button>
-            </div>
+          <div class="scan-box" id="scan-trigger">
+            <div class="scan-icon">⬚</div>
+            <div style="font-size:14px;font-weight:500;margin-bottom:4px">Lieferschein scannen</div>
+            <div style="font-size:12px;color:var(--text2)">QR-Code vom Fahrer scannen</div>
+          </div>
+          <div style="margin-top:1rem;text-align:center;font-size:12px;color:var(--text3)">oder manuell eingeben:</div>
+          <div style="display:flex;gap:.5rem;margin-top:.5rem">
+            <input class="form-control" id="qr-input" placeholder="LP-XXXXXXXX"
+                   style="font-family:'DM Mono',monospace;letter-spacing:.08em">
+            <button class="btn btn-primary btn-sm" id="btn-scan">Suchen</button>
           </div>
         </div>
         <div class="card">
@@ -141,9 +141,8 @@
       </div>
     </div>
 
-    <!-- VIEW: Bedarfsprognose (Hub Modul) -->
+    <!-- VIEW: Bedarfsprognose -->
     <div id="view-bedarf-prognose" class="view" style="display:none">
-
       <div class="card">
         <div class="section-hdr">
           <span class="section-title">Meine Bedarfsprognosen</span>
@@ -182,21 +181,11 @@
           <div class="form-group">
             <label class="form-label">Gewünschte Liefertage</label>
             <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:.5rem">
-              <label style="display:flex;align-items:center;gap:.35rem;font-size:13px;cursor:pointer">
-                <input type="checkbox" class="liefertag-cb" value="Montag"> Montag
-              </label>
-              <label style="display:flex;align-items:center;gap:.35rem;font-size:13px;cursor:pointer">
-                <input type="checkbox" class="liefertag-cb" value="Dienstag"> Dienstag
-              </label>
-              <label style="display:flex;align-items:center;gap:.35rem;font-size:13px;cursor:pointer">
-                <input type="checkbox" class="liefertag-cb" value="Mittwoch"> Mittwoch
-              </label>
-              <label style="display:flex;align-items:center;gap:.35rem;font-size:13px;cursor:pointer">
-                <input type="checkbox" class="liefertag-cb" value="Donnerstag"> Donnerstag
-              </label>
-              <label style="display:flex;align-items:center;gap:.35rem;font-size:13px;cursor:pointer">
-                <input type="checkbox" class="liefertag-cb" value="Freitag"> Freitag
-              </label>
+              <label style="display:flex;align-items:center;gap:.35rem;font-size:13px;cursor:pointer"><input type="checkbox" class="liefertag-cb" value="Montag"> Montag</label>
+              <label style="display:flex;align-items:center;gap:.35rem;font-size:13px;cursor:pointer"><input type="checkbox" class="liefertag-cb" value="Dienstag"> Dienstag</label>
+              <label style="display:flex;align-items:center;gap:.35rem;font-size:13px;cursor:pointer"><input type="checkbox" class="liefertag-cb" value="Mittwoch"> Mittwoch</label>
+              <label style="display:flex;align-items:center;gap:.35rem;font-size:13px;cursor:pointer"><input type="checkbox" class="liefertag-cb" value="Donnerstag"> Donnerstag</label>
+              <label style="display:flex;align-items:center;gap:.35rem;font-size:13px;cursor:pointer"><input type="checkbox" class="liefertag-cb" value="Freitag"> Freitag</label>
             </div>
           </div>
           <div class="form-group">
@@ -210,7 +199,6 @@
           </div>
         </div>
       </div>
-
     </div>
 
   </main>
@@ -223,18 +211,15 @@ const user = requireAuth('caterer');
 if (!user) throw 'not auth';
 
 const NAV = [
-  { id: 'bedarf',           label: 'Pool erstellen' },
-  { id: 'vertraege',        label: 'Verträge' },
-  { id: 'wareneingang',     label: 'Wareneingang' },
-  { id: 'bedarf-prognose',  label: 'Bedarfsprognose' },
+  { id: 'bedarf',          label: 'Pool erstellen' },
+  { id: 'vertraege',       label: 'Verträge' },
+  { id: 'wareneingang',    label: 'Wareneingang' },
+  { id: 'bedarf-prognose', label: 'Bedarfsprognose' },
 ];
 
 let currentLieferung = null;
 
-renderHeader('bedarf', NAV, (v) => {
-  showView(v);
-  loadView(v);
-});
+renderHeader('bedarf', NAV, (v) => { showView(v); loadView(v); });
 
 async function loadView(v) {
   if (v === 'bedarf')          loadBedarf();
@@ -242,34 +227,52 @@ async function loadView(v) {
   if (v === 'bedarf-prognose') loadBedarfPrognose();
 }
 
-// ── BEDARF ────────────────────────────────────────────────────────
+// ── Lieferwoche aus Datum berechnen ────────────────────────────
+function getISOWeek(dateStr) {
+  const d = new Date(dateStr);
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  const week = Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+  return `${date.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
+}
+
+// ── POOL ERSTELLEN ────────────────────────────────────────────
 async function loadBedarf() {
   try {
     const { pools } = await api.getPools();
     const aktiv  = pools.filter(p => ['offen','geschlossen'].includes(p.status)).length;
     const gelief = pools.filter(p => p.status === 'geliefert').length;
-    const erz    = Math.max(...pools.map(p => p.erzeuger_count || 0), 0);
-
+    const erz    = pools.length ? Math.max(...pools.map(p => p.erzeuger_count || 0)) : 0;
     document.getElementById('metrics-bedarf').innerHTML = `
-      <div class="metric"><div class="metric-label">Aktive Pools</div>
-        <div class="metric-val">${aktiv}</div></div>
-      <div class="metric"><div class="metric-label">Geliefert</div>
-        <div class="metric-val green">${gelief}</div></div>
-      <div class="metric"><div class="metric-label">Erzeuger max.</div>
-        <div class="metric-val">${erz}</div></div>
-      <div class="metric"><div class="metric-label">Gesamt Pools</div>
-        <div class="metric-val">${pools.length}</div></div>
+      <div class="metric"><div class="metric-label">Aktive Pools</div><div class="metric-val">${aktiv}</div></div>
+      <div class="metric"><div class="metric-label">Geliefert</div><div class="metric-val green">${gelief}</div></div>
+      <div class="metric"><div class="metric-label">Erzeuger max.</div><div class="metric-val">${erz}</div></div>
+      <div class="metric"><div class="metric-label">Pools gesamt</div><div class="metric-val">${pools.length}</div></div>
     `;
   } catch(e) {}
 }
 
-function updateKostenvorschau() {
-  const menge = parseFloat(document.getElementById('b-menge')?.value || 0);
-  const preis = parseFloat(document.getElementById('b-preis')?.value || 0);
-  const btn   = document.getElementById('btn-bedarf');
-  const box   = document.getElementById('bedarf-kosten-box');
+// Deadline → Lieferdatum auto-fill
+document.getElementById('b-deadline')?.addEventListener('change', e => {
+  const lieferdatum = document.getElementById('b-lieferdatum');
+  if (e.target.value && !lieferdatum.value) {
+    const d = new Date(e.target.value);
+    d.setDate(d.getDate() + 2); // 2 Tage nach Deadline
+    lieferdatum.value = d.toISOString().split('T')[0];
+  }
+  updateKostenvorschau();
+});
 
-  if (menge > 0 && preis > 0) {
+function updateKostenvorschau() {
+  const menge    = parseFloat(document.getElementById('b-menge')?.value || 0);
+  const preis    = parseFloat(document.getElementById('b-preis')?.value || 0);
+  const deadline = document.getElementById('b-deadline')?.value;
+  const btn      = document.getElementById('btn-bedarf');
+  const box      = document.getElementById('bedarf-kosten-box');
+
+  if (menge > 0 && preis > 0 && deadline) {
     const wert = menge * preis;
     const fee  = wert * 0.01;
     box.style.display = 'block';
@@ -290,25 +293,32 @@ function updateKostenvorschau() {
 });
 
 document.getElementById('btn-bedarf')?.addEventListener('click', async () => {
-  const produkt  = document.getElementById('b-produkt').value;
-  const menge    = parseFloat(document.getElementById('b-menge').value);
-  const preis    = parseFloat(document.getElementById('b-preis').value);
-  const kw       = document.getElementById('b-kw').value.trim();
-  const deadline = document.getElementById('b-deadline').value;
-  const region   = document.getElementById('b-region').value;
-  const btn      = document.getElementById('btn-bedarf');
+  const produkt     = document.getElementById('b-produkt').value;
+  const region      = document.getElementById('b-region').value;
+  const menge       = parseFloat(document.getElementById('b-menge').value);
+  const preis       = parseFloat(document.getElementById('b-preis').value);
+  const lieferdatum = document.getElementById('b-lieferdatum').value;
+  const deadline    = document.getElementById('b-deadline').value;
+  const btn         = document.getElementById('btn-bedarf');
 
-  if (!menge || !preis || !kw || !deadline) {
-    return showAlert('alerts', 'error', 'Alle Pflichtfelder ausfüllen');
+  if (!menge || !preis || !deadline) {
+    return showAlert('alerts', 'error', 'Bitte Menge, Preis und Deadline ausfüllen');
   }
+
+  // Lieferwoche automatisch berechnen
+  const kw = lieferdatum ? getISOWeek(lieferdatum) : getISOWeek(deadline);
 
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> Erstelle Pool...';
 
   try {
     const { pool, chain } = await api.createPool({
-      produkt, menge_ziel: menge, preis_pro_einheit: preis,
-      lieferwoche: kw, deadline: new Date(deadline).toISOString(), region,
+      produkt,
+      menge_ziel:        menge,
+      preis_pro_einheit: preis,
+      lieferwoche:       kw,
+      deadline:          new Date(deadline).toISOString(),
+      region,
     });
     document.getElementById('bedarf-result').innerHTML = `
       <div class="success-box">
@@ -316,8 +326,7 @@ document.getElementById('btn-bedarf')?.addEventListener('click', async () => {
         <div class="success-title">Pool erstellt</div>
         <div class="success-sub">${produkt} · ${menge} kg · ${kw}</div>
         ${chainInfo(chain?.txHash)}
-      </div>
-    `;
+      </div>`;
     document.getElementById('bedarf-form').style.display = 'none';
   } catch (err) {
     btn.textContent = 'Pool erstellen';
@@ -326,13 +335,12 @@ document.getElementById('btn-bedarf')?.addEventListener('click', async () => {
   }
 });
 
-// ── VERTRÄGE ──────────────────────────────────────────────────────
+// ── VERTRÄGE ──────────────────────────────────────────────────
 async function loadVertraege() {
   try {
     const params = {};
     const fs = document.getElementById('filter-status')?.value;
     if (fs) params.status = fs;
-
     const { pools } = await api.getPools(params);
     document.getElementById('vertraege-list').innerHTML = pools.length ? `
       <table class="tbl">
@@ -345,18 +353,16 @@ async function loadVertraege() {
             <td class="pool-meta">${fmt(p.preis_pro_einheit)} €/kg</td>
             <td class="pool-meta">${p.erzeuger_count || 0}</td>
             <td>${statusBadge(p.status)}</td>
-          </tr>
-        `).join('')}</tbody>
+          </tr>`).join('')}
+        </tbody>
       </table>
     ` : '<p style="color:var(--text3);font-size:13px">Keine Verträge gefunden</p>';
-  } catch (err) {
-    showAlert('alerts', 'error', err.message);
-  }
+  } catch (err) { showAlert('alerts', 'error', err.message); }
 }
 
 document.getElementById('filter-status')?.addEventListener('change', loadVertraege);
 
-// ── WARENEINGANG ──────────────────────────────────────────────────
+// ── WARENEINGANG ──────────────────────────────────────────────
 async function scanQR(qr) {
   qr = qr.trim().toUpperCase();
   if (!qr) return;
@@ -372,21 +378,18 @@ async function scanQR(qr) {
           <tr><td style="color:var(--text2)">Preis</td><td>${fmt(lieferung.preis_pro_einheit)} €/kg</td></tr>
           <tr><td style="color:var(--text2)">Status</td><td>${statusBadge(lieferung.status)}</td></tr>
         </tbody>
-      </table>
-    `;
-    if (lieferung.status === 'geplant' || lieferung.status === 'unterwegs') {
+      </table>`;
+    if (['geplant','unterwegs'].includes(lieferung.status)) {
       document.getElementById('wi-form-card').style.display = 'block';
       document.getElementById('wi-menge').value = Math.round(lieferung.menge_bestellt);
     } else {
       document.getElementById('wi-form-card').style.display = 'none';
     }
-  } catch (err) {
-    showAlert('alerts', 'error', 'QR-Code nicht gefunden: ' + err.message);
-  }
+  } catch (err) { showAlert('alerts', 'error', 'QR-Code nicht gefunden: ' + err.message); }
 }
 
 document.getElementById('scan-trigger')?.addEventListener('click', () => {
-  const qr = prompt('QR-Code eingeben (Demo):');
+  const qr = prompt('QR-Code eingeben:');
   if (qr) scanQR(qr);
 });
 document.getElementById('btn-scan')?.addEventListener('click', () => {
@@ -402,24 +405,18 @@ document.getElementById('btn-wi-confirm')?.addEventListener('click', async () =>
   const qualit = document.getElementById('wi-qualitaet').value;
   const notiz  = document.getElementById('wi-notiz').value;
   const btn    = document.getElementById('btn-wi-confirm');
-
   if (!menge) return showAlert('alerts', 'error', 'Gelieferte Menge eingeben');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span> Bestätige...';
-
   try {
     const res = await api.confirmWareneingang(currentLieferung.id, menge, qualit, notiz);
     document.getElementById('wi-result').innerHTML = `
       <div class="success-box">
         <div class="success-icon">✓</div>
         <div class="success-title">Wareneingang bestätigt</div>
-        <div class="success-sub">
-          ${menge} kg · ${res.auszahlungen} Erzeuger · ${res.gesamt_netto} € Gesamtnetto
-          ${res.lager ? `· Bestand: ${fmt(res.lager.bestand_aktuell,1)} kg` : ''}
-        </div>
+        <div class="success-sub">${menge} kg · ${res.auszahlungen} Erzeuger · ${res.gesamt_netto} € Gesamtnetto</div>
         ${chainInfo(res.chain?.deliveryTx)}
-      </div>
-    `;
+      </div>`;
     document.getElementById('wi-form').style.display = 'none';
     currentLieferung = null;
     toast('Auszahlungen und Lagerbuchung ausgelöst');
@@ -430,96 +427,62 @@ document.getElementById('btn-wi-confirm')?.addEventListener('click', async () =>
   }
 });
 
-// ── BEDARFSPROGNOSE (Hub Modul) ───────────────────────────────────
+// ── BEDARFSPROGNOSE ───────────────────────────────────────────
 async function loadBedarfPrognose() {
   try {
     const { prognosen } = await api.getBedarfPrognosen();
-
     document.getElementById('prognosen-list').innerHTML = prognosen.length ? `
       <table class="tbl">
-        <thead>
-          <tr>
-            <th>Produkt</th>
-            <th>Wochenbedarf</th>
-            <th>Liefertage</th>
-            <th>Jahresbedarf</th>
-            <th>Notiz</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          ${prognosen.map(p => `
-            <tr id="prow-${p.id}">
-              <td style="font-weight:500">${p.produkt}</td>
-              <td style="font-family:'DM Mono',monospace">${fmt(p.menge_pro_woche,0)} kg</td>
-              <td class="pool-meta">${p.liefertage?.join(', ') || '—'}</td>
-              <td class="pool-meta">${fmt(p.menge_pro_woche * 52, 0)} kg</td>
-              <td class="pool-meta" style="max-width:160px;overflow:hidden;text-overflow:ellipsis">
-                ${p.notiz || '—'}
-              </td>
-              <td>
-                <button class="btn btn-sm btn-danger"
-                  onclick="deletePrognose('${p.id}','${p.produkt}')">Entfernen</button>
-              </td>
-            </tr>
-          `).join('')}
+        <thead><tr><th>Produkt</th><th>Wochenbedarf</th><th>Liefertage</th><th>Jahresbedarf</th><th>Notiz</th><th></th></tr></thead>
+        <tbody>${prognosen.map(p => `
+          <tr id="prow-${p.id}">
+            <td style="font-weight:500">${p.produkt}</td>
+            <td style="font-family:'DM Mono',monospace">${fmt(p.menge_pro_woche,0)} kg</td>
+            <td class="pool-meta">${p.liefertage?.join(', ') || '—'}</td>
+            <td class="pool-meta">${fmt(p.menge_pro_woche * 52, 0)} kg</td>
+            <td class="pool-meta">${p.notiz || '—'}</td>
+            <td><button class="btn btn-sm btn-danger" onclick="deletePrognose('${p.id}','${p.produkt}')">Entfernen</button></td>
+          </tr>`).join('')}
         </tbody>
       </table>
-      <div style="margin-top:1rem;padding:1rem;background:var(--bg3);border-radius:4px">
-        <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:.5rem">Gesamtbedarf / Woche</div>
-        <div style="font-size:20px;font-weight:300;color:var(--green)">
-          ${fmt(prognosen.reduce((s, p) => s + parseFloat(p.menge_pro_woche), 0), 0)} kg
-        </div>
+      <div style="margin-top:1rem;padding:1rem;background:var(--bg3);border-radius:6px">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:.4rem">Gesamtbedarf / Woche</div>
+        <div style="font-size:22px;font-weight:300;color:var(--green)">${fmt(prognosen.reduce((s,p) => s + parseFloat(p.menge_pro_woche), 0), 0)} kg</div>
       </div>
-    ` : `
-      <div style="text-align:center;padding:2rem;color:var(--text3)">
-        <div style="font-size:2rem;margin-bottom:.75rem">📋</div>
-        <div style="font-size:14px;margin-bottom:.5rem">Noch keine Bedarfsprognosen</div>
-        <div style="font-size:12px">Füge deinen wöchentlichen Bedarf hinzu, damit der Food Hub gezielt planen kann.</div>
-      </div>
-    `;
-  } catch (err) {
-    showAlert('alerts', 'error', err.message);
-  }
+    ` : `<div style="text-align:center;padding:2rem;color:var(--text3)">
+        <div style="font-size:2rem;margin-bottom:.5rem">📋</div>
+        <div style="font-size:13px">Noch keine Prognosen. Füge deinen Wochenbedarf hinzu.</div>
+      </div>`;
+  } catch (err) { showAlert('alerts', 'error', err.message); }
 }
 
 async function deletePrognose(id, produkt) {
   if (!confirm(`Prognose für "${produkt}" entfernen?`)) return;
   try {
     await api.deleteBedarfPrognose(id);
-    const row = document.getElementById('prow-' + id);
-    if (row) row.style.opacity = '0.3';
     toast('Prognose entfernt');
     loadBedarfPrognose();
-  } catch (err) {
-    showAlert('alerts', 'error', err.message);
-  }
+  } catch (err) { showAlert('alerts', 'error', err.message); }
 }
 
-function updateBedarfVorschau() {
-  const menge = parseFloat(document.getElementById('bp-menge')?.value || 0);
+document.getElementById('btn-show-prognose-form')?.addEventListener('click', () => {
+  document.getElementById('prognose-form-card').style.display = 'block';
+  document.getElementById('prognose-form-card').scrollIntoView({ behavior: 'smooth' });
+});
+document.getElementById('btn-prognose-cancel')?.addEventListener('click', () => {
+  document.getElementById('prognose-form-card').style.display = 'none';
+});
+
+document.getElementById('bp-menge')?.addEventListener('input', () => {
+  const menge = parseFloat(document.getElementById('bp-menge').value || 0);
   const box   = document.getElementById('bp-vorschau');
   if (menge > 0) {
     box.style.display = 'block';
     box.innerHTML = `
       <div class="erloes-row"><span class="lbl">Pro Woche</span><span>${fmt(menge,0)} kg</span></div>
       <div class="erloes-row"><span class="lbl">Pro Monat</span><span>${fmt(menge*4,0)} kg</span></div>
-      <div class="erloes-row"><span class="lbl">Pro Jahr</span><span class="erloes-total">${fmt(menge*52,0)} kg</span></div>
-    `;
-  } else {
-    box.style.display = 'none';
-  }
-}
-
-document.getElementById('bp-menge')?.addEventListener('input', updateBedarfVorschau);
-
-document.getElementById('btn-show-prognose-form')?.addEventListener('click', () => {
-  document.getElementById('prognose-form-card').style.display = 'block';
-  document.getElementById('prognose-form-card').scrollIntoView({ behavior: 'smooth' });
-});
-
-document.getElementById('btn-prognose-cancel')?.addEventListener('click', () => {
-  document.getElementById('prognose-form-card').style.display = 'none';
+      <div class="erloes-row"><span class="lbl">Pro Jahr</span><span class="erloes-total">${fmt(menge*52,0)} kg</span></div>`;
+  } else { box.style.display = 'none'; }
 });
 
 document.getElementById('btn-prognose-submit')?.addEventListener('click', async () => {
@@ -528,11 +491,9 @@ document.getElementById('btn-prognose-submit')?.addEventListener('click', async 
   const notiz      = document.getElementById('bp-notiz').value.trim();
   const liefertage = [...document.querySelectorAll('.liefertag-cb:checked')].map(cb => cb.value);
   const btn        = document.getElementById('btn-prognose-submit');
-
   if (!menge || menge <= 0) return showAlert('alerts', 'error', 'Menge eingeben');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Speichere...';
-
+  btn.innerHTML = '<span class="spinner"></span>';
   try {
     await api.createBedarfPrognose({ produkt, menge_pro_woche: menge, liefertage, notiz });
     document.getElementById('prognose-result').innerHTML =
@@ -540,7 +501,7 @@ document.getElementById('btn-prognose-submit')?.addEventListener('click', async 
     document.getElementById('bp-menge').value = '';
     document.getElementById('bp-notiz').value = '';
     document.querySelectorAll('.liefertag-cb').forEach(cb => cb.checked = false);
-    updateBedarfVorschau();
+    document.getElementById('bp-vorschau').style.display = 'none';
     btn.textContent = 'Prognose speichern';
     btn.disabled = false;
     loadBedarfPrognose();
@@ -551,7 +512,7 @@ document.getElementById('btn-prognose-submit')?.addEventListener('click', async 
   }
 });
 
-// ── INIT ──────────────────────────────────────────────────────────
+// ── INIT ──────────────────────────────────────────────────────
 loadBedarf();
 </script>
 </body>
