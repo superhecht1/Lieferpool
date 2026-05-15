@@ -19,6 +19,17 @@ async function run() {
       ALTER TABLE zertifikate ADD COLUMN IF NOT EXISTS geprueft_von UUID REFERENCES users(id) ON DELETE SET NULL;
       ALTER TABLE zertifikate ADD COLUMN IF NOT EXISTS geprueft_am TIMESTAMPTZ;
       ALTER TABLE commitments ADD COLUMN IF NOT EXISTS status VARCHAR(30) DEFAULT 'aktiv';
+
+      -- touren: fahrer_id + fahrzeug_id + weitere Spalten
+      DO $$ BEGIN
+        IF EXISTS (SELECT FROM information_schema.tables WHERE table_name='touren') THEN
+          ALTER TABLE touren ADD COLUMN IF NOT EXISTS fahrer_id   UUID REFERENCES users(id) ON DELETE SET NULL;
+          ALTER TABLE touren ADD COLUMN IF NOT EXISTS fahrzeug_id UUID;
+          ALTER TABLE touren ADD COLUMN IF NOT EXISTS startzeit   TIME;
+          ALTER TABLE touren ADD COLUMN IF NOT EXISTS gestartet_at TIMESTAMPTZ;
+          ALTER TABLE touren ADD COLUMN IF NOT EXISTS notiz       TEXT;
+        END IF;
+      END $$;
       ALTER TABLE pools ADD COLUMN IF NOT EXISTS auto_closed BOOLEAN DEFAULT FALSE;
       CREATE TABLE IF NOT EXISTS fahrer_profile (
         id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
