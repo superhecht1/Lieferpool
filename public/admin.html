@@ -1204,6 +1204,89 @@ document.getElementById('btn-fahrzeug-save')?.addEventListener('click', async ()
 });
 document.getElementById('btn-reload-touren')?.addEventListener('click', loadTourenHeute);
 
+
+// ── ALLE POOLS ────────────────────────────────────────────────
+let poolsAllePage = 1;
+const POOLS_LIMIT  = 15;
+
+async function loadPoolsAlle(page = 1) {
+  poolsAllePage = page;
+  const status  = document.getElementById('pools-alle-status')?.value || '';
+  const produkt = document.getElementById('pools-alle-search')?.value.trim() || '';
+  try {
+    const params = { page, limit: POOLS_LIMIT };
+    if (status)  params.status  = status;
+    if (produkt) params.produkt = produkt;
+    const { pools, pagination } = await api.getPools(params);
+
+    setHTML('pools-alle-list', pools.length ? `
+      <table class="tbl">
+        <thead><tr><th>Produkt</th><th>KW</th><th>Preis</th><th>Ziel</th><th>Committet</th><th>%</th><th>Erzeuger</th><th>Status</th><th></th></tr></thead>
+        <tbody>${pools.map(p => {
+          const pct = poolPct(p.menge_committed, p.menge_ziel);
+          return `<tr>
+            <td style="font-weight:600">${p.produkt}</td>
+            <td class="pool-meta">${p.lieferwoche}</td>
+            <td class="pool-meta">${fmt(p.preis_pro_einheit)} €/kg</td>
+            <td style="font-family:'DM Mono',monospace">${Math.round(p.menge_ziel)} kg</td>
+            <td style="font-family:'DM Mono',monospace">${Math.round(p.menge_committed)} kg</td>
+            <td>
+              <div style="display:flex;align-items:center;gap:6px">
+                <div style="width:60px;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden">
+                  <div style="width:${pct}%;height:100%;background:${pct>=100?'var(--green)':pct>=50?'var(--amber)':'var(--red)'};border-radius:2px"></div>
+                </div>
+                <span class="pool-meta">${pct}%</span>
+              </div>
+            </td>
+            <td class="pool-meta">${p.erzeuger_count||0}</td>
+            <td>${statusBadge(p.status)}</td>
+            <td><div style="display:flex;gap:.35rem">
+              <button class="btn btn-sm" data-action="pool-detail" data-id="${p.id}">Details</button>
+              ${p.status==='offen'?`<button class="btn btn-sm" data-action="pool-close" data-id="${p.id}">Schließen</button>`:''}
+              ${['offen','geschlossen'].includes(p.status)?`<button class="btn btn-sm btn-danger" data-action="pool-abort" data-id="${p.id}">Abbrechen</button>`:''}
+            </div></td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>
+    ` : '<p style="color:var(--text3);font-size:13px">Keine Pools gefunden</p>');
+
+    const { total, pages, page: cur } = pagination;
+    setHTML('pools-alle-pagination', `
+      <span class="pool-meta">${total} Pools gesamt</span>
+      <div style="display:flex;gap:.35rem">
+        <button class="btn btn-sm" ${cur<=1?'disabled':''} data-page="${cur-1}">← Zurück</button>
+        <span class="pool-meta" style="padding:5px 8px">Seite ${cur} / ${pages}</span>
+        <button class="btn btn-sm" ${cur>=pages?'disabled':''} data-page="${cur+1}">Weiter →</button>
+      </div>
+    `);
+
+    document.getElementById('pools-alle-list')?.addEventListener('click', async e => {
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      if (btn.dataset.action === 'pool-detail') { showPoolDetail(btn.dataset.id); return; }
+      if (btn.dataset.action === 'pool-close') {
+        if (!confirm('Pool schließen?')) return;
+        try { await api.updatePoolStatus(btn.dataset.id,'geschlossen'); toast('Pool geschlossen'); loadPoolsAlle(poolsAllePage); }
+        catch (err) { toast(err.message,'error'); }
+      }
+      if (btn.dataset.action === 'pool-abort') {
+        if (!confirm('Pool abbrechen? Alle Commitments werden zurückgezogen.')) return;
+        try { await api.updatePoolStatus(btn.dataset.id,'abgebrochen'); toast('Pool abgebrochen','error'); loadPoolsAlle(poolsAllePage); }
+        catch (err) { toast(err.message,'error'); }
+      }
+    });
+    document.getElementById('pools-alle-pagination')?.addEventListener('click', e => {
+      const btn = e.target.closest('[data-page]');
+      if (btn && !btn.disabled) loadPoolsAlle(parseInt(btn.dataset.page));
+    });
+
+  } catch (err) { showAlert('alerts','error',err.message); }
+}
+
+document.getElementById('pools-alle-status')?.addEventListener('change', () => loadPoolsAlle(1));
+document.getElementById('pools-alle-search')?.addEventListener('input',  () => loadPoolsAlle(1));
+document.getElementById('btn-reload-pools-alle')?.addEventListener('click', () => loadPoolsAlle(1));
+
 // ── INIT ──────────────────────────────────────────────────────
 loadOverview();
 </script>
