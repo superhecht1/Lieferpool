@@ -293,4 +293,72 @@ router.patch('/:id/deadline', auth, role('admin'), async (req, res) => {
   }
 });
 
+
+// PUT /api/pools/:id/commit – Menge ändern
+router.put('/:id/commit', auth, role('erzeuger'), async (req, res) => {
+  const { menge } = req.body;
+  if (!menge || menge <= 0) return res.status(400).json({ error: 'Ungültige Menge' });
+
+  const client = await db.pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const { rows: [pool] } = await client.query(
+      `SELECT * FROM pools WHERE id=$1 FOR UPDATE`, [req.params.id]
+    );
+    if (!pool)                   return res.status(404).json({ error: 'Pool nicht gefunden' });
+    if (pool.status !== 'offen') return res.status(400).json({ error: 'Pool ist nicht mehr offen' });
+    if (new Date(pool.deadline) < new Date()) {
+      return res.status(400).json({ error: 'Deadline abgelaufen' });
+    }
+
+    const { rows: [erzeuger] } = await client.query(
+      `SELECT id FROM erzeuger WHERE user_id=$1`, [req.user.id]
+    );
+    if (!erzeuger) return res.status(404).json({ error: 'Erzeuger-Profil nicht gefunden' });
+
+    const { rows: [existing] } = await client.query(
+      `SELECT id, menge FROM commitments WHERE pool_id=$1 AND erzeuger_id=$2 AND status='aktiv'`,
+      [req.params.id, erzeuger.id]
+    );
+    if (!existing) return res.status(404).json({ error: 'Kein aktives Commitment gefunden' });
+
+    const diff = parseFloat(menge) - parseFloat(existing.menge);
+
+    // Commitment updaten
+    await client.query(
+      `UPDATE commitments SET menge=$1 WHERE id=$2`,
+      [menge, existing.id]
+    );
+
+    // Pool-Gesamtmenge anpassen
+    const neue_menge = parseFloat(pool.menge_committed) + diff;
+    let neuer_status = pool.status;
+    if (neue_menge >= parseFloat(pool.menge_ziel)) {
+      neuer_status = 'geschlossen';
+    }
+
+    await client.query(
+      `UPDATE pools SET menge_committed=$1, status=$2 WHERE id=$3`,
+      [Math.max(0, neue_menge), neuer_status, pool.id]
+    );
+
+    await client.query('COMMIT');
+    res.json({
+      message: 'Commitment aktualisiert',
+      alte_menge: parseFloat(existing.menge),
+      neue_menge: parseFloat(menge),
+      diff: diff > 0 ? `+${diff.toFixed(1)}` : diff.toFixed(1),
+      pool_status: neuer_status,
+      pool_fuellstand: Math.min(100, Math.round(Math.max(0, neue_menge) / pool.menge_ziel * 100)),
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ error: 'Änderung fehlgeschlagen' });
+  } finally {
+    client.release();
+  }
+});
+
 module.exports = router;
