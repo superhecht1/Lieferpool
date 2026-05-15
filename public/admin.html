@@ -1530,12 +1530,10 @@ document.getElementById('btn-sepa-export')?.addEventListener('click', async () =
       return;
     }
 
-    const msg = `${preview.exportierbar} Zahlungen · ${preview.total_euros} €` +
-      (preview.ohne_iban > 0 ? `
-⚠ ${preview.ohne_iban} ohne IBAN (werden übersprungen): ${preview.ohne_iban_liste.join(', ')}` : '') +
-      '
-
-Jetzt SEPA-XML herunterladen und Auszahlungen als "veranlasst" markieren?';
+    const ohneHinweis = preview.ohne_iban > 0
+      ? `\n⚠ ${preview.ohne_iban} ohne IBAN: ${preview.ohne_iban_liste.join(', ')}`
+      : '';
+    const msg = `${preview.exportierbar} Zahlungen · ${preview.total_euros} €${ohneHinweis}\n\nJetzt SEPA-XML herunterladen?`;
 
     if (!confirm(msg)) { btn.textContent = '📄 SEPA-XML exportieren'; btn.disabled = false; return; }
 
