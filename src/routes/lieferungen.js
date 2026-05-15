@@ -29,7 +29,11 @@ router.get('/', auth, async (req, res) => {
     const where = filters.length ? 'WHERE ' + filters.join(' AND ') : '';
 
     const { rows } = await db.query(`
-      SELECT l.*, p.produkt, p.lieferwoche, p.caterer_id
+      SELECT
+        l.id, l.pool_id, l.lieferschein_nr, l.qr_code,
+        l.lieferdatum, l.menge_bestellt, l.menge_geliefert,
+        l.qualitaet, l.status, l.notiz, l.wareneingang_at, l.created_at,
+        p.produkt, p.lieferwoche, p.caterer_id
       FROM lieferungen l
       JOIN pools p ON p.id = l.pool_id
       ${where}
@@ -39,8 +43,8 @@ router.get('/', auth, async (req, res) => {
 
     res.json({ lieferungen: rows });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Fehler beim Laden' });
+    console.error('[lieferungen GET]', err.message);
+    res.status(500).json({ error: 'Fehler beim Laden: ' + err.message });
   }
 });
 
@@ -83,8 +87,8 @@ router.post('/', auth, role('admin', 'caterer'), async (req, res) => {
 
     res.status(201).json({ lieferung: { ...lief, produkt: pool.produkt, lieferwoche: pool.lieferwoche } });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Lieferschein konnte nicht erstellt werden' });
+    console.error('[lieferungen POST]', err.message);
+    res.status(500).json({ error: 'Lieferschein konnte nicht erstellt werden: ' + err.message });
   }
 });
 
