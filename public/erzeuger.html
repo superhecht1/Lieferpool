@@ -90,48 +90,161 @@
 
     <!-- PROFIL -->
     <div id="view-profil" class="view" style="display:none">
+
+      <!-- Account-Statistiken -->
+      <div class="grid4" style="margin-bottom:1rem" id="profil-stats"></div>
+
       <div class="grid2">
-        <div class="card">
-          <div class="card-title">Betriebsdaten</div>
-          <div class="form-group">
-            <label class="form-label">Betriebsname</label>
-            <input class="form-control" id="p-name">
+        <!-- Linke Spalte: Betriebsdaten -->
+        <div>
+          <div class="card">
+            <div class="card-title">Betrieb</div>
+            <div id="profil-result"></div>
+            <div class="grid2">
+              <div class="form-group">
+                <label class="form-label">Betriebsname *</label>
+                <input class="form-control" id="p-name" placeholder="Hof Brüggemann">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Region *</label>
+                <select class="form-control" id="p-region">
+                  <option>NRW</option><option>Bayern</option><option>BW</option>
+                  <option>Niedersachsen</option><option>Hessen</option>
+                  <option>Sachsen</option><option>Bundesweit</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Straße &amp; Hausnummer</label>
+              <input class="form-control" id="p-adresse" placeholder="Musterstraße 12">
+            </div>
+            <div class="grid2">
+              <div class="form-group">
+                <label class="form-label">PLZ</label>
+                <input class="form-control" id="p-plz" placeholder="50969" maxlength="10">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Ort</label>
+                <input class="form-control" id="p-ort" placeholder="Köln">
+              </div>
+            </div>
+            <div class="grid2">
+              <div class="form-group">
+                <label class="form-label">Telefon</label>
+                <input class="form-control" id="p-telefon" placeholder="+49 221 123456" type="tel">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Website</label>
+                <input class="form-control" id="p-website" placeholder="https://hof-beispiel.de">
+              </div>
+            </div>
+            <div class="grid2">
+              <div class="form-group">
+                <label class="form-label">Betriebsgröße</label>
+                <select class="form-control" id="p-groesse">
+                  <option value="klein">Klein (&lt; 5 ha)</option>
+                  <option value="mittel">Mittel (5–50 ha)</option>
+                  <option value="gross">Groß (&gt; 50 ha)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Gründungsjahr</label>
+                <input class="form-control" id="p-gruendung" type="number" min="1800" max="2099" placeholder="z.B. 1987">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Beschreibung (für Caterer sichtbar)</label>
+              <textarea class="form-control" id="p-beschreibung" rows="3" placeholder="Kurze Vorstellung deines Betriebs..."></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Produktsortiment</label>
+              <input class="form-control" id="p-sortiment" placeholder="z.B. Karotten, Kartoffeln, Kohl, Kräuter">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Max. Wochenkapazität (kg)</label>
+              <input class="form-control" id="p-kapazitaet" type="number" min="0" placeholder="z.B. 500">
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label">Region</label>
-            <select class="form-control" id="p-region">
-              <option>NRW</option><option>Bayern</option><option>BW</option>
-              <option>Niedersachsen</option><option>Bundesweit</option>
-            </select>
+
+          <div class="card">
+            <div class="card-title">Zahlungsdaten</div>
+            <div class="form-group">
+              <label class="form-label">IBAN (für SEPA-Auszahlung)</label>
+              <input class="form-control" id="p-iban" placeholder="DE89 3704 0044 0532 0130 00">
+            </div>
+            <div class="grid2">
+              <div class="form-group">
+                <label class="form-label">Bank</label>
+                <input class="form-control" id="p-bank" placeholder="z.B. Volksbank Köln">
+              </div>
+              <div class="form-group">
+                <label class="form-label">USt-ID (optional)</label>
+                <input class="form-control" id="p-ustid" placeholder="DE123456789">
+              </div>
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label">IBAN (für SEPA-Auszahlung)</label>
-            <input class="form-control" id="p-iban" placeholder="DE89 3704 0044...">
+
+          <div class="card">
+            <div class="card-title">Passwort ändern</div>
+            <div class="form-group">
+              <label class="form-label">Aktuelles Passwort</label>
+              <input class="form-control" type="password" id="pw-current" placeholder="••••••••">
+            </div>
+            <div class="grid2">
+              <div class="form-group">
+                <label class="form-label">Neues Passwort</label>
+                <input class="form-control" type="password" id="pw-new" placeholder="min. 8 Zeichen">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Wiederholen</label>
+                <input class="form-control" type="password" id="pw-new2" placeholder="••••••••">
+              </div>
+            </div>
+            <div id="pw-result"></div>
+            <button class="btn btn-sm" id="btn-change-pw">Passwort ändern</button>
           </div>
-          <button class="btn btn-primary btn-sm" id="btn-save-profil">Speichern</button>
-          <div id="profil-result" style="margin-top:.75rem"></div>
+
+          <button class="btn btn-primary" id="btn-save-profil" style="width:100%">Profil speichern</button>
         </div>
 
-        <div class="card">
-          <div class="card-title">Zertifikat einreichen</div>
-          <div class="form-group">
-            <label class="form-label">Typ</label>
-            <select class="form-control" id="z-typ">
-              <option>Bio</option><option>QS</option><option>Demeter</option><option>Hygiene</option>
-            </select>
+        <!-- Rechte Spalte: Zertifikate + Account-Info -->
+        <div>
+          <div class="card">
+            <div class="card-title">Account</div>
+            <div id="account-info" style="font-size:13px;color:var(--text2);line-height:1.8"></div>
           </div>
-          <div class="form-group">
-            <label class="form-label">Zertifikat-Nummer</label>
-            <input class="form-control" id="z-nr" placeholder="Bio-DE-001-2024">
+
+          <div class="card">
+            <div class="card-title">Zertifikat einreichen</div>
+            <div id="zert-result" style="margin-bottom:.75rem"></div>
+            <div class="grid2">
+              <div class="form-group">
+                <label class="form-label">Typ</label>
+                <select class="form-control" id="z-typ">
+                  <option value="Bio">Bio (DE-ÖKO)</option>
+                  <option value="QS">QS-Zertifizierung</option>
+                  <option value="Demeter">Demeter</option>
+                  <option value="Naturland">Naturland</option>
+                  <option value="GlobalGAP">GlobalG.A.P.</option>
+                  <option value="Hygiene">Hygieneschulung</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Gültig bis</label>
+                <input class="form-control" type="date" id="z-datum">
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Zertifikat-Nummer</label>
+              <input class="form-control" id="z-nr" placeholder="Bio-DE-001-2024">
+            </div>
+            <button class="btn btn-primary btn-sm" id="btn-zert">Einreichen</button>
           </div>
-          <div class="form-group">
-            <label class="form-label">Gültig bis</label>
-            <input class="form-control" type="date" id="z-datum">
-          </div>
-          <button class="btn btn-primary btn-sm" id="btn-zert">Einreichen</button>
-          <div id="zert-result" style="margin-top:.75rem"></div>
-          <div style="margin-top:1.5rem">
-            <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:.75rem">Meine Zertifikate</div>
+
+          <div class="card">
+            <div class="section-hdr">
+              <span class="section-title">Meine Zertifikate</span>
+            </div>
             <div id="zert-list"></div>
           </div>
         </div>
@@ -348,45 +461,126 @@ document.getElementById('btn-abrechnung')?.addEventListener('click', async () =>
 // ── PROFIL ────────────────────────────────────────────────────
 async function loadProfil() {
   try {
-    const { erzeuger, zertifikate } = await api.getErzeugerMe();
+    const { erzeuger, zertifikate, commitments, auszahlungen } = await api.getErzeugerMe();
     erzeugerProfil = erzeuger;
-    const nameEl = document.getElementById('p-name');
-    const regionEl = document.getElementById('p-region');
-    const ibanEl = document.getElementById('p-iban');
-    if (nameEl)   nameEl.value   = erzeuger.betrieb_name || '';
-    if (regionEl) regionEl.value = erzeuger.region       || 'NRW';
-    if (ibanEl)   ibanEl.value   = erzeuger.iban         || '';
 
+    // Felder befüllen
+    const fields = {
+      'p-name':        erzeuger.betrieb_name,
+      'p-region':      erzeuger.region,
+      'p-adresse':     erzeuger.adresse,
+      'p-plz':         erzeuger.plz,
+      'p-ort':         erzeuger.ort,
+      'p-telefon':     erzeuger.telefon,
+      'p-website':     erzeuger.website,
+      'p-beschreibung':erzeuger.beschreibung,
+      'p-sortiment':   erzeuger.sortiment,
+      'p-kapazitaet':  erzeuger.max_kapazitaet,
+      'p-groesse':     erzeuger.betriebsgroesse,
+      'p-gruendung':   erzeuger.gruendungsjahr,
+      'p-iban':        erzeuger.iban,
+      'p-bank':        erzeuger.bank_name,
+      'p-ustid':       erzeuger.ust_id,
+    };
+    Object.entries(fields).forEach(([id, val]) => {
+      const el = document.getElementById(id);
+      if (el && val != null) el.value = val;
+    });
+
+    // Statistiken
+    const geliefert  = commitments.filter(c => c.pool_status === 'geliefert').length;
+    const aktiv      = commitments.filter(c => c.status === 'aktiv').length;
+    const gesamtAZ   = auszahlungen?.reduce((s,a) => s + parseFloat(a.netto||0), 0) || 0;
+    const verifZerts = zertifikate.filter(z => z.status === 'verified').length;
+
+    setHTML('profil-stats', `
+      <div class="metric"><div class="metric-label">Aktive Zusagen</div><div class="metric-val">${aktiv}</div></div>
+      <div class="metric"><div class="metric-label">Geliefert</div><div class="metric-val green">${geliefert}</div></div>
+      <div class="metric"><div class="metric-label">Gesamt ausgezahlt</div><div class="metric-val green">${fmt(gesamtAZ)} €</div></div>
+      <div class="metric"><div class="metric-label">Zertifikate</div><div class="metric-val ${verifZerts>0?'green':'amber'}">${verifZerts}</div></div>
+    `);
+
+    // Account-Info
+    setHTML('account-info', `
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:.25rem 1rem">
+        <span style="color:var(--text3)">E-Mail</span><span>${window.Auth.getUser()?.email || '—'}</span>
+        <span style="color:var(--text3)">Rolle</span><span>Erzeuger:in</span>
+        <span style="color:var(--text3)">Betrieb-ID</span><span style="font-family:'DM Mono',monospace;font-size:11px">${erzeuger.id?.slice(0,8)}...</span>
+        <span style="color:var(--text3)">Erzeuger seit</span><span>${new Date(erzeuger.created_at||Date.now()).toLocaleDateString('de-DE')}</span>
+      </div>
+    `);
+
+    // Zertifikate
     setHTML('zert-list', zertifikate.length ? zertifikate.map(z => `
       <div class="auszahl-row">
         <div>
-          <div style="font-size:13px;font-weight:500">${z.typ} · ${z.zert_nummer}</div>
-          <div class="pool-meta">Gültig bis ${z.gueltig_bis?.split('T')[0] || '—'}</div>
-          ${chainInfo(z.chain_tx)}
+          <div style="font-size:13px;font-weight:500">${z.typ}
+            <span class="pool-meta" style="margin-left:.5rem">${z.zert_nummer}</span>
+          </div>
+          <div class="pool-meta">Gültig bis: ${z.gueltig_bis?.split('T')[0] || 'unbegrenzt'}</div>
+          <div class="pool-meta">Eingereicht: ${new Date(z.created_at).toLocaleDateString('de-DE')}</div>
+          ${z.chain_tx ? chainInfo(z.chain_tx) : ''}
         </div>
-        ${statusBadge(z.status)}
+        <div style="text-align:right">
+          ${statusBadge(z.status)}
+          ${z.geprueft_am ? `<div class="pool-meta" style="margin-top:4px">Geprüft: ${new Date(z.geprueft_am).toLocaleDateString('de-DE')}</div>` : ''}
+        </div>
       </div>
-    `).join('') : '<p style="color:var(--text3);font-size:13px">Noch keine Zertifikate</p>');
+    `).join('') : '<p style="color:var(--text3);font-size:13px">Noch keine Zertifikate eingereicht</p>');
 
   } catch (err) { showAlert('alerts', 'error', err.message); }
 }
 
 document.getElementById('btn-save-profil')?.addEventListener('click', async () => {
   const btn = document.getElementById('btn-save-profil');
-  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Speichern...';
   try {
     await api.updateErzeuger({
-      betrieb_name: document.getElementById('p-name').value,
-      region:       document.getElementById('p-region').value,
-      iban:         document.getElementById('p-iban').value,
+      betrieb_name:    document.getElementById('p-name').value.trim(),
+      region:          document.getElementById('p-region').value,
+      adresse:         document.getElementById('p-adresse').value.trim() || null,
+      plz:             document.getElementById('p-plz').value.trim() || null,
+      ort:             document.getElementById('p-ort').value.trim() || null,
+      telefon:         document.getElementById('p-telefon').value.trim() || null,
+      website:         document.getElementById('p-website').value.trim() || null,
+      beschreibung:    document.getElementById('p-beschreibung').value.trim() || null,
+      sortiment:       document.getElementById('p-sortiment').value.trim() || null,
+      max_kapazitaet:  parseFloat(document.getElementById('p-kapazitaet').value) || null,
+      betriebsgroesse: document.getElementById('p-groesse').value,
+      gruendungsjahr:  parseInt(document.getElementById('p-gruendung').value) || null,
+      iban:            document.getElementById('p-iban').value.trim() || null,
+      bank_name:       document.getElementById('p-bank').value.trim() || null,
+      ust_id:          document.getElementById('p-ustid').value.trim() || null,
     });
     setHTML('profil-result', '<div class="alert alert-success">✓ Profil gespeichert</div>');
-    btn.textContent = 'Speichern'; btn.disabled = false;
+    btn.textContent = 'Profil speichern'; btn.disabled = false;
     setTimeout(() => setHTML('profil-result', ''), 3000);
   } catch (err) {
-    btn.textContent = 'Speichern'; btn.disabled = false;
+    btn.textContent = 'Profil speichern'; btn.disabled = false;
     showAlert('alerts', 'error', err.message);
   }
+});
+
+// Passwort ändern
+document.getElementById('btn-change-pw')?.addEventListener('click', async () => {
+  const current = document.getElementById('pw-current').value;
+  const neu     = document.getElementById('pw-new').value;
+  const neu2    = document.getElementById('pw-new2').value;
+  const btn     = document.getElementById('btn-change-pw');
+  if (!current || !neu) return setHTML('pw-result', '<div class="alert alert-error">Alle Felder ausfüllen</div>');
+  if (neu !== neu2)    return setHTML('pw-result', '<div class="alert alert-error">Passwörter stimmen nicht überein</div>');
+  if (neu.length < 8)  return setHTML('pw-result', '<div class="alert alert-error">Min. 8 Zeichen</div>');
+  btn.disabled = true;
+  try {
+    await api.changePassword(current, neu);
+    setHTML('pw-result', '<div class="alert alert-success">✓ Passwort geändert</div>');
+    document.getElementById('pw-current').value = '';
+    document.getElementById('pw-new').value     = '';
+    document.getElementById('pw-new2').value    = '';
+  } catch (err) {
+    setHTML('pw-result', '<div class="alert alert-error">' + err.message + '</div>');
+  }
+  btn.disabled = false;
 });
 
 document.getElementById('btn-zert')?.addEventListener('click', async () => {
