@@ -52,6 +52,7 @@ app.use('/api/auszahlungen', require('./routes/auszahlungen'));
 app.use('/api/reports',      require('./routes/reports'));
 app.use('/api/stripe',       require('./routes/stripe'));
 app.use('/api/sepa',         require('./routes/sepa'));
+app.use('/api/print',        require('./routes/print'));
 
 // Push Test Endpoint
 app.post('/api/push/test', require('./middleware/auth').auth, require('./middleware/auth').role('admin'), async (req, res) => {
