@@ -324,15 +324,14 @@ async function loadPools() {
       <div class="pool-item" data-pool-id="${c.pool_id}" title="Klicken für Pool-Details">
         <div class="pool-row">
           <span class="pool-name">${c.produkt}</span>
-          ${statusBadge(c.status)}
+          <div style="display:flex;align-items:center;gap:.5rem">
+            ${statusBadge(c.status)}
+            ${c.pool_status==='offen'&&c.status==='aktiv'?`<button class="btn btn-sm btn-danger" style="padding:2px 8px;font-size:11px" data-action="withdraw" data-pool-id="${c.pool_id}">Zurückziehen</button>`:''}
+          </div>
         </div>
         <div class="pool-row" style="margin-top:3px">
           <span class="pool-meta">${c.lieferwoche}</span>
-          <span class="pool-meta" style="font-family:'DM Mono',monospace;color:var(--green)">${fmt(c.menge, 0)} kg zugesagt</span>
-        </div>
-        <div style="font-size:12px;color:var(--text3);margin-top:4px">
-          Erw. Erlös: <span style="color:var(--green);font-family:'DM Mono',monospace">${fmt(c.menge * parseFloat(c.preis_pro_einheit||0) * 0.99)} €</span>
-          &nbsp;·&nbsp; Details klicken →
+          <span class="pool-meta" style="font-family:'DM Mono',monospace;color:var(--green)">${fmt(c.menge, 0)} kg · ${fmt(c.menge * parseFloat(c.preis_pro_einheit||0) * 0.99)} € erw.</span>
         </div>
       </div>
     `).join('') : '<p style="color:var(--text3);font-size:13px">Noch keine Zusagen</p>');
@@ -347,12 +346,15 @@ async function loadZusagen() {
     openPools = pools;
 
     setHTML('pool-status-list', pools.length ? pools.map(p => `
-      <div class="pool-item">
+      <div class="pool-item" data-pool-id="${p.id}">
         <div class="pool-row">
           <span class="pool-name">${p.produkt}</span>
-          <span class="pool-meta">${fmt(p.preis_pro_einheit)} €/kg</span>
+          <div style="display:flex;gap:.5rem;align-items:center">
+            <span class="pool-meta">${fmt(p.preis_pro_einheit)} €/kg</span>
+            ${deadlineCountdown(p.deadline)}
+          </div>
         </div>
-        <span class="pool-meta">${p.lieferwoche} · Ziel: ${Math.round(p.menge_ziel)} kg · Deadline: ${new Date(p.deadline).toLocaleDateString('de-DE')}</span>
+        <span class="pool-meta">${p.lieferwoche} · Ziel: ${Math.round(p.menge_ziel)} kg · ${p.erzeuger_count||0} Erzeuger</span>
         ${poolBar(p.menge_committed, p.menge_ziel)}
       </div>
     `).join('') : '<p style="color:var(--text3);font-size:13px">Keine offenen Pools</p>');
@@ -603,6 +605,18 @@ document.getElementById('btn-zert')?.addEventListener('click', async () => {
     btn.disabled = false;
     showAlert('alerts', 'error', err.message);
   }
+});
+
+// Commitment zurückziehen
+document.getElementById('commitments-list')?.addEventListener('click', async e => {
+  const btn = e.target.closest('[data-action="withdraw"]');
+  if (!btn) return;
+  if (!confirm('Commitment zurückziehen? Du kannst danach wieder zusagen solange der Pool offen ist.')) return;
+  try {
+    await api.withdrawCommit(btn.dataset.poolId);
+    toast('Commitment zurückgezogen');
+    loadPools();
+  } catch (err) { showAlert('alerts','error',err.message); }
 });
 
 // ── INIT ──────────────────────────────────────────────────────

@@ -144,6 +144,17 @@ function showView(id) {
 
 // ── Formatierung ───────────────────────────────────────────────
 function fmt(n, decimals = 2) { return parseFloat(n||0).toFixed(decimals).replace('.',','); }
+
+function deadlineCountdown(deadline) {
+  if (!deadline) return '';
+  const diff = new Date(deadline) - new Date();
+  if (diff <= 0) return '<span class="badge badge-red">Abgelaufen</span>';
+  const days  = Math.floor(diff / 86400000);
+  const hours = Math.floor((diff % 86400000) / 3600000);
+  if (days > 7)  return `<span class="pool-meta">${new Date(deadline).toLocaleDateString('de-DE')}</span>`;
+  if (days > 0)  return `<span class="badge badge-amber">⏱ ${days}d ${hours}h</span>`;
+  return `<span class="badge badge-red">⏱ Noch ${hours}h!</span>`;
+}
 function poolPct(committed, ziel) { return Math.min(100, Math.round((committed/ziel)*100)); }
 function statusBadge(status) {
   const map = {

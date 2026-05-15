@@ -176,6 +176,7 @@
           <div style="display:flex;gap:.5rem">
             <button class="btn btn-sm" id="btn-reload-lager">↻</button>
             <button class="btn btn-primary btn-sm" id="btn-show-eingang-form">+ Eingang</button>
+            <button class="btn btn-sm" id="btn-show-korrektur-form">⚖ Korrektur</button>
           </div>
         </div>
         <div id="lager-alerts" style="margin-bottom:1rem"></div>
@@ -199,6 +200,21 @@
           <button class="btn" id="btn-eingang-cancel">Abbrechen</button>
         </div>
       </div>
+      <div class="card" id="korrektur-form-card" style="display:none">
+        <div class="card-title">Lagerkorrektur buchen</div>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:.75rem">Korrekturen gleichen Bestandsfehler aus (z.B. nach Inventur).</p>
+        <div id="korrektur-result"></div>
+        <div class="grid2">
+          <div class="form-group"><label class="form-label">Produkt</label><input class="form-control" id="kor-produkt" placeholder="z.B. Karotten Bio"></div>
+          <div class="form-group"><label class="form-label">Korrekturmenge (kg, + oder -)</label><input class="form-control" type="number" id="kor-menge" step="0.1" placeholder="z.B. -5.5"></div>
+        </div>
+        <div class="form-group"><label class="form-label">Grund</label><input class="form-control" id="kor-notiz" placeholder="z.B. Inventur 15.01.2025 – Schwund festgestellt"></div>
+        <div style="display:flex;gap:.5rem">
+          <button class="btn btn-primary" id="btn-korrektur-submit">Korrektur buchen</button>
+          <button class="btn" id="btn-korrektur-cancel">Abbrechen</button>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-title">Bedarfsabgleich</div>
         <div id="bedarf-abgleich"><div class="spinner"></div></div>
@@ -231,6 +247,7 @@
             </select>
             <button class="btn btn-primary btn-sm" id="btn-bulk-veranlassen">Alle ausstehenden veranlassen</button>
             <button class="btn btn-sm" id="btn-bulk-ausgezahlt">Alle veranlassten → ausgezahlt</button>
+            <button class="btn btn-sm" id="btn-sepa-export">📄 SEPA-XML exportieren</button>
           </div>
         </div>
         <div id="az-admin-list"><div class="spinner"></div></div>
@@ -324,6 +341,17 @@
     <div id="view-fahrer-mgmt" class="view" style="display:none">
       <div class="grid2">
         <div class="card">
+        <div class="card-title">Push-Benachrichtigung testen</div>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:.75rem">Sendet eine Test-Push an einen Fahrer.</p>
+        <div class="grid2" style="margin-bottom:.75rem">
+          <div class="form-group"><label class="form-label">Fahrer</label><select class="form-control" id="push-test-fahrer"><option value="">— Fahrer wählen —</option></select></div>
+          <div class="form-group"><label class="form-label">Nachricht</label><input class="form-control" id="push-test-msg" value="Test von LieferPool Admin"></div>
+        </div>
+        <div id="push-test-result"></div>
+        <button class="btn btn-primary btn-sm" id="btn-push-test">🔔 Push senden</button>
+      </div>
+
+      <div class="card">
           <div class="card-title">Neuen Fahrer anlegen</div>
           <div id="fahrer-create-result"></div>
           <div class="form-group"><label class="form-label">Name</label><input class="form-control" id="fc-name" placeholder="Max Mustermann"></div>
@@ -1400,6 +1428,7 @@ async function loadPoolsAlle(page = 1) {
             <td>${statusBadge(p.status)}</td>
             <td><div style="display:flex;gap:.35rem">
               <button class="btn btn-sm" data-action="pool-detail" data-id="${p.id}">Details</button>
+              ${p.status==='offen'?`<button class="btn btn-sm" data-action="pool-deadline" data-id="${p.id}" data-deadline="${p.deadline?.split('T')[0]||''}">⏱ Deadline</button>`:''}
               ${p.status==='offen'?`<button class="btn btn-sm" data-action="pool-close" data-id="${p.id}">Schließen</button>`:''}
               ${['offen','geschlossen'].includes(p.status)?`<button class="btn btn-sm btn-danger" data-action="pool-abort" data-id="${p.id}">Abbrechen</button>`:''}
             </div></td>
@@ -1422,6 +1451,19 @@ async function loadPoolsAlle(page = 1) {
       const btn = e.target.closest('[data-action]');
       if (!btn) return;
       if (btn.dataset.action === 'pool-detail') { showPoolDetail(btn.dataset.id); return; }
+      if (btn.dataset.action === 'pool-deadline') {
+        const neu = prompt('Neue Deadline (YYYY-MM-DD):', btn.dataset.deadline);
+        if (!neu) return;
+        try {
+          await fetch(`/api/pools/${btn.dataset.id}/deadline`, {
+            method: 'PATCH',
+            headers: { 'Content-Type':'application/json','Authorization':'Bearer '+Auth.getToken() },
+            body: JSON.stringify({ deadline: neu }),
+          }).then(r => r.json());
+          toast('Deadline geändert');
+          loadPoolsAlle(poolsAllePage);
+        } catch (err) { toast(err.message,'error'); }
+      }
       if (btn.dataset.action === 'pool-close') {
         if (!confirm('Pool schließen?')) return;
         try { await api.updatePoolStatus(btn.dataset.id,'geschlossen'); toast('Pool geschlossen'); loadPoolsAlle(poolsAllePage); }
@@ -1444,6 +1486,97 @@ async function loadPoolsAlle(page = 1) {
 document.getElementById('pools-alle-status')?.addEventListener('change', () => loadPoolsAlle(1));
 document.getElementById('pools-alle-search')?.addEventListener('input',  () => loadPoolsAlle(1));
 document.getElementById('btn-reload-pools-alle')?.addEventListener('click', () => loadPoolsAlle(1));
+
+
+// ── LAGER KORREKTUR ───────────────────────────────────────────
+document.getElementById('btn-show-korrektur-form')?.addEventListener('click', () => {
+  const c = document.getElementById('korrektur-form-card');
+  if (c) { c.style.display = 'block'; c.scrollIntoView({behavior:'smooth'}); }
+});
+document.getElementById('btn-korrektur-cancel')?.addEventListener('click', () => {
+  const c = document.getElementById('korrektur-form-card'); if (c) c.style.display = 'none';
+});
+document.getElementById('btn-korrektur-submit')?.addEventListener('click', async () => {
+  const produkt = document.getElementById('kor-produkt').value.trim();
+  const menge   = parseFloat(document.getElementById('kor-menge').value);
+  const notiz   = document.getElementById('kor-notiz').value.trim();
+  const btn     = document.getElementById('btn-korrektur-submit');
+  if (!produkt || isNaN(menge)) return showAlert('alerts','error','Produkt und Menge erforderlich');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+  try {
+    await api.lagerKorrektur({ produkt, menge, notiz: notiz || 'Manuelle Korrektur' });
+    setHTML('korrektur-result', `<div class="alert alert-success">✓ Korrektur gebucht: ${menge > 0 ? '+' : ''}${menge} kg ${produkt}</div>`);
+    document.getElementById('kor-produkt').value = '';
+    document.getElementById('kor-menge').value   = '';
+    document.getElementById('kor-notiz').value   = '';
+    loadLager();
+  } catch (err) { showAlert('alerts','error',err.message); }
+  btn.textContent = 'Korrektur buchen'; btn.disabled = false;
+});
+
+// ── SEPA EXPORT ───────────────────────────────────────────────
+document.getElementById('btn-sepa-export')?.addEventListener('click', async () => {
+  const btn = document.getElementById('btn-sepa-export');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+  try {
+    // Vorschau laden
+    const preview = await fetch('/api/sepa/preview', {
+      headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
+    }).then(r => r.json());
+
+    if (preview.exportierbar === 0) {
+      toast('Keine Auszahlungen mit IBAN vorhanden', 'error');
+      btn.textContent = '📄 SEPA-XML exportieren'; btn.disabled = false;
+      return;
+    }
+
+    const msg = `${preview.exportierbar} Zahlungen · ${preview.total_euros} €` +
+      (preview.ohne_iban > 0 ? `
+⚠ ${preview.ohne_iban} ohne IBAN (werden übersprungen): ${preview.ohne_iban_liste.join(', ')}` : '') +
+      '
+
+Jetzt SEPA-XML herunterladen und Auszahlungen als "veranlasst" markieren?';
+
+    if (!confirm(msg)) { btn.textContent = '📄 SEPA-XML exportieren'; btn.disabled = false; return; }
+
+    window.open('/api/sepa/export', '_blank');
+    setTimeout(() => { loadAuszahlungen(); }, 1500);
+  } catch (err) { showAlert('alerts','error',err.message); }
+  btn.textContent = '📄 SEPA-XML exportieren'; btn.disabled = false;
+});
+
+// ── PUSH TEST ─────────────────────────────────────────────────
+document.getElementById('btn-push-test')?.addEventListener('click', async () => {
+  const fahrerId = document.getElementById('push-test-fahrer')?.value;
+  const msg      = document.getElementById('push-test-msg')?.value.trim();
+  const btn      = document.getElementById('btn-push-test');
+  if (!fahrerId) return setHTML('push-test-result','<div class="alert alert-error">Fahrer auswählen</div>');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/api/push/test', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json','Authorization':'Bearer '+Auth.getToken() },
+      body: JSON.stringify({ fahrer_id: fahrerId, message: msg }),
+    }).then(r => r.json());
+    setHTML('push-test-result', res.sent > 0
+      ? `<div class="alert alert-success">✓ Push gesendet (${res.sent} Subscription${res.sent>1?'s':''})</div>`
+      : `<div class="alert alert-info">Keine aktiven Push-Subscriptions für diesen Fahrer</div>`);
+  } catch (err) { setHTML('push-test-result',`<div class="alert alert-error">${err.message}</div>`); }
+  btn.disabled = false;
+});
+
+// Push-Test Fahrer-Dropdown befüllen wenn Tab geöffnet
+const origLoadFahrer = typeof loadFahrerMgmt === 'function' ? loadFahrerMgmt : null;
+async function loadFahrerMgmt() {
+  if (origLoadFahrer) await origLoadFahrer();
+  // Push-Test Dropdown befüllen
+  try {
+    const { fahrer } = await api.getFahrerList();
+    const sel = document.getElementById('push-test-fahrer');
+    if (sel) sel.innerHTML = '<option value="">— Fahrer wählen —</option>' +
+      fahrer.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
+  } catch {}
+}
 
 // ── INIT ──────────────────────────────────────────────────────
 loadOverview();

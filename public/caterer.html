@@ -103,11 +103,20 @@
       <div class="card" style="max-width:560px">
         <div class="card-title">QR-Code scannen / eingeben</div>
         <div id="scan-result"></div>
-        <div class="scan-box" id="scan-box">
-          <div class="scan-icon">📷</div>
-          <div style="font-size:14px;font-weight:500;color:var(--text2);margin-bottom:.5rem">QR-Code hier eingeben</div>
-          <input class="form-control" id="qr-input" placeholder="LP-XXXXXXXX" style="max-width:220px;margin:0 auto;text-align:center;font-family:'DM Mono',monospace;text-transform:uppercase">
-          <button class="btn btn-primary" id="btn-scan" style="margin-top:.75rem">Lieferschein laden</button>
+        <div id="scan-box">
+          <div style="display:flex;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap">
+            <button class="btn btn-primary" id="btn-camera-scan">📷 Kamera scannen</button>
+            <button class="btn btn-sm" id="btn-manual-input">Manuell eingeben</button>
+          </div>
+          <div id="camera-container" style="display:none;margin-bottom:1rem">
+            <video id="qr-video" style="width:100%;max-width:400px;border-radius:var(--radius-lg);background:#000" autoplay muted playsinline></video>
+            <div style="font-size:12px;color:var(--text3);margin-top:.5rem;text-align:center">Kamera auf QR-Code richten</div>
+            <button class="btn btn-sm" id="btn-stop-camera" style="margin-top:.5rem">✕ Kamera stoppen</button>
+          </div>
+          <div id="manual-container" style="display:none">
+            <input class="form-control" id="qr-input" placeholder="LP-XXXXXXXX" style="max-width:220px;font-family:'DM Mono',monospace;text-transform:uppercase;margin-bottom:.5rem">
+            <button class="btn btn-primary" id="btn-scan">Lieferschein laden</button>
+          </div>
         </div>
       </div>
       <div class="card" id="wareneingang-form-card" style="display:none">
@@ -527,6 +536,61 @@ document.getElementById('btn-wareneingang')?.addEventListener('click', async () 
 });
 
 // ── BEDARFSPLANUNG ────────────────────────────────────────────
+// ── QR KAMERA SCAN ────────────────────────────────────────────
+let cameraStream = null;
+let barcodeDetector = null;
+
+document.getElementById('btn-camera-scan')?.addEventListener('click', async () => {
+  const container = document.getElementById('camera-container');
+  const video     = document.getElementById('qr-video');
+  if (!container || !video) return;
+
+  // BarcodeDetector API prüfen
+  if (!('BarcodeDetector' in window)) {
+    showAlert('alerts','info','Kamera-Scan nicht unterstützt. Bitte manuell eingeben.');
+    document.getElementById('manual-container').style.display = 'block';
+    return;
+  }
+
+  try {
+    barcodeDetector = new BarcodeDetector({ formats: ['qr_code'] });
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    video.srcObject = cameraStream;
+    container.style.display = 'block';
+
+    // Scan-Loop
+    const scan = async () => {
+      if (!cameraStream) return;
+      try {
+        const barcodes = await barcodeDetector.detect(video);
+        if (barcodes.length > 0) {
+          const code = barcodes[0].rawValue.toUpperCase();
+          stopCamera();
+          document.getElementById('qr-input').value = code;
+          await scanQR();
+        } else {
+          requestAnimationFrame(scan);
+        }
+      } catch { requestAnimationFrame(scan); }
+    };
+    video.onloadedmetadata = () => requestAnimationFrame(scan);
+
+  } catch (err) {
+    showAlert('alerts','error','Kamerazugriff verweigert: ' + err.message);
+    document.getElementById('manual-container').style.display = 'block';
+  }
+});
+
+document.getElementById('btn-stop-camera')?.addEventListener('click', stopCamera);
+document.getElementById('btn-manual-input')?.addEventListener('click', () => {
+  document.getElementById('manual-container').style.display = 'block';
+});
+
+function stopCamera() {
+  if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+  const c = document.getElementById('camera-container'); if (c) c.style.display = 'none';
+}
+
 async function loadBedarf() {
   try {
     const { prognosen } = await api.getBedarfPrognosen();
