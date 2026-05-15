@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>404 – Seite nicht gefunden | LieferPool</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    .not-found {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      background: var(--bg);
+    }
+    .not-found-box {
+      text-align: center;
+      max-width: 420px;
+    }
+    .not-found-code {
+      font-family: 'DM Mono', monospace;
+      font-size: 5rem;
+      font-weight: 300;
+      color: var(--border2);
+      line-height: 1;
+      margin-bottom: 1rem;
+    }
+    .not-found-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: .5rem;
+    }
+    .not-found-sub {
+      font-size: 14px;
+      color: var(--text2);
+      margin-bottom: 2rem;
+      line-height: 1.6;
+    }
+    .not-found-btns {
+      display: flex;
+      gap: .75rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .logo-small {
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text3);
+      margin-bottom: 2rem;
+    }
+    .logo-small span { color: var(--green); }
+  </style>
+</head>
+<body>
+<div class="not-found">
+  <div class="not-found-box">
+    <div class="logo-small">Liefer<span>Pool</span></div>
+    <div class="not-found-code">404</div>
+    <div class="not-found-title">Seite nicht gefunden</div>
+    <div class="not-found-sub">
+      Die gesuchte Seite existiert nicht oder wurde verschoben.
+    </div>
+    <div class="not-found-btns">
+      <a class="btn btn-primary" href="/">Zur Startseite</a>
+      <a class="btn" href="/login">Anmelden</a>
+      <button class="btn" onclick="history.back()">Zurück</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

@@ -198,6 +198,28 @@
       </div>
     </div>
 
+    <!-- ALLE POOLS -->
+    <div id="view-pools-alle" class="view" style="display:none">
+      <div class="card">
+        <div class="section-hdr">
+          <span class="section-title">Alle Pools</span>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+            <input class="form-control" id="pools-alle-search" placeholder="Produkt suchen..." style="width:180px;padding:5px 10px">
+            <select class="form-control" id="pools-alle-status" style="width:130px;padding:5px 8px">
+              <option value="">Alle Status</option>
+              <option value="offen">Offen</option>
+              <option value="geschlossen">Geschlossen</option>
+              <option value="geliefert">Geliefert</option>
+              <option value="abgebrochen">Abgebrochen</option>
+            </select>
+            <button class="btn btn-sm" id="btn-reload-pools-alle">↻</button>
+          </div>
+        </div>
+        <div id="pools-alle-list"><div class="spinner"></div></div>
+        <div id="pools-alle-pagination" style="margin-top:1rem;display:flex;gap:.5rem;align-items:center;justify-content:space-between"></div>
+      </div>
+    </div>
+
     <!-- FAHRER MANAGEMENT -->
     <div id="view-fahrer-mgmt" class="view" style="display:none">
       <div class="grid2">
@@ -330,6 +352,7 @@ const NAV = [
   { id: 'auszahlungen',  label: 'Auszahlungen' },
   { id: 'reports',       label: 'Reports'      },
   { id: 'logistik',      label: 'Logistik'     },
+  { id: 'pools-alle',    label: 'Pools'        },
   { id: 'fahrer-mgmt',   label: 'Fahrer'       },
 ];
 
@@ -346,6 +369,7 @@ async function loadView(v) {
   if (v === 'auszahlungen')  loadAuszahlungen();
   if (v === 'reports')       loadReports();
   if (v === 'logistik')      loadLogistik();
+  if (v === 'pools-alle')    loadPoolsAlle();
   if (v === 'fahrer-mgmt')   loadFahrerMgmt();
 }
 
@@ -691,6 +715,93 @@ document.getElementById('btn-open-abrechnung')?.addEventListener('click', () => 
   api.openAbrechnung(id, { von, bis });
 });
 
+// ── ALLE POOLS ────────────────────────────────────────────────
+let poolsAllePage = 1;
+const POOLS_LIMIT = 15;
+
+async function loadPoolsAlle(page = 1) {
+  poolsAllePage = page;
+  const status  = document.getElementById('pools-alle-status')?.value;
+  const produkt = document.getElementById('pools-alle-search')?.value.trim();
+  try {
+    const { pools, pagination } = await api.getPools({
+      page, limit: POOLS_LIMIT,
+      ...(status  ? { status }  : {}),
+      ...(produkt ? { produkt } : {}),
+    });
+
+    setHTML('pools-alle-list', pools.length ? `
+      <table class="tbl">
+        <thead><tr><th>Produkt</th><th>KW</th><th>Preis</th><th>Ziel</th><th>Committet</th><th>Füllstand</th><th>Erzeuger</th><th>Status</th><th></th></tr></thead>
+        <tbody>${pools.map(p => {
+          const pct = poolPct(p.menge_committed, p.menge_ziel);
+          return `<tr>
+            <td style="font-weight:600">${p.produkt}</td>
+            <td class="pool-meta">${p.lieferwoche}</td>
+            <td class="pool-meta">${fmt(p.preis_pro_einheit)} €/kg</td>
+            <td style="font-family:'DM Mono',monospace">${Math.round(p.menge_ziel)} kg</td>
+            <td style="font-family:'DM Mono',monospace">${Math.round(p.menge_committed)} kg</td>
+            <td>
+              <div style="display:flex;align-items:center;gap:6px">
+                <div style="width:70px;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden">
+                  <div style="width:${pct}%;height:100%;background:${pct>=100?'var(--green)':pct>=50?'var(--amber)':'var(--red)'};border-radius:3px"></div>
+                </div>
+                <span class="pool-meta">${pct}%</span>
+              </div>
+            </td>
+            <td class="pool-meta">${p.erzeuger_count || 0}</td>
+            <td>${statusBadge(p.status)}</td>
+            <td>
+              <div style="display:flex;gap:.35rem">
+                <button class="btn btn-sm" data-action="pool-detail" data-id="${p.id}">Details</button>
+                ${p.status==='offen'?`<button class="btn btn-sm" data-action="pool-close" data-id="${p.id}">Schließen</button>`:''}
+                ${['offen','geschlossen'].includes(p.status)?`<button class="btn btn-sm btn-danger" data-action="pool-abort" data-id="${p.id}">Abbrechen</button>`:''}
+              </div>
+            </td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>
+    ` : '<p style="color:var(--text3);font-size:13px">Keine Pools gefunden</p>');
+
+    // Pagination
+    const { total, pages, page: cur } = pagination;
+    setHTML('pools-alle-pagination', `
+      <span class="pool-meta">${total} Pools gesamt</span>
+      <div style="display:flex;gap:.35rem">
+        <button class="btn btn-sm" ${cur<=1?'disabled':''} data-action="pool-page" data-page="${cur-1}">← Zurück</button>
+        <span class="pool-meta" style="padding:5px 8px">Seite ${cur} / ${pages}</span>
+        <button class="btn btn-sm" ${cur>=pages?'disabled':''} data-action="pool-page" data-page="${cur+1}">Weiter →</button>
+      </div>
+    `);
+
+    // Delegation
+    document.getElementById('pools-alle-list')?.addEventListener('click', async e => {
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      if (btn.dataset.action === 'pool-detail') { showPoolDetail(btn.dataset.id); return; }
+      if (btn.dataset.action === 'pool-close')  {
+        if (!confirm('Pool schließen?')) return;
+        await api.updatePoolStatus(btn.dataset.id, 'geschlossen').catch(err => toast(err.message,'error'));
+        loadPoolsAlle(poolsAllePage);
+      }
+      if (btn.dataset.action === 'pool-abort')  {
+        if (!confirm('Pool abbrechen?')) return;
+        await api.updatePoolStatus(btn.dataset.id, 'abgebrochen').catch(err => toast(err.message,'error'));
+        loadPoolsAlle(poolsAllePage);
+      }
+    });
+    document.getElementById('pools-alle-pagination')?.addEventListener('click', e => {
+      const btn = e.target.closest('[data-action="pool-page"]');
+      if (btn) loadPoolsAlle(parseInt(btn.dataset.page));
+    });
+
+  } catch (err) { showAlert('alerts', 'error', err.message); }
+}
+
+document.getElementById('pools-alle-status')?.addEventListener('change', () => loadPoolsAlle(1));
+document.getElementById('pools-alle-search')?.addEventListener('input',  () => loadPoolsAlle(1));
+document.getElementById('btn-reload-pools-alle')?.addEventListener('click', () => loadPoolsAlle(1));
+
 // ── FAHRER MANAGEMENT ─────────────────────────────────────────
 async function loadFahrerMgmt() {
   try {
@@ -767,9 +878,12 @@ async function openTourDetail(id, label) {
   loadTourStopps(id);
 }
 
+const fotoMap = {}; // stopp_id → base64
+
 async function loadTourStopps(id) {
   try {
     const { stopps } = await api.getTour(id);
+    stopps.forEach(s => { if (s.foto_base64) fotoMap[s.id] = s.foto_base64; });
     setHTML('tour-stopps-list', stopps.length ? `
       <table class="tbl"><thead><tr><th>#</th><th>Typ</th><th>Name</th><th>Adresse</th><th>Produkt</th><th>Status</th><th></th></tr></thead>
       <tbody>${stopps.map(s=>`<tr>
@@ -779,12 +893,22 @@ async function loadTourStopps(id) {
         <td class="pool-meta">${s.adresse||'—'}</td>
         <td class="pool-meta">${s.produkt?s.produkt+' · '+(s.menge_geplant_kg||'?')+' kg':'—'}</td>
         <td>${statusBadge(s.status)}</td>
-        <td><button class="btn btn-sm btn-danger" data-action="delstopp" data-tid="${id}" data-sid="${s.id}">✕</button></td>
+        <td><div style="display:flex;gap:.35rem"><button class="btn btn-sm btn-danger" data-action="delstopp" data-tid="${id}" data-sid="${s.id}">✕</button>${s.foto_base64?`<button class="btn btn-sm" data-action="showfoto" data-id="${s.id}">📷</button>`:''}</div></td>
       </tr>`).join('')}</tbody></table>
     ` : '<p style="color:var(--text3);font-size:13px">Noch keine Stopps</p>');
     document.getElementById('tour-stopps-list')?.addEventListener('click', e => {
-      const btn = e.target.closest('[data-action="delstopp"]');
-      if (btn) deleteStopp(btn.dataset.tid, btn.dataset.sid);
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      if (btn.dataset.action === 'delstopp') deleteStopp(btn.dataset.tid, btn.dataset.sid);
+      if (btn.dataset.action === 'showfoto') {
+        const src = fotoMap[btn.dataset.id];
+        if (!src) return toast('Kein Foto vorhanden','error');
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:600;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:1rem';
+        overlay.innerHTML = `<img src="${src}" style="max-width:90vw;max-height:90vh;border-radius:8px;object-fit:contain">`;
+        overlay.addEventListener('click', () => overlay.remove());
+        document.body.appendChild(overlay);
+      }
     });
   } catch (err) { showAlert('alerts','error',err.message); }
 }

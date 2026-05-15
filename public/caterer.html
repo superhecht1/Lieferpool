@@ -202,6 +202,74 @@
       </div>
     </div>
 
+    <!-- PROFIL -->
+    <div id="view-profil" class="view" style="display:none">
+      <div class="grid4" style="margin-bottom:1rem" id="cat-profil-stats"></div>
+      <div class="grid2">
+        <div>
+          <div class="card">
+            <div class="card-title">Unternehmen</div>
+            <div id="cat-profil-result"></div>
+            <div class="grid2">
+              <div class="form-group"><label class="form-label">Firmenname *</label><input class="form-control" id="cp-name" placeholder="Restaurant Beispiel GmbH"></div>
+              <div class="form-group"><label class="form-label">Region *</label>
+                <select class="form-control" id="cp-region">
+                  <option>NRW</option><option>Bayern</option><option>BW</option><option>Niedersachsen</option><option>Bundesweit</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group"><label class="form-label">Straße &amp; Hausnummer</label><input class="form-control" id="cp-adresse" placeholder="Musterstraße 12"></div>
+            <div class="grid2">
+              <div class="form-group"><label class="form-label">PLZ</label><input class="form-control" id="cp-plz" placeholder="50969" maxlength="10"></div>
+              <div class="form-group"><label class="form-label">Ort</label><input class="form-control" id="cp-ort" placeholder="Köln"></div>
+            </div>
+            <div class="grid2">
+              <div class="form-group"><label class="form-label">Telefon</label><input class="form-control" id="cp-telefon" type="tel" placeholder="+49 221 123456"></div>
+              <div class="form-group"><label class="form-label">Website</label><input class="form-control" id="cp-website" placeholder="https://restaurant.de"></div>
+            </div>
+            <div class="form-group"><label class="form-label">Beschreibung</label><textarea class="form-control" id="cp-beschreibung" rows="3" placeholder="Kurze Beschreibung Ihres Unternehmens..."></textarea></div>
+            <div class="grid2">
+              <div class="form-group"><label class="form-label">Küchen-Typ</label>
+                <select class="form-control" id="cp-ktype">
+                  <option value="restaurant">Restaurant</option><option value="kantine">Kantine / Betriebsgastronomie</option>
+                  <option value="catering">Catering-Unternehmen</option><option value="hotel">Hotel</option>
+                  <option value="schule">Schule / Kita</option><option value="krankenhaus">Krankenhaus / Pflege</option>
+                </select>
+              </div>
+              <div class="form-group"><label class="form-label">Kapazität (Essen/Tag)</label><input class="form-control" id="cp-kapazitaet" placeholder="z.B. 50-100"></div>
+            </div>
+            <div class="grid2">
+              <div class="form-group"><label class="form-label">Sitzplätze</label><input class="form-control" type="number" id="cp-plaetze" min="0" placeholder="z.B. 80"></div>
+              <div class="form-group"><label class="form-label">Gründungsjahr</label><input class="form-control" type="number" id="cp-gruendung" min="1800" max="2099" placeholder="z.B. 2010"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Bankdaten &amp; Steuer</div>
+            <div class="form-group"><label class="form-label">IBAN</label><input class="form-control" id="cp-iban" placeholder="DE89 3704 0044 0532 0130 00"></div>
+            <div class="grid2">
+              <div class="form-group"><label class="form-label">Bank</label><input class="form-control" id="cp-bank" placeholder="z.B. Sparkasse Köln"></div>
+              <div class="form-group"><label class="form-label">USt-ID</label><input class="form-control" id="cp-ustid" placeholder="DE123456789"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Passwort ändern</div>
+            <div class="form-group"><label class="form-label">Aktuelles Passwort</label><input class="form-control" type="password" id="cpw-current"></div>
+            <div class="grid2">
+              <div class="form-group"><label class="form-label">Neues Passwort</label><input class="form-control" type="password" id="cpw-new"></div>
+              <div class="form-group"><label class="form-label">Wiederholen</label><input class="form-control" type="password" id="cpw-new2"></div>
+            </div>
+            <div id="cpw-result"></div>
+            <button class="btn btn-sm" id="btn-cat-change-pw">Passwort ändern</button>
+          </div>
+          <button class="btn btn-primary" id="btn-save-cat-profil" style="width:100%">Profil speichern</button>
+        </div>
+        <div class="card">
+          <div class="card-title">Account</div>
+          <div id="cat-account-info" style="font-size:13px;color:var(--text2);line-height:1.8"></div>
+        </div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -217,6 +285,7 @@ const NAV = [
   { id: 'wareneingang', label: 'Wareneingang'    },
   { id: 'bedarf',       label: 'Bedarfsplanung'  },
   { id: 'vertraege',    label: 'Verträge'        },
+  { id: 'profil',       label: 'Profil'          },
 ];
 
 renderHeader('overview', NAV, (v) => { showView(v); loadView(v); });
@@ -229,6 +298,7 @@ async function loadView(v) {
   if (v === 'wareneingang') resetScan();
   if (v === 'bedarf')       loadBedarf();
   if (v === 'vertraege')    loadVertraege();
+  if (v === 'profil')       loadCatProfil();
 }
 
 // ── ÜBERSICHT ─────────────────────────────────────────────────

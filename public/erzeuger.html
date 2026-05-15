@@ -320,19 +320,22 @@ async function loadPools() {
       </div>
     `).join('') : '<p style="color:var(--text3);font-size:13px">Keine offenen Pools</p>');
 
-    setHTML('commitments-list', me.commitments.length ? `
-      <table class="tbl">
-        <thead><tr><th>Produkt</th><th>KW</th><th>Menge</th><th>Status</th></tr></thead>
-        <tbody>${me.commitments.map(c => `
-          <tr>
-            <td style="font-weight:500">${c.produkt}</td>
-            <td class="pool-meta">${c.lieferwoche}</td>
-            <td class="pool-meta">${fmt(c.menge, 0)} kg</td>
-            <td>${statusBadge(c.status)}</td>
-          </tr>`).join('')}
-        </tbody>
-      </table>
-    ` : '<p style="color:var(--text3);font-size:13px">Noch keine Zusagen</p>');
+    setHTML('commitments-list', me.commitments.length ? me.commitments.map(c => `
+      <div class="pool-item" data-pool-id="${c.pool_id}" title="Klicken für Pool-Details">
+        <div class="pool-row">
+          <span class="pool-name">${c.produkt}</span>
+          ${statusBadge(c.status)}
+        </div>
+        <div class="pool-row" style="margin-top:3px">
+          <span class="pool-meta">${c.lieferwoche}</span>
+          <span class="pool-meta" style="font-family:'DM Mono',monospace;color:var(--green)">${fmt(c.menge, 0)} kg zugesagt</span>
+        </div>
+        <div style="font-size:12px;color:var(--text3);margin-top:4px">
+          Erw. Erlös: <span style="color:var(--green);font-family:'DM Mono',monospace">${fmt(c.menge * parseFloat(c.preis_pro_einheit||0) * 0.99)} €</span>
+          &nbsp;·&nbsp; Details klicken →
+        </div>
+      </div>
+    `).join('') : '<p style="color:var(--text3);font-size:13px">Noch keine Zusagen</p>');
 
   } catch (err) { showAlert('alerts', 'error', err.message); }
 }
