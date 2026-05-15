@@ -10,14 +10,23 @@ const router = express.Router();
 router.get('/', auth, async (req, res) => {
   try {
     const { status, region, produkt, page = 1, limit = 50 } = req.query;
-    const params  = [parseInt(limit), (parseInt(page) - 1) * parseInt(limit)];
-    const filters = [];
 
-    if (status)  { params.push(status);        filters.push(`p.status = $${params.length}`); }
-    if (region)  { params.push(region);         filters.push(`p.region = $${params.length}`); }
-    if (produkt) { params.push(`%${produkt}%`); filters.push(`p.produkt ILIKE $${params.length}`); }
-
+    // Filter-Params (für WHERE)
+    const filterParams = [];
+    const filters      = [];
+    if (status)  { filterParams.push(status);        filters.push(`p.status = $${filterParams.length}`); }
+    if (region)  { filterParams.push(region);         filters.push(`p.region = $${filterParams.length}`); }
+    if (produkt) { filterParams.push(`%${produkt}%`); filters.push(`p.produkt ILIKE $${filterParams.length}`); }
     const where = filters.length ? 'WHERE ' + filters.join(' AND ') : '';
+
+    // Haupt-Query-Params: Filter + Pagination
+    const queryParams = [
+      ...filterParams,
+      parseInt(limit),
+      (parseInt(page) - 1) * parseInt(limit),
+    ];
+    const limitIdx  = queryParams.length - 1; // $N für OFFSET
+    const offsetIdx = queryParams.length;      // wird nicht verwendet direkt
 
     const [{ rows }, { rows: [count] }] = await Promise.all([
       db.query(`
@@ -30,9 +39,9 @@ router.get('/', auth, async (req, res) => {
         ${where}
         GROUP BY p.id, c.firma_name
         ORDER BY p.created_at DESC
-        LIMIT $1 OFFSET $2
-      `, params),
-      db.query(`SELECT COUNT(*) FROM pools p ${where}`, params.slice(2)),
+        LIMIT $${filterParams.length + 1} OFFSET $${filterParams.length + 2}
+      `, queryParams),
+      db.query(`SELECT COUNT(*) FROM pools p ${where}`, filterParams),
     ]);
 
     res.json({
