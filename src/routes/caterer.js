@@ -75,9 +75,10 @@ router.get('/', auth, role('admin'), async (req, res) => {
       GROUP BY c.id, u.email
       ORDER BY c.created_at DESC
     `);
-    res.json({ caterer: rows });
+    res.json({ caterer: rows || [] });
   } catch (err) {
-    res.status(500).json({ error: 'Fehler' });
+    console.error('[caterer GET /]', err.message);
+    res.json({ caterer: [] }); // Nie 500 zurückgeben, immer leere Liste
   }
 });
 
