@@ -2,6 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230d1f15'/><text y='24' x='4' font-size='22' font-family='monospace' fill='%237ab648'>L</text></svg>">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LieferPool – Admin</title>
   <link rel="stylesheet" href="style.css">
@@ -93,6 +94,25 @@
 
     </div>
 
+    <!-- CATERER MANAGEMENT -->
+    <div id="view-caterer-mgmt" class="view" style="display:none">
+      <div class="grid4" style="margin-bottom:1rem" id="cat-mgmt-metrics"></div>
+      <div class="card">
+        <div class="section-hdr">
+          <span class="section-title">Registrierte Caterer</span>
+          <input class="form-control" id="caterer-mgmt-search" placeholder="Suchen..." style="width:200px;padding:5px 10px">
+        </div>
+        <div id="caterer-mgmt-list"><div class="spinner"></div></div>
+      </div>
+      <div class="card" id="caterer-detail-card" style="display:none">
+        <div class="section-hdr">
+          <span class="section-title" id="caterer-detail-title">Caterer-Detail</span>
+          <button class="btn btn-sm" id="btn-caterer-detail-close">✕</button>
+        </div>
+        <div id="caterer-detail-body"></div>
+      </div>
+    </div>
+
     <!-- ZERTIFIKATE -->
     <div id="view-zertifikate" class="view" style="display:none">
       <div class="card">
@@ -106,12 +126,26 @@
 
     <!-- ERZEUGER -->
     <div id="view-erzeuger" class="view" style="display:none">
+      <div class="grid4" style="margin-bottom:1rem" id="erz-metrics"></div>
       <div class="card">
         <div class="section-hdr">
           <span class="section-title">Registrierte Erzeuger</span>
-          <input class="form-control" id="erzeuger-search" placeholder="Suchen..." style="width:200px;padding:5px 10px">
+          <div style="display:flex;gap:.5rem">
+            <input class="form-control" id="erzeuger-search" placeholder="Suchen..." style="width:200px;padding:5px 10px">
+            <select class="form-control" id="erzeuger-filter-region" style="width:120px;padding:5px 8px">
+              <option value="">Alle Regionen</option>
+              <option>NRW</option><option>Bayern</option><option>BW</option><option>Niedersachsen</option>
+            </select>
+          </div>
         </div>
         <div id="erzeuger-admin-list"><div class="spinner"></div></div>
+      </div>
+      <div class="card" id="erzeuger-detail-card" style="display:none">
+        <div class="section-hdr">
+          <span class="section-title" id="erzeuger-detail-title">Erzeuger-Detail</span>
+          <button class="btn btn-sm" id="btn-erzeuger-detail-close">✕</button>
+        </div>
+        <div id="erzeuger-detail-body"></div>
       </div>
     </div>
 
@@ -413,6 +447,7 @@ const NAV = [
   { id: 'overview',      label: 'Übersicht'    },
   { id: 'zertifikate',   label: 'Zertifikate'  },
   { id: 'erzeuger',      label: 'Erzeuger'     },
+  { id: 'caterer-mgmt',  label: 'Caterer'      },
   { id: 'lieferung-neu', label: 'Lieferschein' },
   { id: 'lager',         label: 'Lager'        },
   { id: 'auszahlungen',  label: 'Auszahlungen' },
@@ -430,6 +465,7 @@ async function loadView(v) {
   if (v === 'overview')      loadOverview();
   if (v === 'zertifikate')   loadZertifikate();
   if (v === 'erzeuger')      loadErzeuger();
+  if (v === 'caterer-mgmt')  loadCatererMgmt();
   if (v === 'lieferung-neu') loadLieferungNeu();
   if (v === 'lager')         loadLager();
   if (v === 'auszahlungen')  loadAuszahlungen();
@@ -546,365 +582,215 @@ async function loadErzeuger() {
   try {
     const { erzeuger } = await api.getAllErzeuger();
     allErzeuger = erzeuger;
+    const verifiziert = erzeuger.filter(e => e.zert_count > 0).length;
+    const mitCommit   = erzeuger.filter(e => e.commitment_count > 0).length;
+    const regionen    = [...new Set(erzeuger.map(e => e.region))].length;
+    setHTML('erz-metrics', `
+      <div class="metric"><div class="metric-label">Gesamt</div><div class="metric-val">${erzeuger.length}</div></div>
+      <div class="metric"><div class="metric-label">Verifiziert</div><div class="metric-val green">${verifiziert}</div></div>
+      <div class="metric"><div class="metric-label">Mit Zusagen</div><div class="metric-val">${mitCommit}</div></div>
+      <div class="metric"><div class="metric-label">Regionen</div><div class="metric-val">${regionen}</div></div>
+    `);
     renderErzeuger(erzeuger);
   } catch (err) { showAlert('alerts', 'error', err.message); }
 }
+
 function renderErzeuger(list) {
   setHTML('erzeuger-admin-list', list.length ? `
     <table class="tbl">
-      <thead><tr><th>Betrieb</th><th>E-Mail</th><th>Region</th><th>Zertifikate</th><th>Commitments</th><th></th></tr></thead>
+      <thead><tr><th>Betrieb</th><th>E-Mail</th><th>Region</th><th>Ort</th><th>Sortiment</th><th>Kapazität</th><th>Zertifikate</th><th>Zusagen</th><th>Aktionen</th></tr></thead>
       <tbody>${list.map(e => `
         <tr>
-          <td style="font-weight:500">${e.betrieb_name}</td>
+          <td><div style="font-weight:500">${e.betrieb_name}</div>${e.gruendungsjahr?`<div class="pool-meta">seit ${e.gruendungsjahr}</div>`:''}</td>
           <td class="pool-meta">${e.email}</td>
-          <td class="pool-meta">${e.region}</td>
-          <td><span class="badge ${e.zert_count > 0 ? 'badge-green' : 'badge-amber'}">${e.zert_count} verifiziert</span></td>
+          <td><span class="badge badge-gray">${e.region||'—'}</span></td>
+          <td class="pool-meta" style="font-size:11px">${e.ort?e.plz+' '+e.ort:'—'}</td>
+          <td class="pool-meta" style="font-size:11px;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e.sortiment||''}">${e.sortiment||'—'}</td>
+          <td class="pool-meta">${e.max_kapazitaet?e.max_kapazitaet+' kg/Wo':'—'}</td>
+          <td><span class="badge ${e.zert_count>0?'badge-green':'badge-amber'}">${e.zert_count} verifiziert</span></td>
           <td class="pool-meta">${e.commitment_count}</td>
-          <td><button class="btn btn-sm" data-action="abrechnung" data-id="${e.id}">Abrechnung</button></td>
+          <td><div style="display:flex;gap:.35rem">
+            <button class="btn btn-sm" data-action="erz-detail" data-id="${e.id}" data-name="${e.betrieb_name}">Detail</button>
+            <button class="btn btn-sm" data-action="abrechnung" data-id="${e.id}">Abr.</button>
+          </div></td>
         </tr>`).join('')}
       </tbody>
     </table>
-  ` : '<p style="color:var(--text3);font-size:13px">Keine Erzeuger</p>');
-  document.getElementById('erzeuger-admin-list')?.addEventListener('click', e => {
-    const btn = e.target.closest('[data-action="abrechnung"]');
+  ` : '<p style="color:var(--text3);font-size:13px">Keine Erzeuger gefunden</p>');
+
+  document.getElementById('erzeuger-admin-list')?.addEventListener('click', async e => {
+    const btn = e.target.closest('[data-action]');
     if (!btn) return;
-    api.openAbrechnung(btn.dataset.id);
+    if (btn.dataset.action === 'abrechnung') { api.openAbrechnung(btn.dataset.id); return; }
+    if (btn.dataset.action === 'erz-detail') {
+      const card = document.getElementById('erzeuger-detail-card');
+      const title = document.getElementById('erzeuger-detail-title');
+      if (title) title.textContent = btn.dataset.name;
+      if (card) { card.style.display='block'; card.scrollIntoView({behavior:'smooth'}); }
+      loadErzeugerDetail(btn.dataset.id);
+    }
   });
 }
-document.getElementById('erzeuger-search')?.addEventListener('input', e => {
-  const q = e.target.value.toLowerCase();
-  renderErzeuger(allErzeuger.filter(x => x.betrieb_name.toLowerCase().includes(q) || x.email.toLowerCase().includes(q)));
-});
 
-// ── LIEFERSCHEIN ──────────────────────────────────────────────
-async function loadLieferungNeu() {
+async function loadErzeugerDetail(erzId) {
+  setHTML('erzeuger-detail-body', '<div class="spinner"></div>');
   try {
-    const { pools } = await api.getPools({ status: 'geschlossen' });
-    const sel = document.getElementById('lief-pool-sel');
-    if (sel) sel.innerHTML = pools.length
-      ? pools.map(p => `<option value="${p.id}">${p.produkt} – ${p.lieferwoche} (${Math.round(p.menge_committed)} kg)</option>`).join('')
-      : '<option>Keine geschlossenen Pools</option>';
-  } catch (err) { showAlert('alerts', 'error', err.message); }
-}
-document.getElementById('btn-create-lief')?.addEventListener('click', async () => {
-  const pool_id = document.getElementById('lief-pool-sel').value;
-  const lieferdatum = document.getElementById('lief-datum').value;
-  const btn = document.getElementById('btn-create-lief');
-  if (!pool_id) return showAlert('alerts', 'error', 'Pool auswählen');
-  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
-  try {
-    const { lieferung } = await api.createLieferung(pool_id, lieferdatum || null);
-    setHTML('lief-create-result', `<div class="success-box"><div class="success-icon">✓</div><div class="success-title">Lieferschein erstellt</div><div class="success-sub">Nr: ${lieferung.lieferschein_nr}</div><div style="margin-top:.75rem"><span class="qr-code">${lieferung.qr_code}</span></div></div>`);
-    const f = document.getElementById('lief-create-form'); if (f) f.style.display = 'none';
-  } catch (err) { btn.textContent = 'Lieferschein erstellen'; btn.disabled = false; showAlert('alerts', 'error', err.message); }
-});
-
-// ── LAGER ─────────────────────────────────────────────────────
-async function loadLager() { loadLagerBestand(); loadBedarfAbgleich(); loadBewegungen(); }
-async function loadLagerBestand() {
-  try {
-    const [{ lager },{ alerts }] = await Promise.all([api.getLager(), api.getLagerAlerts()]);
-    setHTML('lager-alerts', alerts.length ? `<div class="alert alert-info">⚠ ${alerts.length} unter Mindestbestand: ${alerts.map(a=>`<strong>${a.produkt}</strong>`).join(', ')}</div>` : '');
-    setHTML('lager-list', lager.length ? `
-      <table class="tbl">
-        <thead><tr><th>Produkt</th><th>Bestand</th><th>Mindestbestand</th><th>Eingang 7d</th><th>Ausgang 7d</th><th>Status</th><th></th></tr></thead>
-        <tbody>${lager.map(l => `<tr>
-          <td style="font-weight:500">${l.produkt}</td>
-          <td style="font-family:'DM Mono',monospace">${fmt(l.bestand,1)} ${l.einheit}</td>
-          <td style="font-family:'DM Mono',monospace;color:var(--text2)">${fmt(l.mindestbestand,1)} ${l.einheit}</td>
-          <td style="color:var(--green);font-family:'DM Mono',monospace">+${fmt(l.eingang_7d,1)}</td>
-          <td style="color:var(--amber);font-family:'DM Mono',monospace">-${fmt(l.ausgang_7d,1)}</td>
-          <td>${l.unterbestand?'<span class="badge badge-red">Unterbestand</span>':'<span class="badge badge-green">OK</span>'}</td>
-          <td><button class="btn btn-sm" data-action="minbestand" data-id="${l.id}" data-produkt="${l.produkt}" data-min="${l.mindestbestand}">Min.</button></td>
-        </tr>`).join('')}</tbody>
-      </table>
-    ` : '<p style="color:var(--text3);font-size:13px">Noch keine Lagereinträge</p>');
-    document.getElementById('lager-list')?.addEventListener('click', e => {
-      const btn = e.target.closest('[data-action="minbestand"]');
-      if (btn) setMindestbestand(btn.dataset.id, btn.dataset.produkt, btn.dataset.min);
+    const res = await fetch(`/api/erzeuger/detail/${erzId}`, {
+      headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
     });
-  } catch (err) { showAlert('alerts', 'error', err.message); }
-}
-async function loadBedarfAbgleich() {
-  try {
-    const { aggregiert } = await api.getBedarfAggregiert();
-    setHTML('bedarf-abgleich', aggregiert.length ? `
-      <table class="tbl"><thead><tr><th>Produkt</th><th>Wochenbedarf</th><th>Bestand</th><th>Reichweite</th><th>Abnehmer</th></tr></thead>
-      <tbody>${aggregiert.map(r=>`<tr>
-        <td style="font-weight:500">${r.produkt}</td>
-        <td style="font-family:'DM Mono',monospace">${fmt(r.gesamt_pro_woche,1)} ${r.einheit}</td>
-        <td style="font-family:'DM Mono',monospace">${r.bestand_aktuell!=null?fmt(r.bestand_aktuell,1)+' '+r.einheit:'—'}</td>
-        <td>${r.deckung_tage!=null?`<span class="badge ${r.deckung_tage<3?'badge-red':r.deckung_tage<7?'badge-amber':'badge-green'}">${r.deckung_tage} Tage</span>`:'<span class="badge badge-gray">—</span>'}</td>
-        <td class="pool-meta">${r.caterer_anzahl}</td>
-      </tr>`).join('')}</tbody></table>
-    ` : '<p style="color:var(--text3);font-size:13px">Keine Bedarfsprognosen</p>');
-  } catch (err) { setHTML('bedarf-abgleich', '<p style="color:var(--text3);font-size:13px">Keine Daten</p>'); }
-}
-async function loadBewegungen() {
-  try {
-    const typ = document.getElementById('filter-bewegung-typ')?.value;
-    const { bewegungen } = await api.getLagerBewegungen({ typ, limit: 30 });
-    setHTML('bewegungen-list', bewegungen.length ? `
-      <table class="tbl"><thead><tr><th>Zeit</th><th>Produkt</th><th>Typ</th><th>Menge</th><th>Bestand</th><th>Notiz</th></tr></thead>
-      <tbody>${bewegungen.map(m=>`<tr>
-        <td class="pool-meta">${new Date(m.created_at).toLocaleString('de-DE',{dateStyle:'short',timeStyle:'short'})}</td>
-        <td style="font-weight:500">${m.produkt}</td>
-        <td>${m.typ==='eingang'?'<span class="badge badge-green">Eingang</span>':m.typ==='ausgang'?'<span class="badge badge-amber">Ausgang</span>':'<span class="badge badge-gray">Korrektur</span>'}</td>
-        <td style="font-family:'DM Mono',monospace;${m.typ==='eingang'?'color:var(--green)':m.typ==='ausgang'?'color:var(--amber)':''}">${m.typ==='eingang'?'+':m.typ==='ausgang'?'-':''}${fmt(Math.abs(m.menge),1)} ${m.einheit}</td>
-        <td class="pool-meta">${m.bestand_nach!=null?fmt(m.bestand_nach,1)+' '+m.einheit:'—'}</td>
-        <td class="pool-meta">${m.notiz||'—'}</td>
-      </tr>`).join('')}</tbody></table>
-    ` : '<p style="color:var(--text3);font-size:13px">Keine Bewegungen</p>');
-  } catch (err) { showAlert('alerts', 'error', err.message); }
-}
-async function setMindestbestand(id, produkt, aktuell) {
-  const neu = prompt(`Mindestbestand für "${produkt}" (aktuell: ${aktuell} kg):`, aktuell);
-  if (neu == null || isNaN(parseFloat(neu))) return;
-  try { await api.setMindestbestand(id, parseFloat(neu)); toast('Gesetzt'); loadLagerBestand(); }
-  catch (err) { showAlert('alerts', 'error', err.message); }
-}
-document.getElementById('btn-show-eingang-form')?.addEventListener('click', () => { const c=document.getElementById('eingang-form-card'); if(c){c.style.display='block';c.scrollIntoView({behavior:'smooth'});} });
-document.getElementById('btn-eingang-cancel')?.addEventListener('click', () => { const c=document.getElementById('eingang-form-card'); if(c) c.style.display='none'; });
-document.getElementById('btn-eingang-submit')?.addEventListener('click', async () => {
-  const produkt=document.getElementById('eg-produkt').value.trim();
-  const menge=parseFloat(document.getElementById('eg-menge').value);
-  const qualitaet=document.getElementById('eg-qualitaet').value;
-  const notiz=document.getElementById('eg-notiz').value.trim();
-  const btn=document.getElementById('btn-eingang-submit');
-  if(!produkt||!menge) return showAlert('alerts','error','Produkt und Menge erforderlich');
-  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>';
-  try {
-    const res=await api.lagerEingang({produkt,menge,qualitaet,notiz});
-    setHTML('eingang-result',`<div class="alert alert-success">✓ ${menge} kg ${produkt} eingebucht · Bestand: ${fmt(res.bestand_aktuell,1)} kg</div>`);
-    document.getElementById('eg-produkt').value='';document.getElementById('eg-menge').value='';document.getElementById('eg-notiz').value='';
-    btn.textContent='Buchen';btn.disabled=false;loadLagerBestand();loadBewegungen();
-  } catch(err){btn.textContent='Buchen';btn.disabled=false;showAlert('alerts','error',err.message);}
-});
-document.getElementById('filter-bewegung-typ')?.addEventListener('change', loadBewegungen);
-document.getElementById('btn-reload-lager')?.addEventListener('click', loadLager);
-
-// ── AUSZAHLUNGEN ──────────────────────────────────────────────
-async function loadAuszahlungen() {
-  try {
-    const status = document.getElementById('az-filter-status')?.value;
-    const { auszahlungen, summen } = await api.getAllAuszahlungen({ status, limit: 200 });
-
-    setHTML('az-summen', `
-      <div class="metric"><div class="metric-label">Ausstehend</div><div class="metric-val amber">${summen.ausstehend} €</div></div>
-      <div class="metric"><div class="metric-label">Veranlasst</div><div class="metric-val">${summen.veranlasst} €</div></div>
-      <div class="metric"><div class="metric-label">Ausgezahlt</div><div class="metric-val green">${summen.ausgezahlt} €</div></div>
-      <div class="metric"><div class="metric-label">Gesamt</div><div class="metric-val">${summen.gesamt} €</div></div>
-    `);
-
-    setHTML('az-admin-list', auszahlungen.length ? `
-      <table class="tbl">
-        <thead><tr><th>Datum</th><th>Betrieb</th><th>Produkt</th><th>KW</th><th>Brutto</th><th>Netto</th><th>Status</th><th>Aktion</th></tr></thead>
-        <tbody>${auszahlungen.map(a => `
-          <tr id="azrow-${a.id}">
-            <td class="pool-meta">${new Date(a.created_at).toLocaleDateString('de-DE')}</td>
-            <td style="font-weight:500">${a.betrieb_name}</td>
-            <td class="pool-meta">${a.produkt}</td>
-            <td class="pool-meta">${a.lieferwoche}</td>
-            <td style="font-family:'DM Mono',monospace">${fmt(a.brutto)} €</td>
-            <td style="font-family:'DM Mono',monospace;font-weight:500;color:var(--green)">${fmt(a.netto)} €</td>
-            <td>${statusBadge(a.status)}</td>
-            <td>
-              ${a.status === 'ausstehend' ? `<button class="btn btn-primary btn-sm" data-action="veranlassen" data-id="${a.id}">Veranlassen</button>` : ''}
-              ${a.status === 'veranlasst' ? `<button class="btn btn-sm" data-action="ausgezahlt" data-id="${a.id}">✓ Ausgezahlt</button>` : ''}
-            </td>
-          </tr>`).join('')}
-        </tbody>
-      </table>
-    ` : '<p style="color:var(--text3);font-size:13px">Keine Auszahlungen</p>');
-
-    document.getElementById('az-admin-list')?.addEventListener('click', async e => {
-      const btn = e.target.closest('[data-action]');
-      if (!btn) return;
-      const id = btn.dataset.id;
-      const status = btn.dataset.action === 'veranlassen' ? 'veranlasst' : 'ausgezahlt';
-      try {
-        await api.setAuszahlungStatus(id, status);
-        toast(status === 'veranlasst' ? 'Zahlung veranlasst' : 'Als ausgezahlt markiert');
-        loadAuszahlungen();
-      } catch (err) { showAlert('alerts', 'error', err.message); }
-    });
-  } catch (err) { showAlert('alerts', 'error', err.message); }
-}
-
-document.getElementById('az-filter-status')?.addEventListener('change', loadAuszahlungen);
-
-document.getElementById('btn-bulk-veranlassen')?.addEventListener('click', async () => {
-  if (!confirm('Alle ausstehenden Auszahlungen veranlassen?')) return;
-  const btn = document.getElementById('btn-bulk-veranlassen');
-  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
-  try {
-    const res = await api.bulkVeranlassen();
-    toast(`${res.count} Auszahlungen veranlasst · ${res.gesamt} €`);
-    loadAuszahlungen();
-  } catch (err) { showAlert('alerts', 'error', err.message); }
-  finally { btn.textContent = 'Alle ausstehenden veranlassen'; btn.disabled = false; }
-});
-
-document.getElementById('btn-bulk-ausgezahlt')?.addEventListener('click', async () => {
-  if (!confirm('Alle veranlassten als ausgezahlt markieren?')) return;
-  try {
-    const res = await api.bulkAusgezahlt();
-    toast(`${res.count} als ausgezahlt markiert`);
-    loadAuszahlungen();
-  } catch (err) { showAlert('alerts', 'error', err.message); }
-});
-
-// ── REPORTS ───────────────────────────────────────────────────
-async function loadReports() {
-  try {
-    const { erzeuger } = await api.getAllErzeuger();
-    const sel = document.getElementById('report-erzeuger-sel');
-    if (sel) sel.innerHTML = '<option value="">— Erzeuger wählen —</option>' +
-      erzeuger.map(e => `<option value="${e.id}">${e.betrieb_name}</option>`).join('');
-  } catch (err) {}
-}
-
-document.getElementById('view-reports')?.addEventListener('click', e => {
-  const btn = e.target.closest('[data-export]');
-  if (!btn) return;
-  const type = btn.dataset.export;
-  if (type === 'auszahlungen') api.downloadAuszahlungenCSV();
-  if (type === 'pools')        api.downloadPoolsCSV();
-  if (type === 'lieferungen')  api.downloadLieferungenCSV();
-});
-
-document.getElementById('btn-open-abrechnung')?.addEventListener('click', () => {
-  const id  = document.getElementById('report-erzeuger-sel').value;
-  const von = document.getElementById('report-von').value || undefined;
-  const bis = document.getElementById('report-bis').value || undefined;
-  if (!id) return showAlert('alerts', 'error', 'Erzeuger auswählen');
-  api.openAbrechnung(id, { von, bis });
-});
-
-// ── ALLE POOLS ────────────────────────────────────────────────
-let poolsAllePage = 1;
-const POOLS_LIMIT = 15;
-
-async function loadPoolsAlle(page = 1) {
-  poolsAllePage = page;
-  const status  = document.getElementById('pools-alle-status')?.value;
-  const produkt = document.getElementById('pools-alle-search')?.value.trim();
-  try {
-    const { pools, pagination } = await api.getPools({
-      page, limit: POOLS_LIMIT,
-      ...(status  ? { status }  : {}),
-      ...(produkt ? { produkt } : {}),
-    });
-
-    setHTML('pools-alle-list', pools.length ? `
-      <table class="tbl">
-        <thead><tr><th>Produkt</th><th>KW</th><th>Preis</th><th>Ziel</th><th>Committet</th><th>Füllstand</th><th>Erzeuger</th><th>Status</th><th></th></tr></thead>
-        <tbody>${pools.map(p => {
-          const pct = poolPct(p.menge_committed, p.menge_ziel);
-          return `<tr>
-            <td style="font-weight:600">${p.produkt}</td>
-            <td class="pool-meta">${p.lieferwoche}</td>
-            <td class="pool-meta">${fmt(p.preis_pro_einheit)} €/kg</td>
-            <td style="font-family:'DM Mono',monospace">${Math.round(p.menge_ziel)} kg</td>
-            <td style="font-family:'DM Mono',monospace">${Math.round(p.menge_committed)} kg</td>
-            <td>
-              <div style="display:flex;align-items:center;gap:6px">
-                <div style="width:70px;height:5px;background:var(--bg3);border-radius:3px;overflow:hidden">
-                  <div style="width:${pct}%;height:100%;background:${pct>=100?'var(--green)':pct>=50?'var(--amber)':'var(--red)'};border-radius:3px"></div>
-                </div>
-                <span class="pool-meta">${pct}%</span>
-              </div>
-            </td>
-            <td class="pool-meta">${p.erzeuger_count || 0}</td>
-            <td>${statusBadge(p.status)}</td>
-            <td>
-              <div style="display:flex;gap:.35rem">
-                <button class="btn btn-sm" data-action="pool-detail" data-id="${p.id}">Details</button>
-                ${p.status==='offen'?`<button class="btn btn-sm" data-action="pool-close" data-id="${p.id}">Schließen</button>`:''}
-                ${['offen','geschlossen'].includes(p.status)?`<button class="btn btn-sm btn-danger" data-action="pool-abort" data-id="${p.id}">Abbrechen</button>`:''}
-              </div>
-            </td>
-          </tr>`;
-        }).join('')}</tbody>
-      </table>
-    ` : '<p style="color:var(--text3);font-size:13px">Keine Pools gefunden</p>');
-
-    // Pagination
-    const { total, pages, page: cur } = pagination;
-    setHTML('pools-alle-pagination', `
-      <span class="pool-meta">${total} Pools gesamt</span>
-      <div style="display:flex;gap:.35rem">
-        <button class="btn btn-sm" ${cur<=1?'disabled':''} data-action="pool-page" data-page="${cur-1}">← Zurück</button>
-        <span class="pool-meta" style="padding:5px 8px">Seite ${cur} / ${pages}</span>
-        <button class="btn btn-sm" ${cur>=pages?'disabled':''} data-action="pool-page" data-page="${cur+1}">Weiter →</button>
+    if (!res.ok) throw new Error('Nicht gefunden');
+    const { erzeuger: e, zertifikate, commitments, auszahlungen } = await res.json();
+    const gesamtAZ = auszahlungen.reduce((s,a) => s + parseFloat(a.netto||0), 0);
+    setHTML('erzeuger-detail-body', `
+      <div class="grid2" style="margin-bottom:1rem">
+        <div>
+          <div class="card-title">Stammdaten</div>
+          <table style="font-size:13px;width:100%;border-collapse:collapse">
+            ${[['Betrieb',e.betrieb_name],['E-Mail',e.email],['Region',e.region||'—'],
+              ['Adresse',e.adresse?(e.adresse+', '+(e.plz||'')+' '+(e.ort||'')).trim():'—'],
+              ['Telefon',e.telefon||'—'],['Website',e.website?`<a href="${e.website}" target="_blank">${e.website}</a>`:'—'],
+              ['Sortiment',e.sortiment||'—'],['Kapazität',e.max_kapazitaet?e.max_kapazitaet+' kg/Wo':'—'],
+              ['Betriebsgröße',e.betriebsgroesse||'—'],['Gründung',e.gruendungsjahr||'—'],
+              ['IBAN',e.iban||'—'],['USt-ID',e.ust_id||'—'],
+              ['Gesamt ausgezahlt',fmt(gesamtAZ)+' €'],
+              ['Mitglied seit',new Date(e.created_at||Date.now()).toLocaleDateString('de-DE')],
+            ].map(([k,v])=>`<tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:5px 0;color:var(--text3);width:140px">${k}</td>
+              <td style="padding:5px 0;font-weight:500">${v}</td>
+            </tr>`).join('')}
+          </table>
+        </div>
+        <div>
+          <div class="card-title">Zertifikate</div>
+          ${zertifikate.length ? zertifikate.map(z=>`
+            <div class="auszahl-row">
+              <div><div style="font-size:13px;font-weight:500">${z.typ} · ${z.zert_nummer}</div>
+              <div class="pool-meta">Gültig bis: ${z.gueltig_bis?.split('T')[0]||'—'}</div></div>
+              ${statusBadge(z.status)}
+            </div>`).join('') : '<p style="color:var(--text3);font-size:13px">Keine</p>'}
+          <div class="card-title" style="margin-top:1rem">Letzte Zusagen</div>
+          ${commitments.slice(0,5).length ? `
+            <table class="tbl" style="font-size:12px"><thead><tr><th>Produkt</th><th>KW</th><th>Menge</th><th>Status</th></tr></thead>
+            <tbody>${commitments.slice(0,5).map(c=>`<tr>
+              <td style="font-weight:500">${c.produkt}</td><td class="pool-meta">${c.lieferwoche}</td>
+              <td class="pool-meta">${fmt(c.menge,0)} kg</td><td>${statusBadge(c.status)}</td>
+            </tr>`).join('')}</tbody></table>
+          ` : '<p style="color:var(--text3);font-size:13px">Keine Zusagen</p>'}
+        </div>
+      </div>
+      <div style="display:flex;gap:.75rem">
+        <button class="btn btn-primary btn-sm" onclick="api.openAbrechnung('${e.id}')">Abrechnung</button>
+        <button class="btn btn-sm" onclick="document.getElementById('erzeuger-detail-card').style.display='none'">Schließen</button>
       </div>
     `);
-
-    // Delegation
-    document.getElementById('pools-alle-list')?.addEventListener('click', async e => {
-      const btn = e.target.closest('[data-action]');
-      if (!btn) return;
-      if (btn.dataset.action === 'pool-detail') { showPoolDetail(btn.dataset.id); return; }
-      if (btn.dataset.action === 'pool-close')  {
-        if (!confirm('Pool schließen?')) return;
-        await api.updatePoolStatus(btn.dataset.id, 'geschlossen').catch(err => toast(err.message,'error'));
-        loadPoolsAlle(poolsAllePage);
-      }
-      if (btn.dataset.action === 'pool-abort')  {
-        if (!confirm('Pool abbrechen?')) return;
-        await api.updatePoolStatus(btn.dataset.id, 'abgebrochen').catch(err => toast(err.message,'error'));
-        loadPoolsAlle(poolsAllePage);
-      }
-    });
-    document.getElementById('pools-alle-pagination')?.addEventListener('click', e => {
-      const btn = e.target.closest('[data-action="pool-page"]');
-      if (btn) loadPoolsAlle(parseInt(btn.dataset.page));
-    });
-
-  } catch (err) { showAlert('alerts', 'error', err.message); }
+  } catch (err) { setHTML('erzeuger-detail-body',`<div class="alert alert-error">${err.message}</div>`); }
 }
 
-document.getElementById('pools-alle-status')?.addEventListener('change', () => loadPoolsAlle(1));
-document.getElementById('pools-alle-search')?.addEventListener('input',  () => loadPoolsAlle(1));
-document.getElementById('btn-reload-pools-alle')?.addEventListener('click', () => loadPoolsAlle(1));
+document.getElementById('btn-erzeuger-detail-close')?.addEventListener('click', ()=>{ const c=document.getElementById('erzeuger-detail-card'); if(c) c.style.display='none'; });
+document.getElementById('erzeuger-search')?.addEventListener('input', e => {
+  const q=e.target.value.toLowerCase(), r=document.getElementById('erzeuger-filter-region')?.value||'';
+  renderErzeuger(allErzeuger.filter(x=>(x.betrieb_name.toLowerCase().includes(q)||x.email.toLowerCase().includes(q))&&(!r||x.region===r)));
+});
+document.getElementById('erzeuger-filter-region')?.addEventListener('change', e => {
+  const q=document.getElementById('erzeuger-search')?.value.toLowerCase()||'', r=e.target.value;
+  renderErzeuger(allErzeuger.filter(x=>(x.betrieb_name.toLowerCase().includes(q)||x.email.toLowerCase().includes(q))&&(!r||x.region===r)));
+});
 
-// ── FAHRER MANAGEMENT ─────────────────────────────────────────
-async function loadFahrerMgmt() {
+// ── CATERER MANAGEMENT ─────────────────────────────────────────
+let allCaterer = [];
+async function loadCatererMgmt() {
   try {
-    const { fahrer } = await api.getFahrerList();
-    setHTML('fahrer-mgmt-list', fahrer.length ? `
-      <table class="tbl">
-        <thead><tr><th>Name</th><th>E-Mail</th><th>Lizenz</th><th>Touren</th><th>Status</th></tr></thead>
-        <tbody>${fahrer.map(f=>`<tr>
-          <td style="font-weight:500">${f.name}</td>
-          <td class="pool-meta">${f.email}</td>
-          <td><span class="badge badge-gray">${f.lizenzklasse}</span></td>
-          <td class="pool-meta">${f.touren_gesamt}</td>
-          <td>${f.aktiv?'<span class="badge badge-green">Aktiv</span>':'<span class="badge badge-red">Inaktiv</span>'}</td>
-        </tr>`).join('')}</tbody>
-      </table>
-    ` : '<p style="color:var(--text3);font-size:13px">Noch keine Fahrer angelegt</p>');
-  } catch(err) { showAlert('alerts','error',err.message); }
+    const res = await fetch('/api/caterer', { headers:{'Authorization':'Bearer '+Auth.getToken()} });
+    const { caterer } = await res.json();
+    allCaterer = caterer || [];
+    const mitPools = allCaterer.filter(c => c.pool_count > 0).length;
+    setHTML('cat-mgmt-metrics', `
+      <div class="metric"><div class="metric-label">Gesamt</div><div class="metric-val">${allCaterer.length}</div></div>
+      <div class="metric"><div class="metric-label">Mit Pools</div><div class="metric-val green">${mitPools}</div></div>
+      <div class="metric"><div class="metric-label">Ohne Pools</div><div class="metric-val amber">${allCaterer.length - mitPools}</div></div>
+      <div class="metric"><div class="metric-label">Regionen</div><div class="metric-val">${[...new Set(allCaterer.map(c=>c.region))].length}</div></div>
+    `);
+    renderCaterer(allCaterer);
+  } catch (err) { showAlert('alerts','error',err.message); }
 }
 
-document.getElementById('btn-fahrer-create')?.addEventListener('click', async () => {
-  const name = document.getElementById('fc-name').value.trim();
-  const email = document.getElementById('fc-email').value.trim();
-  const password = document.getElementById('fc-pw').value;
-  const lizenzklasse = document.getElementById('fc-lizenz').value;
-  const btn = document.getElementById('btn-fahrer-create');
-  if (!name||!email||!password) return showAlert('alerts','error','Alle Felder ausfüllen');
-  if (password.length<8) return showAlert('alerts','error','Passwort min. 8 Zeichen');
-  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>';
+function renderCaterer(list) {
+  setHTML('caterer-mgmt-list', list.length ? `
+    <table class="tbl">
+      <thead><tr><th>Firma</th><th>E-Mail</th><th>Region</th><th>Ort</th><th>Küche</th><th>Pools</th><th>USt-ID</th><th>Aktionen</th></tr></thead>
+      <tbody>${list.map(c=>`
+        <tr>
+          <td><div style="font-weight:500">${c.firma_name}</div>${c.gruendungsjahr?`<div class="pool-meta">seit ${c.gruendungsjahr}</div>`:''}</td>
+          <td class="pool-meta">${c.email}</td>
+          <td><span class="badge badge-gray">${c.region||'—'}</span></td>
+          <td class="pool-meta" style="font-size:11px">${c.ort?c.plz+' '+c.ort:'—'}</td>
+          <td class="pool-meta" style="font-size:11px">${c.kuechen_typ||'—'}${c.anz_plaetze?' · '+c.anz_plaetze+' Plätze':''}</td>
+          <td class="pool-meta">${c.pool_count}</td>
+          <td class="pool-meta">${c.ust_id||'—'}</td>
+          <td><button class="btn btn-sm" data-action="cat-detail" data-id="${c.id}" data-name="${c.firma_name}">Detail</button></td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  ` : '<p style="color:var(--text3);font-size:13px">Keine Caterer</p>');
+
+  document.getElementById('caterer-mgmt-list')?.addEventListener('click', e => {
+    const btn = e.target.closest('[data-action="cat-detail"]');
+    if (!btn) return;
+    const card = document.getElementById('caterer-detail-card');
+    const title = document.getElementById('caterer-detail-title');
+    if (title) title.textContent = btn.dataset.name;
+    if (card) { card.style.display='block'; card.scrollIntoView({behavior:'smooth'}); }
+    loadCatererDetail(btn.dataset.id);
+  });
+}
+
+async function loadCatererDetail(catId) {
+  setHTML('caterer-detail-body','<div class="spinner"></div>');
   try {
-    const { user } = await api.createFahrer({ name, email, password, lizenzklasse });
-    setHTML('fahrer-create-result','<div class="alert alert-success">✓ Fahrer angelegt · Login: '+email+'</div>');
-    document.getElementById('fc-name').value='';
-    document.getElementById('fc-email').value='';
-    document.getElementById('fc-pw').value='';
-    btn.textContent='Fahrer anlegen'; btn.disabled=false;
-    loadFahrerMgmt();
-  } catch(err){btn.textContent='Fahrer anlegen';btn.disabled=false;showAlert('alerts','error',err.message);}
+    const res = await fetch(`/api/caterer/detail/${catId}`, { headers:{'Authorization':'Bearer '+Auth.getToken()} });
+    if (!res.ok) throw new Error('Nicht gefunden');
+    const { caterer: c, pools } = await res.json();
+    setHTML('caterer-detail-body', `
+      <div class="grid2" style="margin-bottom:1rem">
+        <div>
+          <div class="card-title">Stammdaten</div>
+          <table style="font-size:13px;width:100%;border-collapse:collapse">
+            ${[['Firma',c.firma_name],['E-Mail',c.email],['Region',c.region||'—'],
+              ['Adresse',c.adresse?(c.adresse+', '+(c.plz||'')+' '+(c.ort||'')).trim():'—'],
+              ['Telefon',c.telefon||'—'],['Website',c.website?`<a href="${c.website}" target="_blank">${c.website}</a>`:'—'],
+              ['Küchen-Typ',c.kuechen_typ||'—'],['Kapazität',c.kuechen_kapazitaet||'—'],
+              ['Sitzplätze',c.anz_plaetze||'—'],['Gründung',c.gruendungsjahr||'—'],
+              ['IBAN',c.iban||'—'],['USt-ID',c.ust_id||'—'],
+              ['Mitglied seit',new Date(c.created_at||Date.now()).toLocaleDateString('de-DE')],
+            ].map(([k,v])=>`<tr style="border-bottom:1px solid var(--border)">
+              <td style="padding:5px 0;color:var(--text3);width:140px">${k}</td>
+              <td style="padding:5px 0;font-weight:500">${v}</td>
+            </tr>`).join('')}
+          </table>
+        </div>
+        <div>
+          <div class="card-title">Pools (${pools.length})</div>
+          ${pools.length ? `
+            <table class="tbl" style="font-size:12px"><thead><tr><th>Produkt</th><th>KW</th><th>Füllstand</th><th>Status</th></tr></thead>
+            <tbody>${pools.slice(0,8).map(p=>`<tr>
+              <td style="font-weight:500" class="pool-item" data-pool-id="${p.id}" style="cursor:pointer">${p.produkt}</td>
+              <td class="pool-meta">${p.lieferwoche}</td>
+              <td class="pool-meta">${Math.round(p.menge_committed||0)}/${Math.round(p.menge_ziel)} kg</td>
+              <td>${statusBadge(p.status)}</td>
+            </tr>`).join('')}</tbody></table>
+          ` : '<p style="color:var(--text3);font-size:13px">Keine Pools</p>'}
+          ${c.beschreibung ? `<div class="card-title" style="margin-top:1rem">Beschreibung</div><p style="font-size:13px;color:var(--text2);line-height:1.6">${c.beschreibung}</p>` : ''}
+        </div>
+      </div>
+      <button class="btn btn-sm" onclick="document.getElementById('caterer-detail-card').style.display='none'">Schließen</button>
+    `);
+  } catch (err) { setHTML('caterer-detail-body',`<div class="alert alert-error">${err.message}</div>`); }
+}
+
+document.getElementById('btn-caterer-detail-close')?.addEventListener('click',()=>{ const c=document.getElementById('caterer-detail-card'); if(c) c.style.display='none'; });
+document.getElementById('caterer-mgmt-search')?.addEventListener('input', e => {
+  const q=e.target.value.toLowerCase();
+  renderCaterer(allCaterer.filter(x=>x.firma_name.toLowerCase().includes(q)||x.email.toLowerCase().includes(q)));
 });
 
 document.getElementById('btn-reload-fahrer')?.addEventListener('click', loadFahrerMgmt);
