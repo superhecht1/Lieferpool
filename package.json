@@ -11,7 +11,7 @@
     "migrate:flow": "node scripts/migrate_flow.js",
     "migrate:fix": "node scripts/migrate_fix.js",
     "migrate:fix2": "node scripts/migrate_fix2.js",
-    "migrate:all": "node scripts/migrate.js && node scripts/migrate_hub.js && node scripts/migrate_flow.js && node scripts/migrate_fix.js && node scripts/migrate_fix2.js && node scripts/migrate_fix3.js"
+    "migrate:all": "node scripts/migrate.js && node scripts/migrate_hub.js && node scripts/migrate_flow.js && node scripts/migrate_fix.js && node scripts/migrate_fix2.js && node scripts/migrate_fix3.js && node scripts/migrate_fix4.js",
     "seed": "node scripts/seed.js",
     "chain:deploy:test": "npx hardhat run scripts/deploy.js --network mumbai",
     "chain:deploy:main": "npx hardhat run scripts/deploy.js --network polygon",
@@ -29,7 +29,8 @@
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.11.3",
-    "web-push": "^3.6.7"
+    "web-push": "^3.6.7",
+    "stripe": "^14.0.0"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^4.0.0",
