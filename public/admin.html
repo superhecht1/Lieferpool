@@ -338,7 +338,8 @@
           </div>
           <button class="btn btn-primary" id="btn-fahrer-create">Fahrer anlegen</button>
         </div>
-        <div class="card">
+        <div class="grid4" style="margin-bottom:1rem" id="fahrer-mgmt-metrics"></div>
+      <div class="card">
           <div class="section-hdr">
             <span class="section-title">Alle Fahrer:innen</span>
             <button class="btn btn-sm" id="btn-reload-fahrer">↻</button>
@@ -794,6 +795,234 @@ document.getElementById('caterer-mgmt-search')?.addEventListener('input', e => {
 });
 
 document.getElementById('btn-reload-fahrer')?.addEventListener('click', loadFahrerMgmt);
+
+
+// ── LIEFERSCHEIN ──────────────────────────────────────────────
+async function loadLieferungNeu() {
+  try {
+    const { pools } = await api.getPools({ status: 'geschlossen' });
+    const sel = document.getElementById('lief-pool-sel');
+    if (sel) sel.innerHTML = pools.length
+      ? pools.map(p => `<option value="${p.id}">${p.produkt} – ${p.lieferwoche} (${Math.round(p.menge_committed)} kg)</option>`).join('')
+      : '<option>Keine geschlossenen Pools</option>';
+  } catch (err) { showAlert('alerts','error',err.message); }
+}
+document.getElementById('btn-create-lief')?.addEventListener('click', async () => {
+  const pool_id=document.getElementById('lief-pool-sel').value;
+  const lieferdatum=document.getElementById('lief-datum').value;
+  const btn=document.getElementById('btn-create-lief');
+  if (!pool_id) return showAlert('alerts','error','Pool auswählen');
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>';
+  try {
+    const {lieferung}=await api.createLieferung(pool_id,lieferdatum||null);
+    setHTML('lief-create-result',`<div class="success-box"><div class="success-icon">✓</div><div class="success-title">Lieferschein erstellt</div><div class="success-sub">Nr: ${lieferung.lieferschein_nr}</div><div style="margin-top:.75rem"><span class="qr-code">${lieferung.qr_code}</span></div></div>`);
+    const f=document.getElementById('lief-create-form'); if(f) f.style.display='none';
+  } catch(err){btn.textContent='Lieferschein erstellen';btn.disabled=false;showAlert('alerts','error',err.message);}
+});
+
+// ── LAGER ─────────────────────────────────────────────────────
+async function loadLager() { loadLagerBestand(); loadBedarfAbgleich(); loadBewegungen(); }
+
+async function loadLagerBestand() {
+  try {
+    const [{lager},{alerts}] = await Promise.all([api.getLager(),api.getLagerAlerts()]);
+    setHTML('lager-alerts', alerts.length ? `<div class="alert alert-info">⚠ ${alerts.length} unter Mindestbestand: ${alerts.map(a=>`<strong>${a.produkt}</strong>`).join(', ')}</div>` : '');
+    setHTML('lager-list', lager.length ? `
+      <table class="tbl"><thead><tr><th>Produkt</th><th>Bestand</th><th>Mindestbestand</th><th>Eingang 7d</th><th>Ausgang 7d</th><th>Status</th><th></th></tr></thead>
+      <tbody>${lager.map(l=>`<tr>
+        <td style="font-weight:500">${l.produkt}</td>
+        <td style="font-family:'DM Mono',monospace">${fmt(l.bestand,1)} ${l.einheit}</td>
+        <td style="font-family:'DM Mono',monospace;color:var(--text2)">${fmt(l.mindestbestand,1)} ${l.einheit}</td>
+        <td style="color:var(--green);font-family:'DM Mono',monospace">+${fmt(l.eingang_7d,1)}</td>
+        <td style="color:var(--amber);font-family:'DM Mono',monospace">-${fmt(l.ausgang_7d,1)}</td>
+        <td>${l.unterbestand?'<span class="badge badge-red">Unterbestand</span>':'<span class="badge badge-green">OK</span>'}</td>
+        <td><button class="btn btn-sm" data-action="minbestand" data-id="${l.id}" data-produkt="${l.produkt}" data-min="${l.mindestbestand}">Min.</button></td>
+      </tr>`).join('')}</tbody></table>
+    ` : '<p style="color:var(--text3);font-size:13px">Noch keine Lagereinträge</p>');
+    document.getElementById('lager-list')?.addEventListener('click', e => {
+      const btn=e.target.closest('[data-action="minbestand"]');
+      if(btn) setMindestbestand(btn.dataset.id,btn.dataset.produkt,btn.dataset.min);
+    });
+  } catch(err){showAlert('alerts','error',err.message);}
+}
+
+async function loadBedarfAbgleich() {
+  try {
+    const {aggregiert}=await api.getBedarfAggregiert();
+    setHTML('bedarf-abgleich', aggregiert.length ? `
+      <table class="tbl"><thead><tr><th>Produkt</th><th>Wochenbedarf</th><th>Bestand</th><th>Reichweite</th><th>Abnehmer</th></tr></thead>
+      <tbody>${aggregiert.map(r=>`<tr>
+        <td style="font-weight:500">${r.produkt}</td>
+        <td style="font-family:'DM Mono',monospace">${fmt(r.gesamt_pro_woche,1)} ${r.einheit}</td>
+        <td style="font-family:'DM Mono',monospace">${r.bestand_aktuell!=null?fmt(r.bestand_aktuell,1)+' '+r.einheit:'—'}</td>
+        <td>${r.deckung_tage!=null?`<span class="badge ${r.deckung_tage<3?'badge-red':r.deckung_tage<7?'badge-amber':'badge-green'}">${r.deckung_tage} Tage</span>`:'<span class="badge badge-gray">—</span>'}</td>
+        <td class="pool-meta">${r.caterer_anzahl}</td>
+      </tr>`).join('')}</tbody></table>
+    ` : '<p style="color:var(--text3);font-size:13px">Keine Bedarfsprognosen</p>');
+  } catch(err){setHTML('bedarf-abgleich','<p style="color:var(--text3);font-size:13px">Keine Daten</p>');}
+}
+
+async function loadBewegungen() {
+  try {
+    const typ=document.getElementById('filter-bewegung-typ')?.value;
+    const {bewegungen}=await api.getLagerBewegungen({typ,limit:30});
+    setHTML('bewegungen-list', bewegungen.length ? `
+      <table class="tbl"><thead><tr><th>Zeit</th><th>Produkt</th><th>Typ</th><th>Menge</th><th>Bestand</th><th>Notiz</th></tr></thead>
+      <tbody>${bewegungen.map(m=>`<tr>
+        <td class="pool-meta">${new Date(m.created_at).toLocaleString('de-DE',{dateStyle:'short',timeStyle:'short'})}</td>
+        <td style="font-weight:500">${m.produkt}</td>
+        <td>${m.typ==='eingang'?'<span class="badge badge-green">Eingang</span>':m.typ==='ausgang'?'<span class="badge badge-amber">Ausgang</span>':'<span class="badge badge-gray">Korrektur</span>'}</td>
+        <td style="font-family:'DM Mono',monospace;${m.typ==='eingang'?'color:var(--green)':m.typ==='ausgang'?'color:var(--amber)':''}">${m.typ==='eingang'?'+':m.typ==='ausgang'?'-':''}${fmt(Math.abs(m.menge),1)} ${m.einheit}</td>
+        <td class="pool-meta">${m.bestand_nach!=null?fmt(m.bestand_nach,1)+' '+m.einheit:'—'}</td>
+        <td class="pool-meta">${m.notiz||'—'}</td>
+      </tr>`).join('')}</tbody></table>
+    ` : '<p style="color:var(--text3);font-size:13px">Keine Bewegungen</p>');
+  } catch(err){showAlert('alerts','error',err.message);}
+}
+
+async function setMindestbestand(id,produkt,aktuell) {
+  const neu=prompt(`Mindestbestand für "${produkt}" (aktuell: ${aktuell} kg):`,aktuell);
+  if(neu==null||isNaN(parseFloat(neu))) return;
+  try{await api.setMindestbestand(id,parseFloat(neu));toast('Gesetzt');loadLagerBestand();}
+  catch(err){showAlert('alerts','error',err.message);}
+}
+
+document.getElementById('btn-show-eingang-form')?.addEventListener('click',()=>{const c=document.getElementById('eingang-form-card');if(c){c.style.display='block';c.scrollIntoView({behavior:'smooth'});}});
+document.getElementById('btn-eingang-cancel')?.addEventListener('click',()=>{const c=document.getElementById('eingang-form-card');if(c)c.style.display='none';});
+document.getElementById('btn-eingang-submit')?.addEventListener('click', async()=>{
+  const produkt=document.getElementById('eg-produkt').value.trim();
+  const menge=parseFloat(document.getElementById('eg-menge').value);
+  const qualitaet=document.getElementById('eg-qualitaet').value;
+  const notiz=document.getElementById('eg-notiz').value.trim();
+  const btn=document.getElementById('btn-eingang-submit');
+  if(!produkt||!menge) return showAlert('alerts','error','Produkt und Menge erforderlich');
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span>';
+  try{
+    const res=await api.lagerEingang({produkt,menge,qualitaet,notiz});
+    setHTML('eingang-result',`<div class="alert alert-success">✓ ${menge} kg ${produkt} eingebucht · Bestand: ${fmt(res.bestand_aktuell,1)} kg</div>`);
+    document.getElementById('eg-produkt').value='';document.getElementById('eg-menge').value='';document.getElementById('eg-notiz').value='';
+    btn.textContent='Buchen';btn.disabled=false;loadLagerBestand();loadBewegungen();
+  }catch(err){btn.textContent='Buchen';btn.disabled=false;showAlert('alerts','error',err.message);}
+});
+document.getElementById('filter-bewegung-typ')?.addEventListener('change',loadBewegungen);
+document.getElementById('btn-reload-lager')?.addEventListener('click',loadLager);
+
+// ── AUSZAHLUNGEN ──────────────────────────────────────────────
+async function loadAuszahlungen() {
+  try {
+    const status=document.getElementById('az-filter-status')?.value;
+    const {auszahlungen,summen}=await api.getAllAuszahlungen({status,limit:200});
+    setHTML('az-summen',`
+      <div class="metric"><div class="metric-label">Ausstehend</div><div class="metric-val amber">${summen.ausstehend} €</div></div>
+      <div class="metric"><div class="metric-label">Veranlasst</div><div class="metric-val">${summen.veranlasst} €</div></div>
+      <div class="metric"><div class="metric-label">Ausgezahlt</div><div class="metric-val green">${summen.ausgezahlt} €</div></div>
+      <div class="metric"><div class="metric-label">Gesamt</div><div class="metric-val">${summen.gesamt} €</div></div>
+    `);
+    setHTML('az-admin-list', auszahlungen.length ? `
+      <table class="tbl"><thead><tr><th>Datum</th><th>Betrieb</th><th>Produkt</th><th>KW</th><th>Brutto</th><th>Netto</th><th>Status</th><th>Aktion</th></tr></thead>
+      <tbody>${auszahlungen.map(a=>`<tr id="azrow-${a.id}">
+        <td class="pool-meta">${new Date(a.created_at).toLocaleDateString('de-DE')}</td>
+        <td style="font-weight:500">${a.betrieb_name}</td>
+        <td class="pool-meta">${a.produkt}</td>
+        <td class="pool-meta">${a.lieferwoche}</td>
+        <td style="font-family:'DM Mono',monospace">${fmt(a.brutto)} €</td>
+        <td style="font-family:'DM Mono',monospace;font-weight:500;color:var(--green)">${fmt(a.netto)} €</td>
+        <td>${statusBadge(a.status)}</td>
+        <td>
+          ${a.status==='ausstehend'?`<button class="btn btn-primary btn-sm" data-action="veranlassen" data-id="${a.id}">Veranlassen</button>`:''}
+          ${a.status==='veranlasst'?`<button class="btn btn-sm" data-action="ausgezahlt" data-id="${a.id}">✓ Ausgezahlt</button>`:''}
+        </td>
+      </tr>`).join('')}</tbody></table>
+    ` : '<p style="color:var(--text3);font-size:13px">Keine Auszahlungen</p>');
+    document.getElementById('az-admin-list')?.addEventListener('click', async e=>{
+      const btn=e.target.closest('[data-action]');
+      if(!btn) return;
+      const status=btn.dataset.action==='veranlassen'?'veranlasst':'ausgezahlt';
+      try{await api.setAuszahlungStatus(btn.dataset.id,status);toast(status==='veranlasst'?'Zahlung veranlasst':'Als ausgezahlt markiert');loadAuszahlungen();}
+      catch(err){showAlert('alerts','error',err.message);}
+    });
+  } catch(err){showAlert('alerts','error',err.message);}
+}
+document.getElementById('az-filter-status')?.addEventListener('change',loadAuszahlungen);
+document.getElementById('btn-bulk-veranlassen')?.addEventListener('click', async()=>{
+  if(!confirm('Alle ausstehenden veranlassen?')) return;
+  const btn=document.getElementById('btn-bulk-veranlassen');
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span>';
+  try{const res=await api.bulkVeranlassen();toast(`${res.count} veranlasst · ${res.gesamt} €`);loadAuszahlungen();}
+  catch(err){showAlert('alerts','error',err.message);}
+  finally{btn.textContent='Alle ausstehenden veranlassen';btn.disabled=false;}
+});
+document.getElementById('btn-bulk-ausgezahlt')?.addEventListener('click', async()=>{
+  if(!confirm('Alle veranlassten als ausgezahlt markieren?')) return;
+  try{const res=await api.bulkAusgezahlt();toast(`${res.count} markiert`);loadAuszahlungen();}
+  catch(err){showAlert('alerts','error',err.message);}
+});
+
+// ── REPORTS ───────────────────────────────────────────────────
+async function loadReports() {
+  try {
+    const {erzeuger}=await api.getAllErzeuger();
+    const sel=document.getElementById('report-erzeuger-sel');
+    if(sel) sel.innerHTML='<option value="">— Erzeuger wählen —</option>'+erzeuger.map(e=>`<option value="${e.id}">${e.betrieb_name}</option>`).join('');
+  } catch(err){}
+}
+document.getElementById('view-reports')?.addEventListener('click',e=>{
+  const btn=e.target.closest('[data-export]');
+  if(!btn) return;
+  const type=btn.dataset.export;
+  if(type==='auszahlungen') api.downloadAuszahlungenCSV();
+  if(type==='pools')        api.downloadPoolsCSV();
+  if(type==='lieferungen')  api.downloadLieferungenCSV();
+});
+document.getElementById('btn-open-abrechnung')?.addEventListener('click',()=>{
+  const id=document.getElementById('report-erzeuger-sel').value;
+  const von=document.getElementById('report-von').value||undefined;
+  const bis=document.getElementById('report-bis').value||undefined;
+  if(!id) return showAlert('alerts','error','Erzeuger auswählen');
+  api.openAbrechnung(id,{von,bis});
+});
+
+// ── FAHRER MANAGEMENT ─────────────────────────────────────────
+async function loadFahrerMgmt() {
+  try {
+    const {fahrer}=await api.getFahrerList();
+    const aktiv=fahrer.filter(f=>f.aktiv).length;
+    setHTML('fahrer-mgmt-metrics',`
+      <div class="metric"><div class="metric-label">Gesamt</div><div class="metric-val">${fahrer.length}</div></div>
+      <div class="metric"><div class="metric-label">Aktiv</div><div class="metric-val green">${aktiv}</div></div>
+      <div class="metric"><div class="metric-label">Inaktiv</div><div class="metric-val">${fahrer.length-aktiv}</div></div>
+      <div class="metric"><div class="metric-label">Touren heute</div><div class="metric-val">${fahrer.reduce((s,f)=>s+(f.touren_heute||0),0)}</div></div>
+    `);
+    setHTML('fahrer-mgmt-list', fahrer.length ? `
+      <table class="tbl"><thead><tr><th>Name</th><th>E-Mail</th><th>Lizenz</th><th>Touren gesamt</th><th>Touren heute</th><th>Status</th></tr></thead>
+      <tbody>${fahrer.map(f=>`<tr>
+        <td style="font-weight:500">${f.name}</td>
+        <td class="pool-meta">${f.email}</td>
+        <td><span class="badge badge-gray">${f.lizenzklasse}</span></td>
+        <td class="pool-meta">${f.touren_gesamt}</td>
+        <td class="pool-meta">${f.touren_heute||0}</td>
+        <td>${f.aktiv?'<span class="badge badge-green">Aktiv</span>':'<span class="badge badge-red">Inaktiv</span>'}</td>
+      </tr>`).join('')}</tbody></table>
+    ` : '<p style="color:var(--text3);font-size:13px">Noch keine Fahrer</p>');
+  } catch(err){showAlert('alerts','error',err.message);}
+}
+
+document.getElementById('btn-fahrer-create')?.addEventListener('click', async()=>{
+  const name=document.getElementById('fc-name').value.trim();
+  const email=document.getElementById('fc-email').value.trim();
+  const password=document.getElementById('fc-pw').value;
+  const lizenzklasse=document.getElementById('fc-lizenz').value;
+  const btn=document.getElementById('btn-fahrer-create');
+  if(!name||!email||!password) return showAlert('alerts','error','Alle Felder ausfüllen');
+  if(password.length<8) return showAlert('alerts','error','Passwort min. 8 Zeichen');
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span>';
+  try{
+    await api.createFahrer({name,email,password,lizenzklasse});
+    setHTML('fahrer-create-result','<div class="alert alert-success">✓ Fahrer angelegt · Login: '+email+'</div>');
+    document.getElementById('fc-name').value='';document.getElementById('fc-email').value='';document.getElementById('fc-pw').value='';
+    btn.textContent='Fahrer anlegen';btn.disabled=false;loadFahrerMgmt();
+  }catch(err){btn.textContent='Fahrer anlegen';btn.disabled=false;showAlert('alerts','error',err.message);}
+});
 
 // ── LOGISTIK ──────────────────────────────────────────────────
 let aktiveTourId = null;
