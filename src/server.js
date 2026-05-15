@@ -51,6 +51,24 @@ app.use('/api/fahrzeuge',    require('./routes/fahrzeuge'));
 app.use('/api/auszahlungen', require('./routes/auszahlungen'));
 app.use('/api/reports',      require('./routes/reports'));
 app.use('/api/stripe',       require('./routes/stripe'));
+app.use('/api/sepa',         require('./routes/sepa'));
+
+// Push Test Endpoint
+app.post('/api/push/test', require('./middleware/auth').auth, require('./middleware/auth').role('admin'), async (req, res) => {
+  const { fahrer_id, message } = req.body;
+  if (!fahrer_id) return res.status(400).json({ error: 'fahrer_id erforderlich' });
+  try {
+    const push = require('./services/push');
+    const db   = require('./db');
+    const result = await push.sendToUser(db, fahrer_id, {
+      title: '🔔 Test-Push von Admin',
+      body:  message || 'Test-Benachrichtigung',
+      icon:  '/icon-192.png',
+      tag:   'test-' + Date.now(),
+    });
+    res.json(result);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
 // Chain Status
 app.get('/api/chain/status', async (req, res) => {
