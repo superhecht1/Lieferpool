@@ -1190,6 +1190,11 @@ async function loadFahrerMgmt() {
         <td>${f.aktiv?'<span class="badge badge-green">Aktiv</span>':'<span class="badge badge-red">Inaktiv</span>'}</td>
       </tr>`).join('')}</tbody></table>
     ` : '<p style="color:var(--text3);font-size:13px">Noch keine Fahrer</p>');
+
+    // Push-Test Dropdown befüllen
+    const pushSel = document.getElementById('push-test-fahrer');
+    if (pushSel) pushSel.innerHTML = '<option value="">— Fahrer wählen —</option>' +
+      fahrer.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
   } catch(err){showAlert('alerts','error',err.message);}
 }
 
@@ -1564,17 +1569,7 @@ document.getElementById('btn-push-test')?.addEventListener('click', async () => 
 });
 
 // Push-Test Fahrer-Dropdown befüllen wenn Tab geöffnet
-const origLoadFahrer = typeof loadFahrerMgmt === 'function' ? loadFahrerMgmt : null;
-async function loadFahrerMgmt() {
-  if (origLoadFahrer) await origLoadFahrer();
-  // Push-Test Dropdown befüllen
-  try {
-    const { fahrer } = await api.getFahrerList();
-    const sel = document.getElementById('push-test-fahrer');
-    if (sel) sel.innerHTML = '<option value="">— Fahrer wählen —</option>' +
-      fahrer.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
-  } catch {}
-}
+// Push-Test Dropdown befüllen wird in loadFahrerMgmt erledigt
 
 // ── INIT ──────────────────────────────────────────────────────
 loadOverview();
