@@ -1,80 +1,56 @@
-/**
- * cron.js – Hintergrund-Jobs
- * Läuft alle 30 Minuten und schließt abgelaufene Pools automatisch
- */
 const db = require('../db');
-
 let cronInterval = null;
+let pingInterval = null;
+
+function startSelfPing() {
+  const appUrl = process.env.APP_URL;
+  if (!appUrl) { console.warn('[cron] APP_URL nicht gesetzt'); return; }
+  pingInterval = setInterval(async () => {
+    try { await fetch(appUrl + '/health', { signal: AbortSignal.timeout(10000) }); }
+    catch (err) { console.warn('[ping] fehlgeschlagen:', err.message); }
+  }, 14 * 60 * 1000);
+  console.log('[cron] Self-Ping →', appUrl);
+}
 
 async function checkExpiredPools() {
   try {
-    const { rows } = await db.query(`
-      UPDATE pools
-      SET status = 'abgebrochen', auto_closed = TRUE
-      WHERE status = 'offen'
-        AND deadline < NOW()
-        AND auto_closed = FALSE
-      RETURNING id, produkt, lieferwoche, menge_committed, menge_ziel
-    `);
-
+    const { rows } = await db.query(
+      `UPDATE pools SET status='abgebrochen',auto_closed=TRUE
+       WHERE status='offen' AND deadline<NOW() AND auto_closed=FALSE RETURNING id,produkt`
+    );
     if (rows.length > 0) {
-      console.log(`[cron] ${rows.length} abgelaufene Pools geschlossen:`,
-        rows.map(p => `${p.produkt} (${p.lieferwoche})`).join(', ')
-      );
-
-      // Commitments der abgebrochenen Pools auf 'zurueckgezogen' setzen
-      for (const pool of rows) {
-        await db.query(
-          `UPDATE commitments SET status='zurueckgezogen' WHERE pool_id=$1 AND status='aktiv'`,
-          [pool.id]
-        );
-      }
+      console.log(`[cron] ${rows.length} Pools geschlossen`);
+      for (const p of rows)
+        await db.query(`UPDATE commitments SET status='zurueckgezogen' WHERE pool_id=$1 AND status='aktiv'`,[p.id]);
     }
-  } catch (err) {
-    console.error('[cron] Fehler beim Pool-Check:', err.message);
-  }
+  } catch (err) { console.error('[cron] Pool-Check:', err.message); }
 }
 
 async function checkFaelligeAuszahlungen() {
-  // Auszahlungen die seit > 24h 'veranlasst' sind → als 'ausgezahlt' markieren
-  // (In Produktion: echtes SEPA-Feedback, hier: Auto-Confirm nach 24h)
   try {
-    const { rows } = await db.query(`
-      UPDATE auszahlungen
-      SET status = 'ausgezahlt', ausgezahlt_am = NOW()
-      WHERE status = 'veranlasst'
-        AND created_at < NOW() - INTERVAL '24 hours'
-      RETURNING id
-    `);
-    if (rows.length > 0) {
-      console.log(`[cron] ${rows.length} Auszahlungen auto-bestätigt`);
-    }
-  } catch (err) {
-    console.error('[cron] Fehler beim Auszahlungs-Check:', err.message);
-  }
+    const { rowCount } = await db.query(
+      `UPDATE auszahlungen SET status='ausgezahlt',ausgezahlt_am=NOW()
+       WHERE status='veranlasst' AND created_at<NOW()-INTERVAL '24 hours'`
+    );
+    if (rowCount > 0) console.log(`[cron] ${rowCount} Auszahlungen auto-bestätigt`);
+  } catch (err) { console.error('[cron] AZ-Check:', err.message); }
+}
+
+async function cleanupTokens() {
+  try { await db.query(`DELETE FROM refresh_tokens WHERE expires_at<NOW()`); }
+  catch (err) { console.error('[cron] Token-Cleanup:', err.message); }
 }
 
 function start() {
   if (cronInterval) return;
-  console.log('[cron] Gestartet – prüft alle 30 Minuten');
-
-  // Sofort einmal ausführen
-  checkExpiredPools();
-  checkFaelligeAuszahlungen();
-
-  // Dann alle 30 Minuten
-  cronInterval = setInterval(async () => {
-    await checkExpiredPools();
-    await checkFaelligeAuszahlungen();
-  }, 30 * 60 * 1000);
+  checkExpiredPools(); checkFaelligeAuszahlungen(); cleanupTokens();
+  cronInterval = setInterval(() => { checkExpiredPools(); checkFaelligeAuszahlungen(); }, 30*60*1000);
+  setInterval(cleanupTokens, 24*60*60*1000);
+  startSelfPing();
+  console.log('[cron] Alle Jobs gestartet');
 }
-
 function stop() {
-  if (cronInterval) {
-    clearInterval(cronInterval);
-    cronInterval = null;
-    console.log('[cron] Gestoppt');
-  }
+  if (cronInterval) { clearInterval(cronInterval); cronInterval = null; }
+  if (pingInterval) { clearInterval(pingInterval); pingInterval = null; }
 }
-
 module.exports = { start, stop, checkExpiredPools };
