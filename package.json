@@ -11,13 +11,14 @@
     "migrate:flow": "node scripts/migrate_flow.js",
     "migrate:fix": "node scripts/migrate_fix.js",
     "migrate:fix2": "node scripts/migrate_fix2.js",
-    "migrate:all": "node scripts/migrate.js && node scripts/migrate_hub.js && node scripts/migrate_flow.js && node scripts/migrate_fix.js && node scripts/migrate_fix2.js && node scripts/migrate_fix3.js && node scripts/migrate_fix4.js && node scripts/migrate_fix5.js",
+    "migrate:all": "node scripts/migrate.js && node scripts/migrate_hub.js && node scripts/migrate_flow.js && node scripts/migrate_fix.js && node scripts/migrate_fix2.js && node scripts/migrate_fix3.js && node scripts/migrate_fix4.js && node scripts/migrate_fix5.js && node scripts/migrate_security.js",
     "seed": "node scripts/seed.js",
     "chain:deploy:test": "npx hardhat run scripts/deploy.js --network mumbai",
     "chain:deploy:main": "npx hardhat run scripts/deploy.js --network polygon",
     "chain:test": "npx hardhat test",
     "chain:compile": "npx hardhat compile",
-    "vapid": "node -e \"const wp=require('web-push');const k=wp.generateVAPIDKeys();console.log('VAPID_PUBLIC_KEY=' + k.publicKey);console.log('VAPID_PRIVATE_KEY=' + k.privateKey)\""
+    "vapid": "node -e \"const wp=require('web-push');const k=wp.generateVAPIDKeys();console.log('VAPID_PUBLIC_KEY=' + k.publicKey);console.log('VAPID_PRIVATE_KEY=' + k.privateKey)\"",
+    "migrate:security": "node scripts/migrate_security.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
