@@ -130,18 +130,28 @@ router.post('/', auth, role('caterer', 'admin'), async (req, res) => {
   }
 });
 
-// ── PUT /api/pools/:id/status – Admin schließt/bricht ab ───────
-router.put('/:id/status', auth, role('admin'), async (req, res) => {
-  const { status, grund } = req.body;
-  const ERLAUBT = ['geschlossen', 'abgebrochen', 'offen'];
-  if (!ERLAUBT.includes(status)) {
-    return res.status(400).json({ error: `Status muss einer von ${ERLAUBT.join(', ')} sein` });
+// ── PUT /api/pools/:id/status – Admin oder eigener Caterer ────
+router.put('/:id/status', auth, role('admin', 'caterer'), async (req, res) => {
+  const { status } = req.body;
+  const erlaubt = req.user.role === 'admin'
+    ? ['geschlossen', 'abgebrochen', 'offen']
+    : ['geschlossen', 'abgebrochen'];
+  if (!erlaubt.includes(status)) {
+    return res.status(400).json({ error: `Status muss einer von ${erlaubt.join(', ')} sein` });
   }
   try {
-    const { rows: [pool] } = await db.query(`
-      UPDATE pools SET status=$1 WHERE id=$2 RETURNING *
-    `, [status, req.params.id]);
-    if (!pool) return res.status(404).json({ error: 'Pool nicht gefunden' });
+    const params = [status, req.params.id];
+    let where = 'id=$2';
+    if (req.user.role === 'caterer') {
+      const { rows:[cat] } = await db.query(`SELECT id FROM caterer WHERE user_id=$1`, [req.user.id]);
+      if (!cat) return res.status(403).json({ error: 'Kein Caterer-Profil' });
+      params.push(cat.id);
+      where = 'id=$2 AND caterer_id=$3';
+    }
+    const { rows: [pool] } = await db.query(
+      `UPDATE pools SET status=$1 WHERE ${where} RETURNING *`, params
+    );
+    if (!pool) return res.status(404).json({ error: 'Pool nicht gefunden oder kein Zugriff' });
 
     // Bei Abbruch: alle aktiven Commitments zurückziehen
     if (status === 'abgebrochen') {
