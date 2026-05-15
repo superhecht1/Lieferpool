@@ -79,6 +79,13 @@ router.put('/:id/status', auth, role('admin'), async (req, res) => {
 
     if (!az) return res.status(404).json({ error: 'Auszahlung nicht gefunden' });
 
+    // Audit-Log
+    try {
+      const { log, ACTIONS } = require('../middleware/audit');
+      const action = status === 'veranlasst' ? ACTIONS.AUSZAHLUNG_VERANLASST : ACTIONS.AUSZAHLUNG_AUSGEZAHLT;
+      await log(req, action, 'auszahlung', req.params.id, { status, netto: az.netto });
+    } catch {}
+
     // E-Mail bei Veranlassung
     if (status === 'veranlasst') {
       try {

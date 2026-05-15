@@ -53,9 +53,29 @@ router.post('/login', async (req, res) => {
   const { email, password } = req.body;
   if (!email||!password) return res.status(400).json({ error:'E-Mail und Passwort erforderlich' });
   try {
-    const { rows:[user] } = await db.query(`SELECT id,email,password,role,name FROM users WHERE email=$1`,[email.toLowerCase()]);
-    if (!user) return res.status(401).json({ error:'Ungültige Anmeldedaten' });
-    if (!await bcrypt.compare(password, user.password)) return res.status(401).json({ error:'Ungültige Anmeldedaten' });
+    const emailLower = email.toLowerCase();
+
+    // Progressive Lockout: 5 Fehlversuche in 15 Min → 15 Min sperren
+    try {
+      const { rows:[attempts] } = await db.query(
+        `SELECT COUNT(*) FROM login_attempts WHERE email=$1 AND success=FALSE AND created_at > NOW()-INTERVAL '15 minutes'`,
+        [emailLower]
+      );
+      if (parseInt(attempts.count) >= 5) {
+        return res.status(429).json({ error: 'Account temporär gesperrt. 15 Minuten warten.' });
+      }
+    } catch {} // Tabelle noch nicht vorhanden → ignorieren
+
+    const { rows:[user] } = await db.query(`SELECT id,email,password,role,name FROM users WHERE email=$1`,[emailLower]);
+
+    if (!user || !await bcrypt.compare(password, user.password)) {
+      // Fehlversuch loggen
+      try { await db.query(`INSERT INTO login_attempts (email,ip,success) VALUES ($1,$2,FALSE)`,[emailLower, req.ip]); } catch {}
+      return res.status(401).json({ error:'Ungültige Anmeldedaten' });
+    }
+
+    // Erfolg loggen + alte Fehlversuche löschen
+    try { await db.query(`DELETE FROM login_attempts WHERE email=$1`,[emailLower]); } catch {}
     const token        = signToken({ id:user.id, email:user.email, role:user.role, name:user.name });
     const refreshToken = await createRefreshToken(user.id);
     res.json({ token, refreshToken, user:{ id:user.id, email:user.email, role:user.role, name:user.name }, redirect:REDIRECT[user.role]||'/' });
@@ -99,8 +119,13 @@ router.post('/change-password', auth, async (req, res) => {
   try {
     const { rows:[u] } = await db.query(`SELECT password FROM users WHERE id=$1`,[req.user.id]);
     if (!await bcrypt.compare(current_password, u.password)) return res.status(401).json({ error:'Aktuelles Passwort falsch' });
-    await db.query(`UPDATE users SET password=$1 WHERE id=$2`,[await bcrypt.hash(new_password,10),req.user.id]);
-    res.json({ message:'Passwort geändert' });
+    const newHash = await bcrypt.hash(new_password, 10);
+    await db.query(`UPDATE users SET password=$1 WHERE id=$2`,[newHash, req.user.id]);
+    // Alle Refresh-Tokens invalidieren → alle Geräte ausloggen
+    await db.query(`DELETE FROM refresh_tokens WHERE user_id=$1`,[req.user.id]);
+    // Audit
+    try { const {log,ACTIONS}=require('../middleware/audit'); await log(req,ACTIONS.PASSWORD_CHANGED,'user',req.user.id,{}); } catch {}
+    res.json({ message:'Passwort geändert. Bitte erneut anmelden.' });
   } catch (err) { res.status(500).json({ error:'Fehler' }); }
 });
 
