@@ -198,6 +198,34 @@
       </div>
     </div>
 
+    <!-- FAHRER MANAGEMENT -->
+    <div id="view-fahrer-mgmt" class="view" style="display:none">
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">Neuen Fahrer anlegen</div>
+          <div id="fahrer-create-result"></div>
+          <div class="form-group"><label class="form-label">Name</label><input class="form-control" id="fc-name" placeholder="Max Mustermann"></div>
+          <div class="form-group"><label class="form-label">E-Mail</label><input class="form-control" type="email" id="fc-email" placeholder="fahrer@lieferpool.de"></div>
+          <div class="form-group"><label class="form-label">Passwort</label><input class="form-control" type="password" id="fc-pw" placeholder="min. 8 Zeichen"></div>
+          <div class="form-group"><label class="form-label">Führerscheinklasse</label>
+            <select class="form-control" id="fc-lizenz">
+              <option value="B">B (PKW/Transporter)</option>
+              <option value="C">C (LKW)</option>
+              <option value="BE">BE (PKW mit Anhänger)</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" id="btn-fahrer-create">Fahrer anlegen</button>
+        </div>
+        <div class="card">
+          <div class="section-hdr">
+            <span class="section-title">Alle Fahrer:innen</span>
+            <button class="btn btn-sm" id="btn-reload-fahrer">↻</button>
+          </div>
+          <div id="fahrer-mgmt-list"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+
     <!-- LOGISTIK -->
     <div id="view-logistik" class="view" style="display:none">
       <div class="card">
@@ -302,6 +330,7 @@ const NAV = [
   { id: 'auszahlungen',  label: 'Auszahlungen' },
   { id: 'reports',       label: 'Reports'      },
   { id: 'logistik',      label: 'Logistik'     },
+  { id: 'fahrer-mgmt',   label: 'Fahrer'       },
 ];
 
 renderHeader('overview', NAV, (v) => { showView(v); loadView(v); });
@@ -317,6 +346,7 @@ async function loadView(v) {
   if (v === 'auszahlungen')  loadAuszahlungen();
   if (v === 'reports')       loadReports();
   if (v === 'logistik')      loadLogistik();
+  if (v === 'fahrer-mgmt')   loadFahrerMgmt();
 }
 
 // ── ÜBERSICHT ─────────────────────────────────────────────────
@@ -660,6 +690,47 @@ document.getElementById('btn-open-abrechnung')?.addEventListener('click', () => 
   if (!id) return showAlert('alerts', 'error', 'Erzeuger auswählen');
   api.openAbrechnung(id, { von, bis });
 });
+
+// ── FAHRER MANAGEMENT ─────────────────────────────────────────
+async function loadFahrerMgmt() {
+  try {
+    const { fahrer } = await api.getFahrerList();
+    setHTML('fahrer-mgmt-list', fahrer.length ? `
+      <table class="tbl">
+        <thead><tr><th>Name</th><th>E-Mail</th><th>Lizenz</th><th>Touren</th><th>Status</th></tr></thead>
+        <tbody>${fahrer.map(f=>`<tr>
+          <td style="font-weight:500">${f.name}</td>
+          <td class="pool-meta">${f.email}</td>
+          <td><span class="badge badge-gray">${f.lizenzklasse}</span></td>
+          <td class="pool-meta">${f.touren_gesamt}</td>
+          <td>${f.aktiv?'<span class="badge badge-green">Aktiv</span>':'<span class="badge badge-red">Inaktiv</span>'}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+    ` : '<p style="color:var(--text3);font-size:13px">Noch keine Fahrer angelegt</p>');
+  } catch(err) { showAlert('alerts','error',err.message); }
+}
+
+document.getElementById('btn-fahrer-create')?.addEventListener('click', async () => {
+  const name = document.getElementById('fc-name').value.trim();
+  const email = document.getElementById('fc-email').value.trim();
+  const password = document.getElementById('fc-pw').value;
+  const lizenzklasse = document.getElementById('fc-lizenz').value;
+  const btn = document.getElementById('btn-fahrer-create');
+  if (!name||!email||!password) return showAlert('alerts','error','Alle Felder ausfüllen');
+  if (password.length<8) return showAlert('alerts','error','Passwort min. 8 Zeichen');
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>';
+  try {
+    const { user } = await api.createFahrer({ name, email, password, lizenzklasse });
+    setHTML('fahrer-create-result','<div class="alert alert-success">✓ Fahrer angelegt · Login: '+email+'</div>');
+    document.getElementById('fc-name').value='';
+    document.getElementById('fc-email').value='';
+    document.getElementById('fc-pw').value='';
+    btn.textContent='Fahrer anlegen'; btn.disabled=false;
+    loadFahrerMgmt();
+  } catch(err){btn.textContent='Fahrer anlegen';btn.disabled=false;showAlert('alerts','error',err.message);}
+});
+
+document.getElementById('btn-reload-fahrer')?.addEventListener('click', loadFahrerMgmt);
 
 // ── LOGISTIK ──────────────────────────────────────────────────
 let aktiveTourId = null;
