@@ -147,6 +147,7 @@ const api = {
   updatePoolStatus:(id, status, grund) => put('/pools/' + id + '/status', { status, grund }),
   commitQuantity: (id, menge)  => post('/pools/' + id + '/commit', { menge }),
   withdrawCommit: (id)         => del('/pools/' + id + '/commit'),
+  updateCommit:   (id, menge)  => req('PUT', '/pools/' + id + '/commit', { menge }),
 
   // ERZEUGER
   getErzeugerMe:         ()           => get('/erzeuger/me'),

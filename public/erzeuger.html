@@ -324,14 +324,29 @@ async function loadPools() {
       <div class="pool-item" data-pool-id="${c.pool_id}" title="Klicken für Pool-Details">
         <div class="pool-row">
           <span class="pool-name">${c.produkt}</span>
-          <div style="display:flex;align-items:center;gap:.5rem">
+          <div style="display:flex;align-items:center;gap:.35rem;flex-wrap:wrap">
             ${statusBadge(c.status)}
-            ${c.pool_status==='offen'&&c.status==='aktiv'?`<button class="btn btn-sm btn-danger" style="padding:2px 8px;font-size:11px" data-action="withdraw" data-pool-id="${c.pool_id}">Zurückziehen</button>`:''}
+            ${c.pool_status==='offen'&&c.status==='aktiv'?`
+              <button class="btn btn-sm" style="padding:2px 8px;font-size:11px" data-action="edit-commit" data-pool-id="${c.pool_id}" data-menge="${c.menge}">✏ Ändern</button>
+              <button class="btn btn-sm btn-danger" style="padding:2px 8px;font-size:11px" data-action="withdraw" data-pool-id="${c.pool_id}">Zurückziehen</button>
+            `:''}
           </div>
         </div>
         <div class="pool-row" style="margin-top:3px">
           <span class="pool-meta">${c.lieferwoche}</span>
           <span class="pool-meta" style="font-family:'DM Mono',monospace;color:var(--green)">${fmt(c.menge, 0)} kg · ${fmt(c.menge * parseFloat(c.preis_pro_einheit||0) * 0.99)} € erw.</span>
+        </div>
+        <div id="edit-form-${c.pool_id}" style="display:none;margin-top:.75rem;padding:.75rem;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border)">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:.5rem;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.06em">Neue Menge</div>
+          <div style="display:flex;gap:.5rem;align-items:center">
+            <input class="form-control" type="number" id="edit-menge-${c.pool_id}"
+              value="${c.menge}" min="1" step="0.1"
+              style="width:120px;padding:5px 10px">
+            <span class="pool-meta">kg</span>
+            <button class="btn btn-primary btn-sm" data-action="save-commit" data-pool-id="${c.pool_id}">Speichern</button>
+            <button class="btn btn-sm" data-action="cancel-edit" data-pool-id="${c.pool_id}">Abbrechen</button>
+          </div>
+          <div id="edit-result-${c.pool_id}" style="margin-top:.5rem"></div>
         </div>
       </div>
     `).join('') : '<p style="color:var(--text3);font-size:13px">Noch keine Zusagen</p>');
@@ -623,16 +638,50 @@ document.getElementById('btn-zert')?.addEventListener('click', async () => {
   }
 });
 
-// Commitment zurückziehen
+// Commitment zurückziehen + ändern
 document.getElementById('commitments-list')?.addEventListener('click', async e => {
-  const btn = e.target.closest('[data-action="withdraw"]');
+  const btn = e.target.closest('[data-action]');
   if (!btn) return;
-  if (!confirm('Commitment zurückziehen? Du kannst danach wieder zusagen solange der Pool offen ist.')) return;
-  try {
-    await api.withdrawCommit(btn.dataset.poolId);
-    toast('Commitment zurückgezogen');
-    loadPools();
-  } catch (err) { showAlert('alerts','error',err.message); }
+
+  const poolId = btn.dataset.poolId;
+
+  if (btn.dataset.action === 'withdraw') {
+    if (!confirm('Commitment zurückziehen? Du kannst danach erneut zusagen.')) return;
+    try {
+      await api.withdrawCommit(poolId);
+      toast('Commitment zurückgezogen');
+      loadPools();
+    } catch (err) { showAlert('alerts','error',err.message); }
+  }
+
+  if (btn.dataset.action === 'edit-commit') {
+    // Alle anderen Edit-Forms schließen
+    document.querySelectorAll('[id^="edit-form-"]').forEach(f => f.style.display = 'none');
+    const form = document.getElementById('edit-form-' + poolId);
+    if (form) { form.style.display = 'block'; document.getElementById('edit-menge-' + poolId)?.focus(); }
+  }
+
+  if (btn.dataset.action === 'cancel-edit') {
+    const form = document.getElementById('edit-form-' + poolId);
+    if (form) form.style.display = 'none';
+  }
+
+  if (btn.dataset.action === 'save-commit') {
+    const input = document.getElementById('edit-menge-' + poolId);
+    const menge = parseFloat(input?.value || 0);
+    if (!menge || menge <= 0) return;
+    btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+    try {
+      const res = await api.updateCommit(poolId, menge);
+      const resultEl = document.getElementById('edit-result-' + poolId);
+      if (resultEl) resultEl.innerHTML = `<div class="alert alert-success" style="margin:0">✓ Geändert: ${res.diff} kg · Pool ${res.pool_fuellstand}% gefüllt</div>`;
+      setTimeout(() => { loadPools(); }, 1500);
+    } catch (err) {
+      btn.textContent = 'Speichern'; btn.disabled = false;
+      const resultEl = document.getElementById('edit-result-' + poolId);
+      if (resultEl) resultEl.innerHTML = `<div class="alert alert-error" style="margin:0">${err.message}</div>`;
+    }
+  }
 });
 
 // ── INIT ──────────────────────────────────────────────────────
