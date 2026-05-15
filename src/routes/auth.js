@@ -177,17 +177,28 @@ router.post('/admin/create-fahrer', auth, role('admin'), async (req, res) => {
 // GET /api/auth/fahrer-list (Admin)
 router.get('/fahrer-list', auth, role('admin'), async (req, res) => {
   try {
+    // fahrer_profile Tabelle existiert erst nach migrate_fix.js
+    const tableCheck = await db.query(
+      `SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name='fahrer_profile') AS exists`
+    );
+    if (!tableCheck.rows[0].exists) {
+      return res.json({ fahrer: [], hint: 'migrate_fix.js noch nicht ausgeführt' });
+    }
     const { rows } = await db.query(`
-      SELECT u.id,u.name,u.email,fp.lizenzklasse,fp.aktiv,
+      SELECT u.id, u.name, u.email, fp.lizenzklasse, fp.aktiv,
         COUNT(DISTINCT t.id)::int AS touren_gesamt
       FROM users u
-      JOIN fahrer_profile fp ON fp.user_id=u.id
-      LEFT JOIN touren t ON t.fahrer_id=u.id
-      WHERE u.role='fahrer'
-      GROUP BY u.id,u.name,u.email,fp.lizenzklasse,fp.aktiv ORDER BY u.name
+      JOIN fahrer_profile fp ON fp.user_id = u.id
+      LEFT JOIN touren t ON t.fahrer_id = u.id
+      WHERE u.role = 'fahrer'
+      GROUP BY u.id, u.name, u.email, fp.lizenzklasse, fp.aktiv
+      ORDER BY u.name
     `);
-    res.json({ fahrer:rows });
-  } catch (err) { res.status(500).json({ error:'Fehler' }); }
+    res.json({ fahrer: rows });
+  } catch (err) {
+    console.error('[fahrer-list]', err.message);
+    res.json({ fahrer: [] });
+  }
 });
 
 module.exports = router;
