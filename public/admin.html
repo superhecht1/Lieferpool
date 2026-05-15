@@ -418,8 +418,9 @@
       <div class="card" id="tour-detail-card" style="display:none">
         <div class="section-hdr">
           <span class="section-title" id="tour-detail-title">Tour-Detail</span>
-          <div style="display:flex;gap:.5rem">
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap">
             <button class="btn btn-sm" id="btn-optimiere">⚡ Optimieren</button>
+            <button class="btn btn-sm" id="btn-print-tour">🖨 Drucken</button>
             <button class="btn btn-sm" id="btn-stopp-add">+ Stopp</button>
             <button class="btn btn-sm" id="btn-detail-close">✕</button>
           </div>
@@ -1001,7 +1002,7 @@ document.getElementById('btn-create-lief')?.addEventListener('click', async () =
   btn.disabled=true; btn.innerHTML='<span class="spinner"></span>';
   try {
     const {lieferung}=await api.createLieferung(pool_id,lieferdatum||null);
-    setHTML('lief-create-result',`<div class="success-box"><div class="success-icon">✓</div><div class="success-title">Lieferschein erstellt</div><div class="success-sub">Nr: ${lieferung.lieferschein_nr}</div><div style="margin-top:.75rem"><span class="qr-code">${lieferung.qr_code}</span></div></div>`);
+    setHTML('lief-create-result',`<div class="success-box"><div class="success-icon">✓</div><div class="success-title">Lieferschein erstellt</div><div class="success-sub">Nr: ${lieferung.lieferschein_nr} · QR: ${lieferung.qr_code}</div><div style="margin-top:.75rem;display:flex;gap:.5rem;justify-content:center"><span class="qr-code">${lieferung.qr_code}</span></div><div style="margin-top:.875rem"><button class="btn btn-sm btn-primary" onclick="window.open('/api/print/lieferung/${lieferung.id}','_blank')">🖨 Lieferschein drucken</button></div></div>`);
     const f=document.getElementById('lief-create-form'); if(f) f.style.display='none';
   } catch(err){btn.textContent='Lieferschein erstellen';btn.disabled=false;showAlert('alerts','error',err.message);}
 });
@@ -1292,6 +1293,7 @@ async function deleteStopp(tid, sid) {
 }
 
 document.getElementById('btn-detail-close')?.addEventListener('click', () => { const c=document.getElementById('tour-detail-card'); if(c) c.style.display='none'; aktiveTourId=null; });
+document.getElementById('btn-print-tour')?.addEventListener('click', () => { if(aktiveTourId) window.open('/api/print/tour/'+aktiveTourId,'_blank'); });
 document.getElementById('btn-stopp-add')?.addEventListener('click', () => { const c=document.getElementById('stopp-add-card'); if(c) c.style.display=c.style.display==='none'?'block':'none'; });
 document.getElementById('btn-stopp-save')?.addEventListener('click', async () => {
   if(!aktiveTourId) return;

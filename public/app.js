@@ -151,10 +151,24 @@ function deadlineCountdown(deadline) {
   if (diff <= 0) return '<span class="badge badge-red">Abgelaufen</span>';
   const days  = Math.floor(diff / 86400000);
   const hours = Math.floor((diff % 86400000) / 3600000);
+  const mins  = Math.floor((diff % 3600000) / 60000);
   if (days > 7)  return `<span class="pool-meta">${new Date(deadline).toLocaleDateString('de-DE')}</span>`;
-  if (days > 0)  return `<span class="badge badge-amber">⏱ ${days}d ${hours}h</span>`;
-  return `<span class="badge badge-red">⏱ Noch ${hours}h!</span>`;
+  if (days > 0)  return `<span class="badge badge-amber" data-deadline="${deadline}">⏱ ${days}d ${hours}h</span>`;
+  if (hours > 0) return `<span class="badge badge-red" data-deadline="${deadline}">⏱ ${hours}h ${mins}m!</span>`;
+  return `<span class="badge badge-red" data-deadline="${deadline}">⏱ ${mins}m!</span>`;
 }
+
+// Live-Ticker: aktualisiert alle Countdown-Badges jede Minute
+setInterval(() => {
+  document.querySelectorAll('[data-deadline]').forEach(el => {
+    const diff  = new Date(el.dataset.deadline) - new Date();
+    if (diff <= 0) { el.textContent = 'Abgelaufen'; el.className = 'badge badge-red'; return; }
+    const days  = Math.floor(diff / 86400000);
+    const hours = Math.floor((diff % 86400000) / 3600000);
+    const mins  = Math.floor((diff % 3600000) / 60000);
+    el.textContent = days > 0 ? `⏱ ${days}d ${hours}h` : hours > 0 ? `⏱ ${hours}h ${mins}m!` : `⏱ ${mins}m!`;
+  });
+}, 60000);
 function poolPct(committed, ziel) { return Math.min(100, Math.round((committed/ziel)*100)); }
 function statusBadge(status) {
   const map = {

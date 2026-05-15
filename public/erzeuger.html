@@ -345,19 +345,35 @@ async function loadZusagen() {
     const { pools } = await api.getPools({ status: 'offen' });
     openPools = pools;
 
-    setHTML('pool-status-list', pools.length ? pools.map(p => `
+    // Preisvergleich: höchsten Preis pro Produkt markieren
+    const preisPerProdukt = {};
+    pools.forEach(p => {
+      const preis = parseFloat(p.preis_pro_einheit);
+      if (!preisPerProdukt[p.produkt] || preis > preisPerProdukt[p.produkt]) {
+        preisPerProdukt[p.produkt] = preis;
+      }
+    });
+
+    setHTML('pool-status-list', pools.length ? pools.map(p => {
+      const preis = parseFloat(p.preis_pro_einheit);
+      const istBester = preis >= preisPerProdukt[p.produkt];
+      const erloes100 = (100 * preis * 0.99).toFixed(2);
+      return `
       <div class="pool-item" data-pool-id="${p.id}">
         <div class="pool-row">
           <span class="pool-name">${p.produkt}</span>
           <div style="display:flex;gap:.5rem;align-items:center">
-            <span class="pool-meta">${fmt(p.preis_pro_einheit)} €/kg</span>
+            <span style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600;color:${istBester?'var(--green)':'var(--text2)'}">${fmt(preis)} €/kg ${istBester?'⭐':''}</span>
             ${deadlineCountdown(p.deadline)}
           </div>
         </div>
-        <span class="pool-meta">${p.lieferwoche} · Ziel: ${Math.round(p.menge_ziel)} kg · ${p.erzeuger_count||0} Erzeuger</span>
+        <div class="pool-row" style="margin-top:3px">
+          <span class="pool-meta">${p.lieferwoche} · Ziel: ${Math.round(p.menge_ziel)} kg · ${p.erzeuger_count||0} Erzeuger</span>
+          <span class="pool-meta" style="color:var(--green)">≈ ${erloes100} € / 100 kg</span>
+        </div>
         ${poolBar(p.menge_committed, p.menge_ziel)}
-      </div>
-    `).join('') : '<p style="color:var(--text3);font-size:13px">Keine offenen Pools</p>');
+      </div>`;
+    }).join('') : '<p style="color:var(--text3);font-size:13px">Keine offenen Pools</p>');
 
     const sel = document.getElementById('commit-pool-sel');
     if (sel) sel.innerHTML = pools.length
