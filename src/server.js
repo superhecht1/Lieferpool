@@ -8,19 +8,24 @@ const path      = require('path');
 const app = express();
 app.set('trust proxy', 1);
 
+// Stripe Webhook braucht raw body → vor express.json() mounten
+app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
+
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc:    ["'self'"],
-      scriptSrc:     ["'self'", "'unsafe-inline'"],
+      scriptSrc:     ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://js.stripe.com'],
       scriptSrcAttr: ["'unsafe-inline'"],
-      styleSrc:      ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
-      fontSrc:       ["'self'", 'https://fonts.gstatic.com'],
-      connectSrc:    ["'self'"],
+      styleSrc:      ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net'],
+      fontSrc:       ["'self'", 'https://fonts.gstatic.com', 'https://cdn.jsdelivr.net'],
+      connectSrc:    ["'self'", 'https://api.stripe.com'],
       imgSrc:        ["'self'", 'data:', 'blob:'],
+      frameSrc:      ["'self'", 'https://js.stripe.com'],
     },
   },
 }));
+
 app.use(cors({ origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3000'], credentials: true }));
 app.use(express.json({ limit: '10mb' }));
 
@@ -29,7 +34,7 @@ const loginLimiter = rateLimit({ windowMs:15*60*1000, max:10,  standardHeaders:t
 app.use('/api/', apiLimiter);
 app.use('/api/auth/login', loginLimiter);
 
-// ── Blockchain Toggle ──────────────────────────────────────────
+// Blockchain Toggle
 const chainMode = process.env.BLOCKCHAIN_ENABLED === 'true' ? 'production' : 'mock';
 console.log(`[chain] Modus: ${chainMode}`);
 
@@ -37,6 +42,7 @@ console.log(`[chain] Modus: ${chainMode}`);
 app.use('/api/auth',         require('./routes/auth'));
 app.use('/api/pools',        require('./routes/pools'));
 app.use('/api/erzeuger',     require('./routes/erzeuger'));
+app.use('/api/caterer',      require('./routes/caterer'));
 app.use('/api/lieferungen',  require('./routes/lieferungen'));
 app.use('/api/lager',        require('./routes/lager'));
 app.use('/api/bedarf',       require('./routes/bedarf'));
@@ -44,42 +50,19 @@ app.use('/api/touren',       require('./routes/touren'));
 app.use('/api/fahrzeuge',    require('./routes/fahrzeuge'));
 app.use('/api/auszahlungen', require('./routes/auszahlungen'));
 app.use('/api/reports',      require('./routes/reports'));
+app.use('/api/stripe',       require('./routes/stripe'));
 
-// ── Blockchain Status Endpoint ─────────────────────────────────
+// Chain Status
 app.get('/api/chain/status', async (req, res) => {
-  if (chainMode !== 'production') {
-    return res.json({ enabled: false, mode: 'mock', message: 'BLOCKCHAIN_ENABLED nicht gesetzt' });
-  }
+  if (chainMode !== 'production') return res.json({ enabled:false, mode:'mock' });
   try {
     const { ethers } = require('ethers');
-    const provider   = new ethers.JsonRpcProvider(process.env.RPC_URL || 'https://polygon-rpc.com');
-    const blockNr    = await provider.getBlockNumber();
-    const wallet     = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-    const balance    = await provider.getBalance(wallet.address);
-    res.json({
-      enabled:         true,
-      mode:            'production',
-      network:         'Polygon',
-      blockNumber:     blockNr,
-      contractAddress: process.env.CONTRACT_ADDRESS,
-      walletAddress:   wallet.address,
-      walletBalance:   ethers.formatEther(balance) + ' MATIC',
-    });
-  } catch (err) {
-    res.status(503).json({ enabled: true, mode: 'production', error: err.message });
-  }
-});
-
-// ── Pool Chain-Audit ───────────────────────────────────────────
-app.get('/api/chain/pool/:id', async (req, res) => {
-  if (chainMode !== 'production') return res.json({ mode: 'mock' });
-  try {
-    const chain = require('./services/chain.production');
-    const data  = await chain.getPoolFromChain(req.params.id);
-    res.json({ pool: data });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    const provider = new ethers.JsonRpcProvider(process.env.RPC_URL || 'https://polygon-rpc.com');
+    const blockNr  = await provider.getBlockNumber();
+    const wallet   = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+    const balance  = await provider.getBalance(wallet.address);
+    res.json({ enabled:true, mode:'production', blockNumber:blockNr, contractAddress:process.env.CONTRACT_ADDRESS, walletBalance:ethers.formatEther(balance)+' MATIC' });
+  } catch (err) { res.status(503).json({ enabled:true, error:err.message }); }
 });
 
 app.get('/health', (_, res) => res.json({ status:'ok', chain:chainMode, ts:new Date().toISOString() }));
@@ -87,12 +70,23 @@ app.get('/health', (_, res) => res.json({ status:'ok', chain:chainMode, ts:new D
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 app.use(express.static(PUBLIC_DIR));
 
-['','login','erzeuger','caterer','admin','fahrer'].forEach(route => {
-  app.get('/' + route, (_, res) => res.sendFile(path.join(PUBLIC_DIR, route ? route+'.html' : 'index.html')));
+// HTML Routes
+const pages = ['login','erzeuger','caterer','admin','fahrer'];
+pages.forEach(p => app.get('/'+p, (_,res) => res.sendFile(path.join(PUBLIC_DIR, p+'.html'))));
+app.get('/', (_, res) => res.sendFile(path.join(PUBLIC_DIR, 'index.html')));
+
+// 404
+app.use((req, res) => {
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ error: 'Endpunkt nicht gefunden' });
+  }
+  res.status(404).sendFile(path.join(PUBLIC_DIR, '404.html'));
 });
 
-app.get(/^(?!\/api)/, (_, res) => res.sendFile(path.join(PUBLIC_DIR, 'index.html')));
-app.use((err, req, res, next) => { console.error(err); res.status(500).json({ error:'Interner Fehler' }); });
+app.use((err, req, res, next) => {
+  console.error('Unhandled:', err);
+  res.status(500).json({ error: 'Interner Fehler' });
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
