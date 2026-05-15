@@ -276,4 +276,21 @@ router.delete('/:id/commit', auth, role('erzeuger'), async (req, res) => {
   }
 });
 
+
+// PATCH /api/pools/:id/deadline – Admin ändert Deadline
+router.patch('/:id/deadline', auth, role('admin'), async (req, res) => {
+  const { deadline } = req.body;
+  if (!deadline) return res.status(400).json({ error: 'deadline erforderlich' });
+  try {
+    const { rows: [pool] } = await db.query(
+      `UPDATE pools SET deadline=$1 WHERE id=$2 RETURNING id,produkt,deadline,status`,
+      [deadline, req.params.id]
+    );
+    if (!pool) return res.status(404).json({ error: 'Pool nicht gefunden' });
+    res.json({ pool, message: `Deadline auf ${deadline} gesetzt` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
