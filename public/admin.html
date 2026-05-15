@@ -478,51 +478,209 @@ async function loadView(v) {
 
 // ── ÜBERSICHT ─────────────────────────────────────────────────
 async function loadOverview() {
-  try {
-    const [poolsRes, erzeugerRes, certsRes, dashRes] = await Promise.all([
-      api.getPools(), api.getAllErzeuger(), api.getPendingZertifikate(),
-      api.reportsDashboard().catch(() => null),
+  const heute = new Date().toISOString().split('T')[0];
+
+  // Alle Daten parallel, Fehler einzeln abfangen
+  const [poolsRes, erzeugerRes, certsRes, azRes, lagerRes, tourenRes, catRes, liefRes] =
+    await Promise.all([
+      api.getPools({ limit: 100 }).catch(() => ({ pools: [], pagination: {} })),
+      api.getAllErzeuger().catch(() => ({ erzeuger: [] })),
+      api.getPendingZertifikate().catch(() => ({ zertifikate: [] })),
+      api.getAllAuszahlungen({ limit: 200 }).catch(() => ({ auszahlungen: [], summen: { ausstehend:'0.00', veranlasst:'0.00', ausgezahlt:'0.00', gesamt:'0.00' } })),
+      api.getLagerAlerts().catch(() => ({ alerts: [] })),
+      api.getTouren({ datum: heute }).catch(() => ({ touren: [] })),
+      fetch('/api/caterer', { headers: { 'Authorization': 'Bearer ' + Auth.getToken() } }).then(r => r.json()).catch(() => ({ caterer: [] })),
+      fetch('/api/lieferungen?limit=5', { headers: { 'Authorization': 'Bearer ' + Auth.getToken() } }).then(r => r.json()).catch(() => ({ lieferungen: [] })),
     ]);
-    const { pools } = poolsRes;
-    const { erzeuger } = erzeugerRes;
-    const { zertifikate: pending } = certsRes;
-    const offene  = pools.filter(p => p.status === 'offen').length;
-    const volumen = pools.reduce((s, p) => s + parseFloat(p.menge_committed || 0), 0);
-    const ausstehendAZ = dashRes?.auszahlungen?.find(a => a.status === 'ausstehend');
 
-    setHTML('sys-metrics', `
-      <div class="metric"><div class="metric-label">Erzeuger</div><div class="metric-val green">${erzeuger.length}</div></div>
-      <div class="metric"><div class="metric-label">Offene Pools</div><div class="metric-val">${offene}</div></div>
-      <div class="metric"><div class="metric-label">Ausstehende Zerts</div><div class="metric-val amber">${pending.length}</div></div>
-      <div class="metric"><div class="metric-label">Offene Auszahlungen</div>
-        <div class="metric-val ${ausstehendAZ?.count > 0 ? 'amber' : 'green'}">${ausstehendAZ?.count || 0}</div></div>
-    `);
+  const poolsList    = poolsRes.pools || [];
+  const erzeugerList = erzeugerRes.erzeuger || [];
+  const pendingZerts = certsRes.zertifikate || [];
+  const azListe      = azRes.auszahlungen || [];
+  const summen       = azRes.summen || {};
+  const alerts       = lagerRes.alerts || [];
+  const touren       = tourenRes.touren || [];
+  const caterer      = catRes.caterer || [];
+  const lieferungen  = liefRes.lieferungen || [];
 
-    setHTML('admin-pools-list', pools.length ? pools.slice(0,5).map(p => `
-      <div class="pool-item" data-pool-id="${p.id}" title="Klicken für Details">
-        <div class="pool-row"><span class="pool-name">${p.produkt}</span>${statusBadge(p.status)}</div>
-        <div class="pool-meta">${p.lieferwoche} · ${p.erzeuger_count || 0} Erzeuger</div>
-        ${poolBar(p.menge_committed, p.menge_ziel)}
-      </div>`).join('') : '<p style="color:var(--text3);font-size:13px">Keine Pools</p>');
+  const offene    = poolsList.filter(p => p.status === 'offen').length;
+  const geschl    = poolsList.filter(p => p.status === 'geschlossen').length;
+  const volumen   = poolsList.reduce((s,p) => s + parseFloat(p.menge_committed||0), 0);
+  const azAusst   = azListe.filter(a => a.status === 'ausstehend').length;
 
-    setHTML('pending-quick', pending.length ? pending.slice(0,5).map(z => `
-      <div class="pool-item">
-        <div class="pool-row">
-          <div><div style="font-size:13px;font-weight:500">${z.betrieb_name}</div><div class="pool-meta">${z.typ} · ${z.zert_nummer}</div></div>
-          <div style="display:flex;gap:.5rem">
-            <button class="btn btn-primary btn-sm" data-action="approve" data-id="${z.id}">✓</button>
-            <button class="btn btn-sm btn-danger" data-action="reject" data-id="${z.id}">✗</button>
-          </div>
+  // Stripe fees
+  let stripeFees = '0.00';
+  try {
+    const sf = await fetch('/api/stripe/fees-pending', { headers: { 'Authorization': 'Bearer ' + Auth.getToken() } }).then(r => r.json());
+    stripeFees = sf?.gesamt || '0.00';
+  } catch {}
+
+  // ── Reihe 1 ──
+  setHTML('metrics-row1', `
+    <div class="metric"><div class="metric-label">Erzeuger:innen</div><div class="metric-val green">${erzeugerList.length}</div></div>
+    <div class="metric"><div class="metric-label">Caterer</div><div class="metric-val">${caterer.length}</div></div>
+    <div class="metric"><div class="metric-label">Offene Pools</div><div class="metric-val ${offene>0?'amber':''}">${offene}</div></div>
+    <div class="metric"><div class="metric-label">Gesamtvolumen</div><div class="metric-val">${Math.round(volumen)} kg</div></div>
+  `);
+
+  // ── Reihe 2 ──
+  setHTML('metrics-row2', `
+    <div class="metric"><div class="metric-label">Ausgezahlt</div><div class="metric-val green">${fmt(summen.ausgezahlt||0)} €</div></div>
+    <div class="metric"><div class="metric-label">Ausstehend (${azAusst})</div><div class="metric-val ${azAusst>0?'amber':''}">${fmt(summen.ausstehend||0)} €</div></div>
+    <div class="metric"><div class="metric-label">Gebühren offen</div><div class="metric-val ${parseFloat(stripeFees)>0?'amber':''}">${fmt(stripeFees)} €</div></div>
+    <div class="metric"><div class="metric-label">Touren heute</div><div class="metric-val">${touren.length}</div></div>
+  `);
+
+  // ── Aktive Pools ──
+  const aktivePools = poolsList.filter(p => ['offen','geschlossen'].includes(p.status)).slice(0,6);
+  setHTML('admin-pools-list', aktivePools.length ? aktivePools.map(p => `
+    <div class="pool-item" data-pool-id="${p.id}" title="Details">
+      <div class="pool-row"><span class="pool-name">${p.produkt}</span>${statusBadge(p.status)}</div>
+      <div class="pool-row" style="margin-top:3px">
+        <span class="pool-meta">${p.lieferwoche} · ${p.erzeuger_count||0} Erzeuger</span>
+        <span class="pool-meta" style="font-family:'DM Mono',monospace">${fmt(p.preis_pro_einheit)} €/kg</span>
+      </div>
+      ${poolBar(p.menge_committed, p.menge_ziel)}
+    </div>
+  `).join('') : '<p style="color:var(--text3);font-size:13px;padding:.5rem 0">Keine aktiven Pools</p>');
+
+  // ── Letzte Aktivitäten ──
+  const activities = [];
+  azListe.slice(0,3).forEach(a => activities.push({
+    ts: a.created_at, icon: '💰',
+    title: `${a.betrieb_name} · ${fmt(a.netto)} €`,
+    sub: `Auszahlung ${a.status}`,
+    color: a.status==='ausgezahlt'?'var(--green)':'var(--amber)'
+  }));
+  lieferungen.slice(0,3).forEach(l => activities.push({
+    ts: l.created_at, icon: '📦',
+    title: `${l.produkt||l.lieferschein_nr}`,
+    sub: `Lieferschein · ${l.status}`,
+    color: 'var(--text2)'
+  }));
+  pendingZerts.slice(0,2).forEach(z => activities.push({
+    ts: z.created_at, icon: '📋',
+    title: z.betrieb_name,
+    sub: `Zertifikat eingereicht: ${z.typ}`,
+    color: 'var(--amber)'
+  }));
+  activities.sort((a,b) => new Date(b.ts) - new Date(a.ts));
+
+  setHTML('recent-activity', activities.length ? activities.slice(0,8).map(a => `
+    <div style="display:flex;gap:.75rem;align-items:flex-start;padding:.5rem 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:16px;flex-shrink:0">${a.icon}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${a.title}</div>
+        <div style="font-size:11px;color:${a.color}">${a.sub}</div>
+      </div>
+      <div style="font-size:11px;color:var(--text3);flex-shrink:0">${new Date(a.ts).toLocaleDateString('de-DE',{day:'numeric',month:'short'})}</div>
+    </div>
+  `).join('') : '<p style="color:var(--text3);font-size:13px">Keine Aktivitäten</p>');
+
+  // ── Zertifikate ──
+  setHTML('pending-quick', pendingZerts.length ? pendingZerts.slice(0,4).map(z => `
+    <div class="pool-item">
+      <div class="pool-row">
+        <div><div style="font-size:13px;font-weight:500">${z.betrieb_name}</div><div class="pool-meta">${z.typ} · ${z.zert_nummer}</div></div>
+        <div style="display:flex;gap:.35rem">
+          <button class="btn btn-primary btn-sm" data-action="approve" data-id="${z.id}" style="padding:3px 8px">✓</button>
+          <button class="btn btn-sm btn-danger" data-action="reject"  data-id="${z.id}" style="padding:3px 8px">✗</button>
         </div>
-      </div>`).join('') : '<p style="color:var(--text3);font-size:13px">Keine ausstehenden Zertifikate</p>');
+      </div>
+    </div>
+  `).join('') : '<p style="color:var(--text3);font-size:13px">Keine ausstehenden ✓</p>');
 
-    document.getElementById('pending-quick')?.addEventListener('click', e => {
-      const btn = e.target.closest('[data-action]');
-      if (!btn) return;
-      btn.dataset.action === 'approve' ? approveZert(btn.dataset.id) : rejectZert(btn.dataset.id);
-    });
-  } catch (err) { showAlert('alerts', 'error', err.message); }
+  document.getElementById('pending-quick')?.addEventListener('click', e => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    btn.dataset.action === 'approve' ? approveZert(btn.dataset.id) : rejectZert(btn.dataset.id);
+  });
+
+  // ── System-Status ──
+  let chainStatus = '<span class="badge badge-gray">Mock-Modus</span>';
+  try {
+    const cs = await fetch('/api/chain/status').then(r => r.json()).catch(() => null);
+    if (cs?.enabled) chainStatus = `<span class="badge badge-green">Polygon · Block ${cs.blockNumber}</span>`;
+  } catch {}
+
+  setHTML('system-status', `
+    <div style="display:flex;flex-direction:column;gap:.5rem;font-size:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="color:var(--text2)">Blockchain</span>${chainStatus}
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="color:var(--text2)">Pools geschlossen</span>
+        <span class="badge badge-gray">${geschl}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="color:var(--text2)">Lager-Alerts</span>
+        <span class="badge ${alerts.length>0?'badge-red':'badge-green'}">${alerts.length}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="color:var(--text2)">Zerts ausstehend</span>
+        <span class="badge ${pendingZerts.length>0?'badge-amber':'badge-green'}">${pendingZerts.length}</span>
+      </div>
+    </div>
+  `);
+
+  // ── Lager-Alerts ──
+  setHTML('ov-lager-alerts', alerts.length ? `
+    <table class="tbl" style="font-size:12px">
+      <thead><tr><th>Produkt</th><th>Bestand</th><th>Mindest</th></tr></thead>
+      <tbody>${alerts.slice(0,5).map(a => `<tr>
+        <td style="font-weight:500">${a.produkt}</td>
+        <td style="color:var(--red);font-family:'DM Mono',monospace">${fmt(a.bestand,1)} kg</td>
+        <td style="color:var(--text2);font-family:'DM Mono',monospace">${fmt(a.mindestbestand,1)} kg</td>
+      </tr>`).join('')}</tbody>
+    </table>
+  ` : '<p style="color:var(--text3);font-size:13px">Alle Bestände OK ✓</p>');
+
+  // ── Touren heute ──
+  setHTML('ov-touren-heute', touren.length ? `
+    <table class="tbl" style="font-size:12px">
+      <thead><tr><th>Typ</th><th>Fahrer</th><th>Stopps</th><th>Status</th></tr></thead>
+      <tbody>${touren.slice(0,5).map(t => `<tr>
+        <td style="font-weight:500">${t.typ==='abholung'?'🌾':t.typ==='auslieferung'?'🚚':'🔄'} ${t.typ}</td>
+        <td class="pool-meta">${t.fahrer_name||'—'}</td>
+        <td class="pool-meta">${t.stopps_done||0}/${t.stopp_anzahl||0}</td>
+        <td>${statusBadge(t.status)}</td>
+      </tr>`).join('')}</tbody>
+    </table>
+  ` : '<p style="color:var(--text3);font-size:13px">Keine Touren heute</p>');
+
+  // ── Schnellaktionen ──
+  document.getElementById('ov-btn-bulk-az')?.addEventListener('click', async () => {
+    if (!confirm('Alle ausstehenden Auszahlungen veranlassen?')) return;
+    const btn = document.getElementById('ov-btn-bulk-az');
+    btn.disabled=true; btn.innerHTML='<span class="spinner"></span>';
+    try {
+      const res = await api.bulkVeranlassen();
+      setHTML('quick-action-result',`<div class="alert alert-success">✓ ${res.count} veranlasst · ${res.gesamt} €</div>`);
+      setTimeout(()=>setHTML('quick-action-result',''),4000);
+      loadOverview();
+    } catch(err){ showAlert('alerts','error',err.message); }
+    btn.textContent='💸 Alle ausstehenden auszahlen'; btn.disabled=false;
+  });
+
+  document.getElementById('ov-btn-stripe')?.addEventListener('click', async () => {
+    const btn = document.getElementById('ov-btn-stripe');
+    if (parseFloat(stripeFees) < 0.50) return setHTML('quick-action-result','<div class="alert alert-info">Keine offenen Gebühren ≥ 0,50 €</div>');
+    btn.disabled=true; btn.innerHTML='<span class="spinner"></span>';
+    try {
+      const res = await fetch('/api/stripe/collect-fees',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+Auth.getToken()},body:JSON.stringify({})}).then(r=>r.json());
+      if (res.url) window.open(res.url,'_blank');
+      else setHTML('quick-action-result',`<div class="alert alert-error">${res.error}</div>`);
+    } catch(err){ showAlert('alerts','error',err.message); }
+    btn.textContent='💳 Stripe-Gebühren einziehen'; btn.disabled=false;
+  });
+
+  document.getElementById('ov-btn-lief')?.addEventListener('click', ()=>{ showView('lieferung-neu'); loadView('lieferung-neu'); });
+
+  document.querySelectorAll('[data-action="goto"]').forEach(btn => {
+    btn.addEventListener('click', ()=>{ const v=btn.dataset.view; showView(v); loadView(v); });
+  });
 }
+
 
 // ── ZERTIFIKATE ───────────────────────────────────────────────
 async function loadZertifikate() {
