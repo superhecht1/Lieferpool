@@ -81,4 +81,26 @@ router.get('/', auth, role('admin'), async (req, res) => {
   }
 });
 
+
+// GET /api/caterer/detail/:id (Admin)
+router.get('/detail/:id', auth, role('admin'), async (req, res) => {
+  try {
+    const { rows: [c] } = await db.query(
+      `SELECT c.*, u.email FROM caterer c JOIN users u ON u.id=c.user_id WHERE c.id=$1`,
+      [req.params.id]
+    );
+    if (!c) return res.status(404).json({ error: 'Nicht gefunden' });
+
+    const { rows: pools } = await db.query(
+      `SELECT id, produkt, lieferwoche, status, menge_committed, menge_ziel
+       FROM pools WHERE caterer_id=$1 ORDER BY created_at DESC LIMIT 20`,
+      [c.id]
+    );
+
+    res.json({ caterer: c, pools });
+  } catch (err) {
+    console.error(err); res.status(500).json({ error: 'Fehler' });
+  }
+});
+
 module.exports = router;

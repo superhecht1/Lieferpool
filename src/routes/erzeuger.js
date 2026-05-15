@@ -211,4 +211,26 @@ router.put('/zertifikate/:id/status', auth, role('admin'), async (req, res) => {
   }
 });
 
+
+// GET /api/erzeuger/detail/:id (Admin)
+router.get('/detail/:id', auth, role('admin'), async (req, res) => {
+  try {
+    const { rows: [e] } = await db.query(
+      `SELECT e.*, u.email FROM erzeuger e JOIN users u ON u.id=e.user_id WHERE e.id=$1`,
+      [req.params.id]
+    );
+    if (!e) return res.status(404).json({ error: 'Nicht gefunden' });
+
+    const [{ rows: zertifikate }, { rows: commitments }, { rows: auszahlungen }] = await Promise.all([
+      db.query(`SELECT * FROM zertifikate WHERE erzeuger_id=$1 ORDER BY created_at DESC`,[e.id]),
+      db.query(`SELECT c.*,p.produkt,p.lieferwoche FROM commitments c JOIN pools p ON p.id=c.pool_id WHERE c.erzeuger_id=$1 ORDER BY c.created_at DESC LIMIT 10`,[e.id]),
+      db.query(`SELECT a.*,p.produkt,p.lieferwoche FROM auszahlungen a JOIN commitments c ON c.id=a.commitment_id JOIN pools p ON p.id=c.pool_id WHERE a.erzeuger_id=$1 ORDER BY a.created_at DESC LIMIT 10`,[e.id]),
+    ]);
+
+    res.json({ erzeuger: e, zertifikate, commitments, auszahlungen });
+  } catch (err) {
+    console.error(err); res.status(500).json({ error: 'Fehler' });
+  }
+});
+
 module.exports = router;
