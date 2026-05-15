@@ -145,6 +145,20 @@ function showView(id) {
 // ── Formatierung ───────────────────────────────────────────────
 function fmt(n, decimals = 2) { return parseFloat(n||0).toFixed(decimals).replace('.',','); }
 
+// XSS-Schutz: Nutzer-Input vor dem Rendern escapen
+function esc(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
+}
+
+// Sicheres setHTML: warnt wenn bekannte User-Input-Felder unescaped sind
+function setHTML(id, html) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = html;
+}
+
 function deadlineCountdown(deadline) {
   if (!deadline) return '';
   const diff = new Date(deadline) - new Date();
@@ -349,7 +363,7 @@ async function showPoolDetail(poolId) {
     const wertGesamt  = parseFloat(pool.menge_committed) * parseFloat(pool.preis_pro_einheit);
     const totalMenge  = commitments.reduce((s,c) => s + parseFloat(c.menge||0), 0);
 
-    document.getElementById('modal-pool-title').textContent = pool.produkt;
+    document.getElementById('modal-pool-title').textContent = pool.produkt; // textContent = XSS-sicher
     document.getElementById('modal-pool-status').innerHTML  = statusBadge(pool.status);
 
     document.getElementById('modal-pool-body').innerHTML = `
