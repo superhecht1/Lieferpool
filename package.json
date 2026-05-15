@@ -1,33 +1,35 @@
 {
   "name": "lieferpool",
   "version": "1.0.0",
-  "description": "Virtuelle Lieferkooperative – Kleinerzeuger bündeln Mengen für Großcaterer",
-  "main": "src/server.js",
+  "description": "Virtuelle Lieferkooperative – digitales Rückgrat für regionale Food Hubs",
+  "main": "server.js",
   "scripts": {
-    "start":        "node src/server.js",
-    "dev":          "nodemon src/server.js",
-    "migrate":      "node scripts/migrate.js",
-    "migrate:hub":  "node scripts/migrate_hub.js",
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "migrate": "node scripts/migrate.js",
+    "migrate:hub": "node scripts/migrate_hub.js",
     "migrate:flow": "node scripts/migrate_flow.js",
-    "migrate:all":  "node scripts/migrate.js && node scripts/migrate_hub.js && node scripts/migrate_flow.js",
-    "seed":         "node scripts/seed.js"
+    "migrate:fix": "node scripts/migrate_fix.js",
+    "migrate:fix2": "node scripts/migrate_fix2.js",
+    "migrate:all": "node scripts/migrate.js && node scripts/migrate_hub.js && node scripts/migrate_flow.js && node scripts/migrate_fix.js && node scripts/migrate_fix2.js",
+    "seed": "node scripts/seed.js",
+    "vapid": "node -e \"const wp=require('web-push');const k=wp.generateVAPIDKeys();console.log(JSON.stringify(k,null,2))\""
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.11.3",
+    "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
   },
   "engines": {
     "node": ">=18.0.0"
-  },
-  "dependencies": {
-    "bcryptjs":           "^2.4.3",
-    "cors":               "^2.8.5",
-    "dotenv":             "^16.4.5",
-    "express":            "^4.19.2",
-    "express-rate-limit": "^7.3.1",
-    "helmet":             "^7.1.0",
-    "jsonwebtoken":       "^9.0.2",
-    "multer":             "^1.4.5-lts.1",
-    "pg":                 "^8.12.0",
-    "uuid":               "^10.0.0"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.4"
   }
 }
