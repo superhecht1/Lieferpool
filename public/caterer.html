@@ -682,9 +682,20 @@ async function loadVertraege() {
       </table>
     ` : '<p style="color:var(--text3);font-size:13px">Keine Pools gefunden</p>');
 
-    document.getElementById('vertraege-list')?.addEventListener('click', e => {
-      const btn = e.target.closest('[data-action="detail"]');
-      if (btn) showPoolDetail(btn.dataset.id);
+    document.getElementById('vertraege-list')?.addEventListener('click', async e => {
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      if (btn.dataset.action === 'detail') { showPoolDetail(btn.dataset.id); return; }
+      if (btn.dataset.action === 'close-pool') {
+        const pct = Math.round(parseFloat(btn.closest('tr')?.querySelector('td:nth-child(6) .pool-meta')?.textContent || '0'));
+        if (!confirm(`Pool jetzt schließen und annehmen?\nAktuelle Füllung wird akzeptiert.`)) return;
+        btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+        try {
+          await api.updatePoolStatus(btn.dataset.id, 'geschlossen');
+          toast('Pool geschlossen – Lieferschein kann jetzt erstellt werden');
+          loadVertraege();
+        } catch (err) { toast(err.message, 'error'); btn.textContent = '✓ Annehmen'; btn.disabled = false; }
+      }
     });
 
   } catch (err) { showAlert('alerts', 'error', err.message); }
