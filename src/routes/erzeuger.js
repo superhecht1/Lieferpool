@@ -41,18 +41,39 @@ router.get('/me', auth, role('erzeuger'), async (req, res) => {
 
 // PUT /api/erzeuger/me
 router.put('/me', auth, role('erzeuger'), async (req, res) => {
-  const { betrieb_name, region, iban, bank_name } = req.body;
+  const {
+    betrieb_name, region, iban, bank_name,
+    adresse, plz, ort, telefon, website,
+    beschreibung, sortiment, max_kapazitaet,
+    betriebsgroesse, ust_id, gruendungsjahr,
+  } = req.body;
   try {
     const { rows: [e] } = await db.query(`
       UPDATE erzeuger SET
-        betrieb_name = COALESCE($1, betrieb_name),
-        region       = COALESCE($2, region),
-        iban         = COALESCE($3, iban),
-        bank_name    = COALESCE($4, bank_name)
-      WHERE user_id = $5 RETURNING *
-    `, [betrieb_name, region, iban, bank_name, req.user.id]);
+        betrieb_name    = COALESCE($1,  betrieb_name),
+        region          = COALESCE($2,  region),
+        iban            = COALESCE($3,  iban),
+        bank_name       = COALESCE($4,  bank_name),
+        adresse         = COALESCE($5,  adresse),
+        plz             = COALESCE($6,  plz),
+        ort             = COALESCE($7,  ort),
+        telefon         = COALESCE($8,  telefon),
+        website         = COALESCE($9,  website),
+        beschreibung    = COALESCE($10, beschreibung),
+        sortiment       = COALESCE($11, sortiment),
+        max_kapazitaet  = COALESCE($12, max_kapazitaet),
+        betriebsgroesse = COALESCE($13, betriebsgroesse),
+        ust_id          = COALESCE($14, ust_id),
+        gruendungsjahr  = COALESCE($15, gruendungsjahr)
+      WHERE user_id = $16 RETURNING *
+    `, [betrieb_name, region, iban, bank_name,
+        adresse, plz, ort, telefon, website,
+        beschreibung, sortiment, max_kapazitaet,
+        betriebsgroesse, ust_id, gruendungsjahr,
+        req.user.id]);
     res.json({ erzeuger: e });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Aktualisierung fehlgeschlagen' });
   }
 });
