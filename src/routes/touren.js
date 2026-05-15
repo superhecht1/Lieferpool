@@ -29,22 +29,40 @@ router.get('/fahrer/liste', auth, role('admin', 'caterer'), async (req, res) => 
     );
     if (!tableCheck.rows[0].exists) return res.json({ fahrer: [] });
 
-    const { rows } = await db.query(`
-      SELECT u.id, u.name, u.email,
-        fp.lizenzklasse, fp.aktiv,
-        COUNT(DISTINCT t.id)::int AS touren_heute
-      FROM users u
-      JOIN fahrer_profile fp ON fp.user_id = u.id
-      LEFT JOIN touren t ON t.fahrer_id = u.id
-        AND t.datum = CURRENT_DATE
-      WHERE u.role = 'fahrer' AND fp.aktiv = TRUE
-      GROUP BY u.id, u.name, u.email, fp.lizenzklasse, fp.aktiv
-      ORDER BY u.name
-    `);
+    // Prüfen ob touren.fahrer_id existiert
+    const colCheck = await db.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.columns
+        WHERE table_name='touren' AND column_name='fahrer_id'
+      ) AS exists
+    `).catch(() => ({ rows: [{ exists: false }] }));
+
+    let rows;
+    if (colCheck.rows[0].exists) {
+      ({ rows } = await db.query(`
+        SELECT u.id, u.name, u.email,
+          fp.lizenzklasse, fp.aktiv,
+          COUNT(DISTINCT t.id)::int AS touren_heute
+        FROM users u
+        JOIN fahrer_profile fp ON fp.user_id = u.id
+        LEFT JOIN touren t ON t.fahrer_id = u.id AND t.datum = CURRENT_DATE
+        WHERE u.role = 'fahrer' AND fp.aktiv = TRUE
+        GROUP BY u.id, u.name, u.email, fp.lizenzklasse, fp.aktiv
+        ORDER BY u.name
+      `));
+    } else {
+      ({ rows } = await db.query(`
+        SELECT u.id, u.name, u.email, fp.lizenzklasse, fp.aktiv, 0 AS touren_heute
+        FROM users u
+        JOIN fahrer_profile fp ON fp.user_id = u.id
+        WHERE u.role = 'fahrer' AND fp.aktiv = TRUE
+        ORDER BY u.name
+      `));
+    }
     res.json({ fahrer: rows });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Fehler beim Laden der Fahrerliste' });
+    console.error('[fahrer/liste]', err.message);
+    res.json({ fahrer: [] }); // Nie 500 – immer leere Liste zurückgeben
   }
 });
 
