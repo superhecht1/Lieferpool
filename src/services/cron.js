@@ -41,6 +41,54 @@ async function cleanupTokens() {
   catch (err) { console.error('[cron] Token-Cleanup:', err.message); }
 }
 
+
+async function sendWochenberichtEmail() {
+  const adminEmail = process.env.ADMIN_EMAIL;
+  if (!adminEmail) { console.warn('[cron] ADMIN_EMAIL nicht gesetzt – kein Wochenbericht'); return; }
+
+  try {
+    const email = require('../services/email');
+    const now   = new Date();
+    const kw    = getKW(now);
+    const seit  = new Date(now - 7 * 24 * 60 * 60 * 1000);
+
+    const [pools, commits, lieferungen, azVeranlasst, azOffen, lager] = await Promise.all([
+      db.query(`SELECT COUNT(*) FROM pools WHERE created_at > $1`, [seit]),
+      db.query(`SELECT COUNT(*) FROM commitments WHERE created_at > $1`, [seit]),
+      db.query(`SELECT COUNT(*) FROM lieferungen WHERE wareneingang_at > $1`, [seit]),
+      db.query(`SELECT COUNT(*),SUM(netto) FROM auszahlungen WHERE status='veranlasst' AND created_at > $1`, [seit]),
+      db.query(`SELECT COUNT(*),SUM(netto) FROM auszahlungen WHERE status='ausstehend'`),
+      db.query(`SELECT COUNT(*) FROM lager_positionen WHERE unterbestand = TRUE`).catch(() => ({ rows: [{ count: 0 }] })),
+    ]);
+
+    await email.sendWochenbericht({
+      adminEmail,
+      stats: {
+        kw, jahr: now.getFullYear(),
+        neue_pools:           parseInt(pools.rows[0].count),
+        neue_commitments:     parseInt(commits.rows[0].count),
+        wareneingaenge:       parseInt(lieferungen.rows[0].count),
+        auszahlungen_count:   parseInt(azVeranlasst.rows[0].count),
+        auszahlungen_summe:   azVeranlasst.rows[0].sum || 0,
+        offene_auszahlungen:  parseInt(azOffen.rows[0].count),
+        offene_summe:         azOffen.rows[0].sum || 0,
+        lager_alerts:         parseInt(lager.rows[0].count),
+      },
+    });
+    console.log(`[cron] Wochenbericht gesendet an ${adminEmail}`);
+  } catch (err) {
+    console.error('[cron] Wochenbericht fehlgeschlagen:', err.message);
+  }
+}
+
+function getKW(d) {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day  = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  return Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+}
+
 function start() {
   if (cronInterval) return;
   checkExpiredPools(); checkFaelligeAuszahlungen(); cleanupTokens();

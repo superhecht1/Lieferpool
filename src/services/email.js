@@ -208,6 +208,29 @@ async function sendWareneingangBestaetigt({ erzeugerEmail, erzeugerName, lieferu
   });
 }
 
+
+// ── E-Mail: Wochenbericht (Montags) ───────────────────────────
+async function sendWochenbericht({ adminEmail, stats }) {
+  return send({
+    to: { email: adminEmail, name: 'LieferPool Admin' },
+    subject: `Wochenbericht LieferPool – KW ${stats.kw}/${stats.jahr}`,
+    html: template('Wochenbericht', `
+      <h1>Wochenbericht KW ${stats.kw}/${stats.jahr}</h1>
+      <p>Hier ist die Zusammenfassung der letzten Woche:</p>
+      <div class="box">
+        <div class="box-row"><span>Neue Pools</span><span>${stats.neue_pools}</span></div>
+        <div class="box-row"><span>Neue Commitments</span><span>${stats.neue_commitments}</span></div>
+        <div class="box-row"><span>Wareneingänge</span><span>${stats.wareneingaenge}</span></div>
+        <div class="box-row"><span>Auszahlungen veranlasst</span><span>${stats.auszahlungen_count}</span></div>
+        <div class="box-row"><span>Ausgezahlter Betrag</span><span>${parseFloat(stats.auszahlungen_summe||0).toFixed(2)} €</span></div>
+        <div class="box-row"><span>Offene Auszahlungen</span><span>${stats.offene_auszahlungen} (${parseFloat(stats.offene_summe||0).toFixed(2)} €)</span></div>
+        <div class="box-row"><span>Lager-Alerts</span><span>${stats.lager_alerts}</span></div>
+      </div>
+      <a href="${process.env.APP_URL || 'https://lieferpool.onrender.com'}/admin" class="btn">Zum Admin-Dashboard</a>
+    `),
+  });
+}
+
 module.exports = {
   send,
   sendPoolVoll,
@@ -216,4 +239,5 @@ module.exports = {
   sendZertifikatAbgelehnt,
   sendNeuerPool,
   sendWareneingangBestaetigt,
+  sendWochenbericht,
 };
