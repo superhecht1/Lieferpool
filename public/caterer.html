@@ -2,6 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230d1f15'/><text y='24' x='4' font-size='22' font-family='monospace' font-weight='bold' fill='%237ab648'>L</text></svg>">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LieferPool – Caterer</title>
   <link rel="stylesheet" href="style.css">
@@ -703,6 +704,91 @@ async function loadVertraege() {
 
 document.getElementById('filter-pool-status')?.addEventListener('change', loadVertraege);
 document.getElementById('btn-reload-vertraege')?.addEventListener('click', loadVertraege);
+
+// ── CATERER PROFIL ────────────────────────────────────────────
+async function loadCatProfil() {
+  try {
+    const res  = await fetch('/api/caterer/me', { headers:{'Authorization':'Bearer '+Auth.getToken()} });
+    const data = await res.json();
+    const caterer = data.caterer || {};
+    const pools   = data.pools   || [];
+
+    const fields = {
+      'cp-name': caterer.firma_name, 'cp-region': caterer.region,
+      'cp-adresse': caterer.adresse, 'cp-plz': caterer.plz, 'cp-ort': caterer.ort,
+      'cp-telefon': caterer.telefon, 'cp-website': caterer.website,
+      'cp-beschreibung': caterer.beschreibung, 'cp-ktype': caterer.kuechen_typ,
+      'cp-kapazitaet': caterer.kuechen_kapazitaet, 'cp-plaetze': caterer.anz_plaetze,
+      'cp-gruendung': caterer.gruendungsjahr, 'cp-iban': caterer.iban,
+      'cp-bank': caterer.bank_name, 'cp-ustid': caterer.ust_id,
+    };
+    Object.entries(fields).forEach(([id, val]) => {
+      const el = document.getElementById(id); if (el && val != null) el.value = val;
+    });
+
+    setHTML('cat-profil-stats', `
+      <div class="metric"><div class="metric-label">Pools gesamt</div><div class="metric-val">${pools.length}</div></div>
+      <div class="metric"><div class="metric-label">Offen</div><div class="metric-val amber">${pools.filter(p=>p.status==='offen').length}</div></div>
+      <div class="metric"><div class="metric-label">Geliefert</div><div class="metric-val green">${pools.filter(p=>p.status==='geliefert').length}</div></div>
+      <div class="metric"><div class="metric-label">Seit</div><div class="metric-val" style="font-size:13px">${new Date(caterer.created_at||Date.now()).toLocaleDateString('de-DE')}</div></div>
+    `);
+    setHTML('cat-account-info', `
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:.25rem 1rem;font-size:13px">
+        <span style="color:var(--text3)">E-Mail</span><span>${caterer.email||'—'}</span>
+        <span style="color:var(--text3)">Rolle</span><span>Caterer</span>
+        <span style="color:var(--text3)">ID</span><span style="font-family:'DM Mono',monospace;font-size:11px">${(caterer.id||'').slice(0,8)}...</span>
+        <span style="color:var(--text3)">Mitglied seit</span><span>${new Date(caterer.created_at||Date.now()).toLocaleDateString('de-DE')}</span>
+      </div>
+    `);
+  } catch(err) { showAlert('alerts','error',err.message); }
+}
+
+document.getElementById('btn-save-cat-profil')?.addEventListener('click', async () => {
+  const btn = document.getElementById('btn-save-cat-profil');
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Speichern...';
+  try {
+    const r = await fetch('/api/caterer/me', {
+      method:'PUT',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+Auth.getToken()},
+      body: JSON.stringify({
+        firma_name:         document.getElementById('cp-name')?.value.trim()||null,
+        region:             document.getElementById('cp-region')?.value||null,
+        adresse:            document.getElementById('cp-adresse')?.value.trim()||null,
+        plz:                document.getElementById('cp-plz')?.value.trim()||null,
+        ort:                document.getElementById('cp-ort')?.value.trim()||null,
+        telefon:            document.getElementById('cp-telefon')?.value.trim()||null,
+        website:            document.getElementById('cp-website')?.value.trim()||null,
+        beschreibung:       document.getElementById('cp-beschreibung')?.value.trim()||null,
+        kuechen_typ:        document.getElementById('cp-ktype')?.value||null,
+        kuechen_kapazitaet: document.getElementById('cp-kapazitaet')?.value.trim()||null,
+        anz_plaetze:        parseInt(document.getElementById('cp-plaetze')?.value)||null,
+        gruendungsjahr:     parseInt(document.getElementById('cp-gruendung')?.value)||null,
+        iban:               document.getElementById('cp-iban')?.value.trim()||null,
+        bank_name:          document.getElementById('cp-bank')?.value.trim()||null,
+        ust_id:             document.getElementById('cp-ustid')?.value.trim()||null,
+      }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error);
+    setHTML('cat-profil-result','<div class="alert alert-success">✓ Profil gespeichert</div>');
+    setTimeout(()=>setHTML('cat-profil-result',''),3000);
+  } catch(err){ showAlert('alerts','error',err.message); }
+  btn.textContent='Profil speichern'; btn.disabled=false;
+});
+
+document.getElementById('btn-cat-change-pw')?.addEventListener('click', async () => {
+  const current=document.getElementById('cpw-current')?.value;
+  const neu=document.getElementById('cpw-new')?.value;
+  const neu2=document.getElementById('cpw-new2')?.value;
+  if (!current||!neu) return setHTML('cpw-result','<div class="alert alert-error">Alle Felder ausfüllen</div>');
+  if (neu!==neu2)     return setHTML('cpw-result','<div class="alert alert-error">Passwörter stimmen nicht überein</div>');
+  if (neu.length<8)   return setHTML('cpw-result','<div class="alert alert-error">Min. 8 Zeichen</div>');
+  try {
+    await api.changePassword(current, neu);
+    setHTML('cpw-result','<div class="alert alert-success">✓ Passwort geändert – bitte neu anmelden</div>');
+    ['cpw-current','cpw-new','cpw-new2'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  } catch(err){ setHTML('cpw-result',`<div class="alert alert-error">${err.message}</div>`); }
+});
 
 // ── INIT ──────────────────────────────────────────────────────
 loadOverview();
