@@ -1,7 +1,7 @@
 {
   "name": "lieferpool",
   "version": "1.0.0",
-  "description": "Virtuelle Lieferkooperative – digitales Rückgrat für regionale Food Hubs",
+  "description": "Virtuelle Lieferkooperative – Food Hub Köln",
   "main": "server.js",
   "scripts": {
     "start": "node src/server.js",
@@ -13,12 +13,17 @@
     "migrate:fix2": "node scripts/migrate_fix2.js",
     "migrate:all": "node scripts/migrate.js && node scripts/migrate_hub.js && node scripts/migrate_flow.js && node scripts/migrate_fix.js && node scripts/migrate_fix2.js",
     "seed": "node scripts/seed.js",
-    "vapid": "node -e \"const wp=require('web-push');const k=wp.generateVAPIDKeys();console.log(JSON.stringify(k,null,2))\""
+    "chain:deploy:test": "npx hardhat run scripts/deploy.js --network mumbai",
+    "chain:deploy:main": "npx hardhat run scripts/deploy.js --network polygon",
+    "chain:test": "npx hardhat test",
+    "chain:compile": "npx hardhat compile",
+    "vapid": "node -e \"const wp=require('web-push');const k=wp.generateVAPIDKeys();console.log('VAPID_PUBLIC_KEY=' + k.publicKey);console.log('VAPID_PRIVATE_KEY=' + k.privateKey)\""
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
+    "ethers": "^6.9.0",
     "express": "^4.18.2",
     "express-rate-limit": "^7.1.5",
     "helmet": "^7.1.0",
@@ -27,6 +32,8 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "hardhat": "^2.19.0",
     "nodemon": "^3.0.2"
   },
   "engines": {
