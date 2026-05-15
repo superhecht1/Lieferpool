@@ -366,6 +366,11 @@ document.getElementById('btn-create-pool')?.addEventListener('click', async () =
       </div>
     `);
 
+    // Form zurücksetzen
+    ['pf-produkt','pf-menge','pf-preis','pf-lieferwoche','pf-notiz'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+    document.getElementById('pool-cost-preview').style.display = 'none';
     const form = document.getElementById('pool-create-form');
     if (form) form.style.display = 'none';
     btn.textContent = 'Pool erstellen'; btn.disabled = false;

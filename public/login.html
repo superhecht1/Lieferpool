@@ -5,9 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LieferPool – Login</title>
   <link rel="stylesheet" href="style.css">
-  <script>
-    // Config – Backend-URL anpassen
-  </script>
 </head>
 <body>
 <div class="login-page">
@@ -15,151 +12,241 @@
     <div class="login-logo">Liefer<span>Pool</span></div>
     <div class="login-sub">Regionale Lieferkooperative</div>
 
-    <div id="error" class="alert alert-error" style="display:none"></div>
+    <div id="alerts"></div>
 
-    <!-- Login Form -->
-    <div id="form-login">
+    <!-- LOGIN -->
+    <div id="tab-login">
       <div class="form-group">
         <label class="form-label">E-Mail</label>
-        <input class="form-control" type="email" id="email" placeholder="name@betrieb.de" autocomplete="email">
+        <input class="form-control" type="email" id="login-email" placeholder="name@betrieb.de" autocomplete="email">
       </div>
       <div class="form-group">
         <label class="form-label">Passwort</label>
-        <input class="form-control" type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+        <div style="position:relative">
+          <input class="form-control" type="password" id="login-pw" placeholder="••••••••" autocomplete="current-password">
+          <button id="toggle-pw" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text3);font-size:13px">👁</button>
+        </div>
       </div>
-      <button class="btn btn-primary" id="btn-login" style="width:100%;justify-content:center;margin-top:.5rem">
-        Anmelden
-      </button>
+      <button class="btn btn-primary" id="btn-login" style="width:100%;margin-top:.5rem">Anmelden</button>
       <hr class="login-divider">
-      <p style="font-size:12px;color:var(--text3);text-align:center">
+      <p style="text-align:center;font-size:12px;color:var(--text3)">
         Noch kein Konto?
-        <a href="#" id="show-register">Registrieren</a>
+        <button class="btn-link" id="goto-register">Registrieren</button>
+      </p>
+      <p style="text-align:center;font-size:12px;color:var(--text3);margin-top:.5rem">
+        <button class="btn-link" id="goto-pw-change">Passwort ändern</button>
       </p>
     </div>
 
-    <!-- Register Form -->
-    <div id="form-register" style="display:none">
+    <!-- REGISTRIERUNG -->
+    <div id="tab-register" style="display:none">
       <div class="form-group">
         <label class="form-label">Name / Betrieb</label>
-        <input class="form-control" type="text" id="reg-name" placeholder="Hof Mustermann">
+        <input class="form-control" id="reg-name" placeholder="z.B. Hof Brüggemann">
       </div>
       <div class="form-group">
         <label class="form-label">E-Mail</label>
         <input class="form-control" type="email" id="reg-email" placeholder="name@betrieb.de">
       </div>
       <div class="form-group">
-        <label class="form-label">Passwort</label>
-        <input class="form-control" type="password" id="reg-password" placeholder="Mindestens 8 Zeichen">
+        <label class="form-label">Passwort (min. 8 Zeichen)</label>
+        <input class="form-control" type="password" id="reg-pw" placeholder="••••••••">
       </div>
       <div class="form-group">
         <label class="form-label">Rolle</label>
         <select class="form-control" id="reg-role">
-          <option value="erzeuger">Erzeuger (Landwirt / Produzent)</option>
-          <option value="caterer">Caterer (Großabnehmer)</option>
+          <option value="erzeuger">Erzeuger:in (Hof / Betrieb)</option>
+          <option value="caterer">Caterer (Restaurant / Küche)</option>
+          <option value="fahrer">Fahrer:in (Lieferung)</option>
         </select>
       </div>
-      <button class="btn btn-primary" id="btn-register" style="width:100%;justify-content:center;margin-top:.5rem">
-        Konto erstellen
-      </button>
+      <button class="btn btn-primary" id="btn-register" style="width:100%;margin-top:.5rem">Konto erstellen</button>
       <hr class="login-divider">
-      <p style="font-size:12px;color:var(--text3);text-align:center">
-        <a href="#" id="show-login">Zurück zum Login</a>
+      <p style="text-align:center;font-size:12px;color:var(--text3)">
+        Bereits registriert?
+        <button class="btn-link" id="goto-login">Anmelden</button>
+      </p>
+    </div>
+
+    <!-- PASSWORT ÄNDERN -->
+    <div id="tab-pw-change" style="display:none">
+      <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:1rem">Passwort ändern</div>
+      <div class="form-group">
+        <label class="form-label">E-Mail</label>
+        <input class="form-control" type="email" id="pwc-email" placeholder="name@betrieb.de">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Aktuelles Passwort</label>
+        <input class="form-control" type="password" id="pwc-current">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Neues Passwort</label>
+        <input class="form-control" type="password" id="pwc-new">
+      </div>
+      <button class="btn btn-primary" id="btn-pw-change" style="width:100%;margin-top:.5rem">Passwort ändern</button>
+      <hr class="login-divider">
+      <p style="text-align:center;font-size:12px;color:var(--text3)">
+        <button class="btn-link" id="goto-login2">Zurück zum Login</button>
       </p>
     </div>
   </div>
 </div>
 
-<script src="api.js"></script>
+<style>
+  .btn-link {
+    background: none; border: none; color: var(--green);
+    cursor: pointer; font-size: inherit; padding: 0;
+    text-decoration: underline; font-family: inherit;
+  }
+  .btn-link:hover { color: var(--green-dim); }
+</style>
+
 <script>
-  // Bereits eingeloggt → weiterleiten
-  if (Auth.isLoggedIn()) {
-    const role = Auth.getUser()?.role;
-    if (role) window.location.href = role + '.html';
-  }
+const API = '/api';
 
-  function showError(msg) {
-    const el = document.getElementById('error');
-    el.textContent = msg;
-    el.style.display = 'block';
-  }
-  function hideError() {
-    document.getElementById('error').style.display = 'none';
-  }
+function showAlert(msg, type='error') {
+  const el = document.getElementById('alerts');
+  el.innerHTML = `<div class="alert alert-${type}" style="margin-bottom:1rem">${msg}</div>`;
+  setTimeout(() => { el.innerHTML = ''; }, 5000);
+}
 
-  function setLoading(btn, loading) {
-    if (loading) {
-      btn.disabled = true;
-      btn.innerHTML = '<span class="spinner"></span> Bitte warten...';
-    } else {
-      btn.disabled = false;
-    }
-  }
-
-  // Login
-  document.getElementById('btn-login').addEventListener('click', async () => {
-    hideError();
-    const email    = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value;
-    const btn      = document.getElementById('btn-login');
-
-    if (!email || !password) return showError('E-Mail und Passwort eingeben');
-    setLoading(btn, true);
-
-    try {
-      const { token, user } = await api.login(email, password);
-      Auth.setToken(token);
-      Auth.setUser(user);
-      window.location.href = user.role + '.html';
-    } catch (err) {
-      btn.textContent = 'Anmelden';
-      btn.disabled = false;
-      showError(err.message);
-    }
+function showTab(name) {
+  ['login','register','pw-change'].forEach(t => {
+    document.getElementById('tab-' + t).style.display = t === name ? 'block' : 'none';
   });
+  document.getElementById('alerts').innerHTML = '';
+}
 
-  // Enter key
-  document.getElementById('password').addEventListener('keydown', e => {
+// Tab-Wechsel
+document.getElementById('goto-register').addEventListener('click', () => showTab('register'));
+document.getElementById('goto-login').addEventListener('click',    () => showTab('login'));
+document.getElementById('goto-pw-change').addEventListener('click',() => showTab('pw-change'));
+document.getElementById('goto-login2').addEventListener('click',   () => showTab('login'));
+
+// Passwort anzeigen
+document.getElementById('toggle-pw').addEventListener('click', () => {
+  const inp = document.getElementById('login-pw');
+  inp.type  = inp.type === 'password' ? 'text' : 'password';
+});
+
+// Enter-Taste
+['login-email','login-pw'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => {
     if (e.key === 'Enter') document.getElementById('btn-login').click();
   });
+});
 
-  // Register
-  document.getElementById('btn-register').addEventListener('click', async () => {
-    hideError();
-    const name     = document.getElementById('reg-name').value.trim();
-    const email    = document.getElementById('reg-email').value.trim();
-    const password = document.getElementById('reg-password').value;
-    const role     = document.getElementById('reg-role').value;
-    const btn      = document.getElementById('btn-register');
+// ── LOGIN ──────────────────────────────────────────────────────
+document.getElementById('btn-login').addEventListener('click', async () => {
+  const email    = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-pw').value;
+  const btn      = document.getElementById('btn-login');
+  if (!email || !password) return showAlert('E-Mail und Passwort eingeben');
 
-    if (!name || !email || !password) return showError('Alle Felder ausfüllen');
-    if (password.length < 8) return showError('Passwort mindestens 8 Zeichen');
-    setLoading(btn, true);
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Anmelden...';
+  try {
+    const res  = await fetch(API + '/auth/login', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Login fehlgeschlagen');
 
-    try {
-      const { token, user } = await api.register(email, password, role, name);
-      Auth.setToken(token);
-      Auth.setUser(user);
-      window.location.href = user.role + '.html';
-    } catch (err) {
-      btn.textContent = 'Konto erstellen';
-      btn.disabled = false;
-      showError(err.message);
-    }
-  });
+    localStorage.setItem('lp_token', data.token);
+    localStorage.setItem('lp_user',  JSON.stringify(data.user));
 
-  // Toggle Login/Register
-  document.getElementById('show-register').addEventListener('click', e => {
-    e.preventDefault();
-    hideError();
-    document.getElementById('form-login').style.display = 'none';
-    document.getElementById('form-register').style.display = 'block';
-  });
-  document.getElementById('show-login').addEventListener('click', e => {
-    e.preventDefault();
-    hideError();
-    document.getElementById('form-register').style.display = 'none';
-    document.getElementById('form-login').style.display = 'block';
-  });
+    // Redirect basierend auf Rolle
+    const redirectMap = {
+      admin:    '/admin',
+      erzeuger: '/erzeuger',
+      caterer:  '/caterer',
+      fahrer:   '/fahrer',
+    };
+    window.location.href = data.redirect || redirectMap[data.user.role] || '/';
+  } catch (err) {
+    showAlert(err.message);
+    btn.textContent = 'Anmelden'; btn.disabled = false;
+  }
+});
+
+// ── REGISTRIERUNG ──────────────────────────────────────────────
+document.getElementById('btn-register').addEventListener('click', async () => {
+  const name     = document.getElementById('reg-name').value.trim();
+  const email    = document.getElementById('reg-email').value.trim();
+  const password = document.getElementById('reg-pw').value;
+  const role     = document.getElementById('reg-role').value;
+  const btn      = document.getElementById('btn-register');
+
+  if (!name || !email || !password) return showAlert('Alle Felder ausfüllen');
+  if (password.length < 8)          return showAlert('Passwort mindestens 8 Zeichen');
+
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Erstelle Konto...';
+  try {
+    const res  = await fetch(API + '/auth/register', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ name, email, password, role }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Registrierung fehlgeschlagen');
+
+    localStorage.setItem('lp_token', data.token);
+    localStorage.setItem('lp_user',  JSON.stringify(data.user));
+
+    const redirectMap = { erzeuger:'/erzeuger', caterer:'/caterer', fahrer:'/fahrer' };
+    window.location.href = redirectMap[data.user.role] || '/';
+  } catch (err) {
+    showAlert(err.message);
+    btn.textContent = 'Konto erstellen'; btn.disabled = false;
+  }
+});
+
+// ── PASSWORT ÄNDERN ────────────────────────────────────────────
+document.getElementById('btn-pw-change').addEventListener('click', async () => {
+  const email           = document.getElementById('pwc-email').value.trim();
+  const current_password= document.getElementById('pwc-current').value;
+  const new_password    = document.getElementById('pwc-new').value;
+  const btn             = document.getElementById('btn-pw-change');
+
+  if (!email || !current_password || !new_password) return showAlert('Alle Felder ausfüllen');
+  if (new_password.length < 8) return showAlert('Neues Passwort mindestens 8 Zeichen');
+
+  // Erst einloggen um Token zu bekommen
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+  try {
+    const loginRes = await fetch(API + '/auth/login', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ email, password: current_password }),
+    });
+    const loginData = await loginRes.json();
+    if (!loginRes.ok) throw new Error(loginData.error || 'Login fehlgeschlagen');
+
+    const changeRes = await fetch(API + '/auth/change-password', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + loginData.token },
+      body:    JSON.stringify({ current_password, new_password }),
+    });
+    const changeData = await changeRes.json();
+    if (!changeRes.ok) throw new Error(changeData.error || 'Änderung fehlgeschlagen');
+
+    showAlert('Passwort erfolgreich geändert! Du wirst weitergeleitet...', 'success');
+    setTimeout(() => showTab('login'), 2000);
+  } catch (err) {
+    showAlert(err.message);
+  } finally {
+    btn.textContent = 'Passwort ändern'; btn.disabled = false;
+  }
+});
+
+// Bereits eingeloggt? Weiterleiten
+const existingToken = localStorage.getItem('lp_token');
+const existingUser  = JSON.parse(localStorage.getItem('lp_user') || 'null');
+if (existingToken && existingUser) {
+  const redirectMap = { admin:'/admin', erzeuger:'/erzeuger', caterer:'/caterer', fahrer:'/fahrer' };
+  window.location.href = redirectMap[existingUser.role] || '/';
+}
 </script>
 </body>
 </html>

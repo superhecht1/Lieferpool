@@ -2,732 +2,412 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>LieferPool – Fahrer</title>
+  <link rel="stylesheet" href="style.css">
   <style>
-    :root {
-      --bg:      #0e0f0d;
-      --bg2:     #161713;
-      --bg3:     #1e1f1b;
-      --border:  #2a2c27;
-      --green:   #7ab648;
-      --green-d: #4d7a2a;
-      --green-bg:#1a2212;
-      --amber:   #d4a847;
-      --red:     #d45a4a;
-      --text:    #e8e9e4;
-      --text2:   #8a8d82;
-      --text3:   #555850;
+    /* Fahrer-spezifische Mobile-Styles */
+    .fahrer-app { display:flex; flex-direction:column; min-height:100vh; }
+    .fahrer-header {
+      background:#0d1f15; color:#fff; padding:1rem 1.25rem;
+      display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100;
     }
+    .fahrer-logo { font-family:'DM Mono',monospace; font-size:14px; font-weight:500; }
+    .fahrer-logo span { color:#7ab648; }
+    .fahrer-user { font-size:12px; color:rgba(255,255,255,.6); }
+    .fahrer-main { flex:1; padding:1rem; max-width:480px; margin:0 auto; width:100%; }
 
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    html, body {
-      height: 100%; width: 100%;
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, 'DM Sans', sans-serif;
-      font-size: 15px;
-      -webkit-font-smoothing: antialiased;
-      overflow-x: hidden;
-    }
-
-    /* ── HEADER ── */
-    .hdr {
-      background: var(--bg2);
-      border-bottom: 1px solid var(--border);
-      padding: 14px 16px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-    }
-    .hdr-logo {
-      font-family: monospace;
-      font-size: 14px;
-      font-weight: 600;
-      letter-spacing: .04em;
-    }
-    .hdr-logo span { color: var(--green); }
-    .hdr-user {
-      font-size: 12px;
-      color: var(--text2);
-    }
-    .btn-logout-sm {
-      font-size: 11px;
-      padding: 4px 10px;
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      background: none;
-      color: var(--text2);
-      cursor: pointer;
-    }
-
-    /* ── MAIN ── */
-    .main { padding: 16px; max-width: 480px; margin: 0 auto; }
-
-    /* ── TOUR HEADER ── */
     .tour-card {
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 16px;
-      margin-bottom: 16px;
+      background:#fff; border:1px solid var(--border); border-radius:10px;
+      padding:1.25rem; margin-bottom:1rem; box-shadow:var(--shadow);
     }
-    .tour-label {
-      font-size: 10px;
-      letter-spacing: .1em;
-      text-transform: uppercase;
-      color: var(--text3);
-      margin-bottom: 6px;
-    }
-    .tour-title {
-      font-size: 18px;
-      font-weight: 600;
-      color: var(--text);
-      margin-bottom: 4px;
-    }
-    .tour-meta {
-      font-size: 12px;
-      color: var(--text2);
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin-bottom: 12px;
-    }
-    .tour-meta span {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    /* ── PROGRESS ── */
-    .progress-wrap {
-      height: 4px;
-      background: var(--bg3);
-      border-radius: 2px;
-      overflow: hidden;
-      margin-bottom: 12px;
-    }
-    .progress-bar {
-      height: 100%;
-      background: var(--green);
-      border-radius: 2px;
-      transition: width .4s ease;
-    }
-    .progress-text {
-      font-size: 11px;
-      color: var(--text3);
-      display: flex;
-      justify-content: space-between;
-    }
-
-    /* ── START BUTTON ── */
-    .btn-start {
-      width: 100%;
-      padding: 14px;
-      background: var(--green);
-      color: #0e0f0d;
-      font-weight: 700;
-      font-size: 15px;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: background .15s;
-    }
-    .btn-start:active { background: #8dcf55; }
-    .btn-start:disabled { background: var(--green-d); opacity: .6; cursor: not-allowed; }
-
-    /* ── STOPP-LISTE ── */
-    .stopps-section-title {
-      font-size: 10px;
-      letter-spacing: .1em;
-      text-transform: uppercase;
-      color: var(--text3);
-      margin-bottom: 10px;
-    }
+    .tour-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:.75rem; }
+    .tour-typ { font-size:13px; font-weight:600; color:var(--text); }
+    .tour-meta { font-size:12px; color:var(--text3); font-family:'DM Mono',monospace; }
 
     .stopp-card {
-      background: var(--bg2);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      margin-bottom: 10px;
-      overflow: hidden;
-      transition: border-color .15s;
+      background:#fff; border:2px solid var(--border); border-radius:10px;
+      padding:1.25rem; margin-bottom:.75rem; transition:border-color .15s;
     }
-    .stopp-card.aktiv { border-color: var(--green); }
-    .stopp-card.done  { opacity: .5; }
-    .stopp-card.skip  { opacity: .35; }
+    .stopp-card.current  { border-color:var(--green); box-shadow:0 0 0 3px rgba(46,125,62,.1); }
+    .stopp-card.done     { opacity:.55; border-color:#dde0d8; }
+    .stopp-card.skipped  { opacity:.4; border-color:#dde0d8; }
 
-    .stopp-head {
-      padding: 14px 14px 10px;
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
+    .stopp-nr {
+      width:28px; height:28px; border-radius:50%; font-family:'DM Mono',monospace;
+      font-size:12px; font-weight:600; display:flex; align-items:center; justify-content:center;
+      background:var(--bg3); color:var(--text2); flex-shrink:0;
     }
-    .stopp-num {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      background: var(--bg3);
-      border: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--text2);
-      flex-shrink: 0;
-    }
-    .stopp-card.aktiv .stopp-num { background: var(--green-bg); border-color: var(--green-d); color: var(--green); }
-    .stopp-card.done  .stopp-num { background: var(--green-bg); border-color: var(--green-d); color: var(--green); }
+    .stopp-nr.current { background:var(--green); color:#fff; }
+    .stopp-nr.done    { background:#eaf4ec; color:var(--green); }
 
-    .stopp-info { flex: 1; min-width: 0; }
-    .stopp-typ-badge {
-      font-size: 9px;
-      letter-spacing: .08em;
-      text-transform: uppercase;
-      padding: 2px 6px;
-      border-radius: 20px;
-      display: inline-block;
-      margin-bottom: 4px;
-    }
-    .stopp-typ-badge.abholung { background: rgba(212,168,71,.15); color: var(--amber); border: 1px solid rgba(212,168,71,.3); }
-    .stopp-typ-badge.auslieferung { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-d); }
+    .stopp-row { display:flex; align-items:flex-start; gap:.75rem; }
+    .stopp-body { flex:1; }
+    .stopp-name { font-size:14px; font-weight:600; color:var(--text); margin-bottom:2px; }
+    .stopp-addr { font-size:12px; color:var(--text2); line-height:1.5; }
+    .stopp-ware { font-size:12px; color:var(--text3); font-family:'DM Mono',monospace; margin-top:4px; }
 
-    .stopp-name {
-      font-size: 15px;
-      font-weight: 600;
-      color: var(--text);
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .stopp-adresse {
-      font-size: 12px;
-      color: var(--text2);
-      margin-top: 2px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-    .stopp-fracht {
-      font-size: 12px;
-      color: var(--text2);
-      margin-top: 4px;
-    }
-    .stopp-fracht strong { color: var(--text); }
-    .stopp-status-icon {
-      font-size: 18px;
-      flex-shrink: 0;
+    .stopp-actions { display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.875rem; }
+
+    .confirm-form {
+      margin-top:.875rem; padding:.875rem; background:var(--bg); border-radius:6px;
+      border:1px solid var(--border);
     }
 
-    /* ── AKTIONS-BUTTONS ── */
-    .stopp-actions {
-      padding: 0 14px 14px;
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
+    .fab {
+      position:fixed; bottom:1.5rem; right:1.5rem;
+      width:56px; height:56px; border-radius:50%;
+      background:var(--green); color:#fff; border:none;
+      font-size:24px; cursor:pointer; box-shadow:0 4px 16px rgba(46,125,62,.4);
+      display:flex; align-items:center; justify-content:center;
+      transition:all .2s;
     }
+    .fab:hover { background:var(--green-dim); transform:scale(1.05); }
 
-    .btn-action {
-      flex: 1;
-      min-width: 0;
-      padding: 12px 8px;
-      border-radius: 10px;
-      border: none;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all .15s;
-      text-align: center;
-    }
-    .btn-action:active { transform: scale(.97); }
+    .empty-state { text-align:center; padding:3rem 1rem; color:var(--text3); }
+    .empty-icon  { font-size:3rem; margin-bottom:.75rem; }
 
-    .btn-ankommen {
-      background: rgba(212,168,71,.2);
-      color: var(--amber);
-      border: 1px solid rgba(212,168,71,.4);
+    .progress-ring {
+      display:flex; align-items:center; gap:.75rem;
+      padding:.75rem 1rem; background:var(--green-bg);
+      border:1px solid #b8dfc0; border-radius:6px; margin-bottom:1rem;
     }
-    .btn-ankommen:active { background: rgba(212,168,71,.35); }
-
-    .btn-abschliessen {
-      background: var(--green-bg);
-      color: var(--green);
-      border: 1px solid var(--green-d);
-    }
-    .btn-abschliessen:active { background: rgba(122,182,72,.25); }
-
-    .btn-skip {
-      background: transparent;
-      color: var(--text3);
-      border: 1px solid var(--border);
-      flex: 0;
-      padding: 12px 14px;
-      font-size: 11px;
-    }
-    .btn-skip:active { background: var(--bg3); }
-
-    /* ── ABSCHLUSS-FORMULAR (inline) ── */
-    .abschluss-form {
-      padding: 0 14px 14px;
-      border-top: 1px solid var(--border);
-      margin-top: -2px;
-    }
-    .abschluss-form-title {
-      font-size: 11px;
-      color: var(--text3);
-      text-transform: uppercase;
-      letter-spacing: .08em;
-      padding: 10px 0 8px;
-    }
-    .form-row {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 8px;
-    }
-    .form-row .inp-wrap { flex: 1; }
-    .inp-label {
-      font-size: 10px;
-      color: var(--text3);
-      text-transform: uppercase;
-      letter-spacing: .06em;
-      margin-bottom: 4px;
-      display: block;
-    }
-    .inp {
-      width: 100%;
-      padding: 10px 12px;
-      background: var(--bg3);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      color: var(--text);
-      font-size: 14px;
-    }
-    .inp:focus { outline: none; border-color: var(--green-d); }
-    select.inp option { background: var(--bg2); }
-
-    .btn-confirm {
-      width: 100%;
-      padding: 14px;
-      background: var(--green);
-      color: #0e0f0d;
-      font-weight: 700;
-      font-size: 15px;
-      border: none;
-      border-radius: 10px;
-      cursor: pointer;
-      margin-top: 8px;
-    }
-    .btn-confirm:active { background: #8dcf55; }
-    .btn-confirm:disabled { background: var(--green-d); opacity: .6; }
-
-    /* ── LEER / LOADING ── */
-    .empty-state {
-      text-align: center;
-      padding: 60px 20px;
-      color: var(--text3);
-    }
-    .empty-icon { font-size: 3rem; margin-bottom: 12px; }
-    .empty-title { font-size: 16px; color: var(--text2); margin-bottom: 6px; }
-    .empty-sub { font-size: 13px; line-height: 1.5; }
-
-    .spinner {
-      width: 20px; height: 20px;
-      border: 2px solid var(--border);
-      border-top-color: var(--green);
-      border-radius: 50%;
-      animation: spin .6s linear infinite;
-      display: inline-block;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* ── TOAST ── */
-    .toast {
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: var(--bg2);
-      border: 1px solid var(--green-d);
-      color: var(--green);
-      padding: 10px 20px;
-      border-radius: 20px;
-      font-size: 13px;
-      font-weight: 500;
-      z-index: 999;
-      animation: toastIn .2s ease;
-    }
-    .toast.err { border-color: rgba(212,90,74,.4); color: var(--red); }
-    @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(10px); } }
-
-    /* ── TOUR ABGESCHLOSSEN ── */
-    .tour-done-card {
-      background: var(--green-bg);
-      border: 1px solid var(--green-d);
-      border-radius: 12px;
-      padding: 24px;
-      text-align: center;
-      margin-bottom: 16px;
-    }
-    .tour-done-icon { font-size: 2.5rem; margin-bottom: 8px; }
-    .tour-done-title { font-size: 18px; font-weight: 700; color: var(--green); margin-bottom: 4px; }
-    .tour-done-sub { font-size: 13px; color: var(--text2); }
-
-    /* ── MAPS LINK ── */
-    .maps-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 11px;
-      color: var(--green);
-      text-decoration: none;
-      margin-top: 4px;
-    }
-    .maps-link:active { opacity: .7; }
+    .ring-val { font-size:20px; font-weight:300; color:var(--green); font-family:'DM Mono',monospace; }
+    .ring-lbl { font-size:11px; color:var(--text2); }
   </style>
 </head>
 <body>
+<div class="fahrer-app">
+  <header class="fahrer-header">
+    <div class="fahrer-logo">Liefer<span>Pool</span> <span style="font-size:11px;opacity:.6">Fahrer</span></div>
+    <div style="display:flex;align-items:center;gap:.75rem">
+      <span class="fahrer-user" id="fahrer-name"></span>
+      <button style="background:none;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.7);padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px" id="btn-logout">Abmelden</button>
+    </div>
+  </header>
 
-<header class="hdr">
-  <div class="hdr-logo">Liefer<span>Pool</span></div>
-  <div style="display:flex;align-items:center;gap:8px">
-    <span class="hdr-user" id="hdr-name"></span>
-    <button class="btn-logout-sm" id="btn-logout">Abmelden</button>
-  </div>
-</header>
+  <div class="fahrer-main">
+    <div id="alerts"></div>
 
-<main class="main" id="main">
-  <div class="empty-state">
-    <div class="spinner"></div>
-    <div style="margin-top:12px;font-size:13px;color:var(--text3)">Lade Tour...</div>
+    <!-- TOUR AUSWÄHLEN -->
+    <div id="view-tours">
+      <div style="margin-bottom:1rem">
+        <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:.5rem">Meine Tour heute</div>
+        <div id="tour-datum" style="font-size:22px;font-weight:300;color:var(--text)"></div>
+      </div>
+      <div id="tours-list"><div class="spinner"></div></div>
+    </div>
+
+    <!-- AKTIVE TOUR -->
+    <div id="view-active-tour" style="display:none">
+      <div id="tour-progress-bar"></div>
+      <div id="tour-info-card" class="tour-card"></div>
+      <div id="stopps-container"></div>
+    </div>
+
+    <!-- TOUR ABGESCHLOSSEN -->
+    <div id="view-done" style="display:none">
+      <div class="success-box" style="margin-top:1rem">
+        <div class="success-icon">🎉</div>
+        <div class="success-title">Tour abgeschlossen!</div>
+        <div class="success-sub">Alle Stopps erledigt</div>
+        <button class="btn btn-sm" style="margin-top:1rem" id="btn-back-tours">Zurück zur Übersicht</button>
+      </div>
+    </div>
   </div>
-</main>
+</div>
 
 <script src="api.js"></script>
+<script src="app.js"></script>
 <script>
-// ── AUTH ──────────────────────────────────────────────────────────
-if (!Auth.isLoggedIn()) window.location.href = '/login';
-const user = Auth.getUser();
-if (user && !['fahrer','admin'].includes(user.role)) {
-  window.location.href = '/' + user.role + '.html';
-}
-document.getElementById('hdr-name').textContent = user?.name || '';
-document.getElementById('btn-logout').onclick = () => { Auth.clear(); window.location.href = '/login'; };
+const user = requireAuth('fahrer');
+if (!user) throw 'not auth';
 
-// ── STATE ─────────────────────────────────────────────────────────
-let tour    = null;
-let stopps  = [];
-let activeAbschlussId = null;
+document.getElementById('fahrer-name').textContent = user.name;
+document.getElementById('btn-logout').addEventListener('click', () => {
+  Auth.clear(); window.location.href = '/login';
+});
 
-// ── UTILS ─────────────────────────────────────────────────────────
-function showToast(msg, err = false) {
-  document.querySelectorAll('.toast').forEach(t => t.remove());
-  const t = document.createElement('div');
-  t.className = 'toast' + (err ? ' err' : '');
-  t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), 3000);
-}
+let aktiveTour  = null;
+let alleStopps  = [];
 
-function stoppIcon(s) {
-  if (s.status === 'abgeschlossen') return '✅';
-  if (s.status === 'uebersprungen')  return '⏭';
-  if (s.status === 'angekommen')    return '📍';
-  return s.typ === 'abholung' ? '🌾' : '🚚';
-}
+// Datum anzeigen
+const heute = new Date();
+document.getElementById('tour-datum').textContent =
+  heute.toLocaleDateString('de-DE', { weekday:'long', day:'numeric', month:'long' });
 
-function stoppDone(s) {
-  return ['abgeschlossen','uebersprungen'].includes(s.status);
-}
+document.getElementById('btn-back-tours').addEventListener('click', () => {
+  document.getElementById('view-done').style.display         = 'none';
+  document.getElementById('view-tours').style.display        = 'block';
+  document.getElementById('view-active-tour').style.display  = 'none';
+  loadTouren();
+});
 
-function mapsUrl(stopp) {
-  if (stopp.lat && stopp.lng) {
-    return `https://maps.google.com/maps?q=${stopp.lat},${stopp.lng}`;
+// ── TOUREN LADEN ──────────────────────────────────────────────
+async function loadTouren() {
+  try {
+    // Nur Touren für diesen Fahrer heute
+    const heute = new Date().toISOString().split('T')[0];
+    const res = await fetch(`/api/touren?datum=${heute}`, {
+      headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
+    });
+    const data = await res.json();
+    const touren = data.touren || [];
+
+    const myTours = touren.filter(t => t.fahrer_id || true); // alle sehen für jetzt
+
+    const container = document.getElementById('tours-list');
+    if (!myTours.length) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">📋</div>
+          <div style="font-size:14px;font-weight:500">Keine Touren heute</div>
+          <div style="font-size:13px;margin-top:.25rem">Schau später nochmal vorbei</div>
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = myTours.map(t => `
+      <div class="tour-card" style="cursor:pointer" data-tour-id="${t.id}">
+        <div class="tour-header">
+          <div>
+            <div class="tour-typ">${t.typ === 'abholung' ? '🌾 Abholung' : t.typ === 'auslieferung' ? '🚚 Auslieferung' : '🔄 Gemischt'}</div>
+            <div class="tour-meta">${t.startzeit ? t.startzeit.slice(0,5) + ' Uhr' : 'Flexibel'} · ${t.stopp_anzahl || 0} Stopps</div>
+          </div>
+          ${statusBadge(t.status)}
+        </div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          ${t.fahrzeug_bezeichnung ? `<span class="badge badge-gray">🚗 ${t.fahrzeug_bezeichnung}</span>` : ''}
+          <span class="badge badge-gray">${t.stopps_done || 0}/${t.stopp_anzahl || 0} erledigt</span>
+        </div>
+        <button class="btn btn-primary" style="width:100%;margin-top:.875rem" data-action="start-tour" data-id="${t.id}">
+          ${t.status === 'gestartet' ? '▶ Weiter' : '▶ Tour starten'}
+        </button>
+      </div>
+    `).join('');
+
+    container.addEventListener('click', e => {
+      const btn = e.target.closest('[data-action="start-tour"]');
+      if (btn) openTour(btn.dataset.id);
+    });
+  } catch (err) {
+    showAlert('alerts', 'error', err.message);
   }
-  if (stopp.adresse) {
-    return `https://maps.google.com/maps?q=${encodeURIComponent(stopp.adresse)}`;
-  }
-  return null;
 }
 
-// ── RENDER ────────────────────────────────────────────────────────
-function render() {
-  const main = document.getElementById('main');
+// ── TOUR ÖFFNEN ───────────────────────────────────────────────
+async function openTour(tourId) {
+  try {
+    const res = await fetch(`/api/touren/${tourId}`, {
+      headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
+    });
+    const data = await res.json();
+    aktiveTour = data.tour || data;
+    alleStopps = data.stopps || [];
 
-  if (!tour) {
-    main.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">🗓</div>
-        <div class="empty-title">Keine Tour heute</div>
-        <div class="empty-sub">Du hast für heute keine Tour zugewiesen bekommen.<br>Bitte wende dich an den Disponenten.</div>
-      </div>`;
+    // Tour starten falls noch nicht
+    if (aktiveTour.status === 'geplant') {
+      await fetch(`/api/touren/${tourId}/starten`, {
+        method:  'POST',
+        headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
+      });
+      aktiveTour.status = 'gestartet';
+    }
+
+    document.getElementById('view-tours').style.display       = 'none';
+    document.getElementById('view-active-tour').style.display = 'block';
+
+    renderTour();
+  } catch (err) {
+    showAlert('alerts', 'error', err.message);
+  }
+}
+
+// ── TOUR RENDERN ──────────────────────────────────────────────
+function renderTour() {
+  const done    = alleStopps.filter(s => s.status === 'abgeschlossen' || s.status === 'uebersprungen').length;
+  const gesamt  = alleStopps.length;
+  const current = alleStopps.find(s => s.status === 'ausstehend');
+
+  // Progress
+  document.getElementById('tour-progress-bar').innerHTML = `
+    <div class="progress-ring">
+      <div><div class="ring-val">${done}/${gesamt}</div><div class="ring-lbl">Stopps erledigt</div></div>
+      <div style="flex:1">
+        <div class="progress-wrap" style="height:8px">
+          <div class="progress-bar" style="width:${gesamt > 0 ? Math.round(done/gesamt*100) : 0}%"></div>
+        </div>
+      </div>
+      <div style="font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:var(--green)">
+        ${gesamt > 0 ? Math.round(done/gesamt*100) : 0}%
+      </div>
+    </div>
+  `;
+
+  // Tour-Info
+  document.getElementById('tour-info-card').innerHTML = `
+    <div class="tour-header">
+      <div>
+        <div class="tour-typ">${aktiveTour.typ === 'abholung' ? '🌾' : aktiveTour.typ === 'auslieferung' ? '🚚' : '🔄'} ${aktiveTour.typ}</div>
+        <div class="tour-meta">${aktiveTour.fahrzeug_bezeichnung || 'Kein Fahrzeug'} · ${aktiveTour.startzeit?.slice(0,5) || '—'} Uhr</div>
+      </div>
+      ${statusBadge(aktiveTour.status)}
+    </div>
+    ${aktiveTour.notiz ? `<div style="font-size:13px;color:var(--text2);padding:.5rem .75rem;background:var(--bg);border-radius:4px">${aktiveTour.notiz}</div>` : ''}
+  `;
+
+  // Stopps
+  const container = document.getElementById('stopps-container');
+  if (!alleStopps.length) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">📍</div><div>Keine Stopps</div></div>';
     return;
   }
 
-  const done  = stopps.filter(s => stoppDone(s)).length;
-  const total = stopps.length;
-  const pct   = total > 0 ? Math.round(done / total * 100) : 0;
-  const tourDone = tour.status === 'abgeschlossen' || done === total;
+  container.innerHTML = alleStopps.map((s, idx) => {
+    const isCurrent = s === current;
+    const isDone    = s.status === 'abgeschlossen';
+    const isSkipped = s.status === 'uebersprungen';
+    const cls = isCurrent ? 'current' : isDone ? 'done' : isSkipped ? 'skipped' : '';
 
-  let html = '';
+    const mapsUrl = s.adresse
+      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.adresse)}`
+      : null;
 
-  // Tour-Header
-  html += `
-    <div class="tour-card">
-      <div class="tour-label">Deine Tour · ${new Date(tour.datum).toLocaleDateString('de-DE', {weekday:'long', day:'numeric', month:'long'})}</div>
-      <div class="tour-title">${tour.typ === 'abholung' ? '🌾 Abholrunde' : tour.typ === 'auslieferung' ? '🚚 Auslieferung' : '🔄 Gemischte Tour'}</div>
-      <div class="tour-meta">
-        ${tour.startzeit ? `<span>⏰ Start ${tour.startzeit.slice(0,5)} Uhr</span>` : ''}
-        ${tour.fahrzeug_bezeichnung ? `<span>🚐 ${tour.fahrzeug_bezeichnung}</span>` : ''}
-        <span>📍 ${total} Stopps</span>
-      </div>
-      <div class="progress-wrap">
-        <div class="progress-bar" style="width:${pct}%"></div>
-      </div>
-      <div class="progress-text">
-        <span>${done} von ${total} Stopps erledigt</span>
-        <span>${pct}%</span>
-      </div>
-      ${tour.status === 'geplant' ? `
-        <button class="btn-start" id="btn-tour-start" style="margin-top:12px">
-          ▶ Tour starten
-        </button>
-      ` : ''}
-      ${tour.notiz ? `<div style="margin-top:10px;font-size:12px;color:var(--text2);background:var(--bg3);padding:8px 10px;border-radius:6px">📝 ${tour.notiz}</div>` : ''}
-    </div>`;
+    return `
+      <div class="stopp-card ${cls}" id="stopp-${s.id}">
+        <div class="stopp-row">
+          <div class="stopp-nr ${cls}">${isDone ? '✓' : isSkipped ? '–' : s.reihenfolge}</div>
+          <div class="stopp-body">
+            <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+              <span class="stopp-name">${s.name}</span>
+              <span class="badge ${s.typ === 'abholung' ? 'badge-amber' : 'badge-green'}">${s.typ}</span>
+            </div>
+            ${s.adresse ? `<div class="stopp-addr">${s.adresse}</div>` : ''}
+            ${s.produkt ? `<div class="stopp-ware">${s.produkt}${s.menge_geplant_kg ? ' · ' + s.menge_geplant_kg + ' kg geplant' : ''}</div>` : ''}
+            ${isDone && s.menge_geladen_kg ? `<div style="color:var(--green);font-size:12px;font-family:'DM Mono',monospace;margin-top:2px">✓ ${s.menge_geladen_kg} kg ${s.typ === 'abholung' ? 'abgeholt' : 'geliefert'}</div>` : ''}
+            ${isSkipped && s.notiz_abschluss ? `<div style="color:var(--text3);font-size:12px;margin-top:2px">Übersprungen: ${s.notiz_abschluss}</div>` : ''}
 
-  // Tour abgeschlossen
-  if (tourDone && tour.status !== 'geplant') {
-    html += `
-      <div class="tour-done-card">
-        <div class="tour-done-icon">🎉</div>
-        <div class="tour-done-title">Tour abgeschlossen!</div>
-        <div class="tour-done-sub">Alle ${total} Stopps erledigt. Gute Arbeit!</div>
+            ${isCurrent ? `
+              <div class="stopp-actions">
+                ${mapsUrl ? `<a href="${mapsUrl}" target="_blank" rel="noopener" class="btn btn-sm">🗺 Maps</a>` : ''}
+                <button class="btn btn-sm btn-primary" data-action="arrive" data-tour="${aktiveTour.id}" data-stopp="${s.id}">
+                  📍 Angekommen
+                </button>
+              </div>
+            ` : ''}
+
+            ${isCurrent && s.status_lokal === 'angekommen' ? renderConfirmForm(s) : ''}
+          </div>
+        </div>
       </div>`;
+  }).join('');
+
+  // Alle fertig?
+  if (done === gesamt && gesamt > 0) {
+    setTimeout(() => {
+      document.getElementById('view-active-tour').style.display = 'none';
+      document.getElementById('view-done').style.display        = 'block';
+    }, 800);
+    return;
   }
 
-  // Stopp-Liste
-  if (stopps.length > 0) {
-    html += `<div class="stopps-section-title">Stopps</div>`;
+  // Event-Delegation
+  container.addEventListener('click', async e => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const { action, tour, stopp } = btn.dataset;
 
-    stopps.forEach((s, idx) => {
-      const done    = stoppDone(s);
-      const aktiv   = !done && tour.status === 'aktiv';
-      const showForm = activeAbschlussId === s.id;
-      const url     = mapsUrl(s);
-
-      html += `
-        <div class="stopp-card ${s.status === 'angekommen' || (aktiv && idx === stopps.findIndex(x => !stoppDone(x))) ? 'aktiv' : ''} ${stoppDone(s) ? (s.status === 'abgeschlossen' ? 'done' : 'skip') : ''}" id="stopp-${s.id}">
-          <div class="stopp-head">
-            <div class="stopp-num">${stoppDone(s) ? (s.status === 'abgeschlossen' ? '✓' : '⏭') : idx + 1}</div>
-            <div class="stopp-info">
-              <div>
-                <span class="stopp-typ-badge ${s.typ}">${s.typ === 'abholung' ? 'Abholung' : 'Auslieferung'}</span>
-              </div>
-              <div class="stopp-name">${s.name}</div>
-              ${s.adresse ? `<div class="stopp-adresse">📍 ${s.adresse}</div>` : ''}
-              ${url ? `<a href="${url}" target="_blank" class="maps-link">🗺 Navigation öffnen</a>` : ''}
-              ${s.produkt ? `
-                <div class="stopp-fracht">
-                  ${s.typ === 'abholung' ? '📦 Abholen:' : '📤 Liefern:'}
-                  <strong>${s.menge_geplant_kg ? s.menge_geplant_kg + ' kg ' : ''}${s.produkt}</strong>
-                </div>` : ''}
-              ${s.qr_code ? `<div class="stopp-fracht" style="margin-top:2px">🔖 ${s.qr_code}</div>` : ''}
-              ${s.status === 'abgeschlossen' && s.menge_bestaetigt_kg ? `
-                <div style="font-size:11px;color:var(--green);margin-top:4px">✓ ${s.menge_bestaetigt_kg} kg · Qualität ${s.qualitaet}</div>` : ''}
-              ${s.fahrer_notiz ? `<div style="font-size:11px;color:var(--text2);margin-top:2px">📝 ${s.fahrer_notiz}</div>` : ''}
-            </div>
-            <div class="stopp-status-icon">${stoppIcon(s)}</div>
-          </div>`;
-
-      // Aktionsbuttons — nur für offene Stopps wenn Tour aktiv
-      if (!stoppDone(s) && tour.status === 'aktiv') {
-        html += `<div class="stopp-actions">`;
-
-        if (s.status === 'ausstehend') {
-          html += `
-            <button class="btn-action btn-ankommen" onclick="ankommen('${tour.id}','${s.id}')">
-              📍 Angekommen
-            </button>`;
-        }
-
-        if (s.status === 'angekommen' || s.status === 'ausstehend') {
-          html += `
-            <button class="btn-action btn-abschliessen" onclick="toggleForm('${s.id}')">
-              ${showForm ? '✕ Abbrechen' : '✓ Abschließen'}
-            </button>
-            <button class="btn-action btn-skip" onclick="ueberspringen('${tour.id}','${s.id}')">⏭</button>`;
-        }
-
-        html += `</div>`;
-      }
-
-      // Inline-Abschlussformular
-      if (showForm) {
-        html += `
-          <div class="abschluss-form">
-            <div class="abschluss-form-title">
-              ${s.typ === 'abholung' ? 'Abholung bestätigen' : 'Lieferung bestätigen'}
-            </div>
-            <div class="form-row">
-              <div class="inp-wrap">
-                <label class="inp-label">Menge (kg)</label>
-                <input class="inp" type="number" id="form-menge-${s.id}"
-                       value="${s.menge_geplant_kg || ''}" min="0" step="0.5" inputmode="decimal">
-              </div>
-              ${s.typ === 'auslieferung' ? `
-              <div class="inp-wrap">
-                <label class="inp-label">Qualität</label>
-                <select class="inp" id="form-qual-${s.id}">
-                  <option value="A">A – Einwandfrei</option>
-                  <option value="B">B – Gut (5%)</option>
-                  <option value="C">C – Ausreichend (15%)</option>
-                  <option value="abgelehnt">Abgelehnt</option>
-                </select>
-              </div>` : ''}
-            </div>
-            <div class="inp-wrap" style="margin-bottom:0">
-              <label class="inp-label">Notiz (optional)</label>
-              <input class="inp" type="text" id="form-notiz-${s.id}" placeholder="z.B. Zugang hinten">
-            </div>
-            <button class="btn-confirm" id="btn-confirm-${s.id}"
-                    onclick="abschliessen('${tour.id}','${s.id}')">
-              ✓ Bestätigen &amp; weiter
-            </button>
-          </div>`;
-      }
-
-      html += `</div>`; // .stopp-card
-    });
-  }
-
-  main.innerHTML = html;
-
-  // Tour-Start Button
-  document.getElementById('btn-tour-start')?.addEventListener('click', async () => {
-    try {
-      await api.startenTour(tour.id);
-      tour.status = 'aktiv';
-      render();
-      showToast('Tour gestartet!');
-    } catch (err) {
-      showToast(err.message, true);
+    if (action === 'arrive') {
+      await doAnkommen(tour, stopp);
+    } else if (action === 'confirm') {
+      await doAbschliessen(tour, stopp);
+    } else if (action === 'skip') {
+      const notiz = prompt('Grund fürs Überspringen (optional):') || '';
+      await doUeberspringen(tour, stopp, notiz);
     }
   });
 }
 
-// ── AKTIONEN ──────────────────────────────────────────────────────
-async function ankommen(tourId, stoppId) {
-  try {
-    const { stopp } = await api.stopAnkommen(tourId, stoppId);
-    const idx = stopps.findIndex(s => s.id === stoppId);
-    if (idx >= 0) stopps[idx] = { ...stopps[idx], ...stopp };
-    render();
-    showToast('Angekommen markiert');
-  } catch (err) {
-    showToast(err.message, true);
-  }
+function renderConfirmForm(s) {
+  return `
+    <div class="confirm-form">
+      <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:.75rem">
+        Stopp abschließen
+      </div>
+      <div style="display:flex;gap:.5rem;margin-bottom:.75rem">
+        <div style="flex:1">
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px">${s.typ === 'abholung' ? 'Abgeholt' : 'Geliefert'} (kg)</label>
+          <input class="form-control" type="number" id="menge-${s.id}" min="0" step="0.1"
+            placeholder="${s.menge_geplant_kg || '0'}" style="padding:6px 10px">
+        </div>
+      </div>
+      <div style="margin-bottom:.75rem">
+        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px">Notiz (optional)</label>
+        <input class="form-control" id="notiz-${s.id}" placeholder="Bemerkung" style="padding:6px 10px">
+      </div>
+      <div style="display:flex;gap:.5rem">
+        <button class="btn btn-primary btn-sm" data-action="confirm" data-tour="${aktiveTour.id}" data-stopp="${s.id}">
+          ✓ Bestätigen
+        </button>
+        <button class="btn btn-sm" data-action="skip" data-tour="${aktiveTour.id}" data-stopp="${s.id}">
+          Überspringen
+        </button>
+      </div>
+    </div>
+  `;
 }
 
-function toggleForm(stoppId) {
-  activeAbschlussId = activeAbschlussId === stoppId ? null : stoppId;
-  render();
-  if (activeAbschlussId) {
-    setTimeout(() => {
-      document.getElementById(`stopp-${stoppId}`)
-        ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }, 50);
-  }
-}
-
-async function abschliessen(tourId, stoppId) {
-  const stopp   = stopps.find(s => s.id === stoppId);
-  const mengeEl = document.getElementById(`form-menge-${stoppId}`);
-  const qualEl  = document.getElementById(`form-qual-${stoppId}`);
-  const notizEl = document.getElementById(`form-notiz-${stoppId}`);
-  const btn     = document.getElementById(`btn-confirm-${stoppId}`);
-
-  const menge  = parseFloat(mengeEl?.value || 0);
-  const qual   = qualEl?.value || 'A';
-  const notiz  = notizEl?.value?.trim() || null;
-
-  if (!menge) { showToast('Bitte Menge eingeben', true); return; }
-
-  btn.disabled = true;
-  btn.textContent = '...';
-
+// ── AKTIONEN ──────────────────────────────────────────────────
+async function doAnkommen(tourId, stoppId) {
   try {
-    const res = await api.stopAbschliessen(tourId, stoppId, {
-      menge_bestaetigt_kg: menge,
-      qualitaet: qual,
-      notiz,
+    await fetch(`/api/touren/${tourId}/stopps/${stoppId}/ankommen`, {
+      method:  'POST',
+      headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
     });
-
-    const idx = stopps.findIndex(s => s.id === stoppId);
-    if (idx >= 0) {
-      stopps[idx] = {
-        ...stopps[idx],
-        status: 'abgeschlossen',
-        menge_bestaetigt_kg: menge,
-        qualitaet: qual,
-        fahrer_notiz: notiz,
-      };
-    }
-
-    if (res.tour_abgeschlossen) tour.status = 'abgeschlossen';
-
-    activeAbschlussId = null;
-    render();
-
-    if (res.wareneingang) {
-      showToast(`✓ Bestätigt · ${res.wareneingang.auszahlungen} Auszahlungen ausgelöst`);
-    } else {
-      showToast('✓ Stopp abgeschlossen');
-    }
+    // Lokalen Status setzen für Formular-Rendering
+    const s = alleStopps.find(x => x.id === stoppId);
+    if (s) s.status_lokal = 'angekommen';
+    renderTour();
   } catch (err) {
-    btn.disabled = false;
-    btn.textContent = '✓ Bestätigen & weiter';
-    showToast(err.message, true);
+    showAlert('alerts', 'error', err.message);
   }
 }
 
-async function ueberspringen(tourId, stoppId) {
-  const notiz = prompt('Grund für Überspringen (optional):') || '';
+async function doAbschliessen(tourId, stoppId) {
+  const menge = parseFloat(document.getElementById('menge-' + stoppId)?.value || 0);
+  const notiz = document.getElementById('notiz-' + stoppId)?.value || '';
   try {
-    await api.stopUeberspringen(tourId, stoppId, notiz);
-    const idx = stopps.findIndex(s => s.id === stoppId);
-    if (idx >= 0) stopps[idx] = { ...stopps[idx], status: 'uebersprungen', fahrer_notiz: notiz };
-    render();
-    showToast('Stopp übersprungen');
+    await fetch(`/api/touren/${tourId}/stopps/${stoppId}/abschliessen`, {
+      method:  'POST',
+      headers: { 'Authorization': 'Bearer ' + Auth.getToken(), 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ menge_geladen_kg: menge || null, notiz }),
+    });
+    // Tour neu laden
+    const s = alleStopps.find(x => x.id === stoppId);
+    if (s) { s.status = 'abgeschlossen'; s.menge_geladen_kg = menge; s.status_lokal = null; }
+    renderTour();
   } catch (err) {
-    showToast(err.message, true);
+    showAlert('alerts', 'error', err.message);
   }
 }
 
-// ── INIT ──────────────────────────────────────────────────────────
-async function init() {
+async function doUeberspringen(tourId, stoppId, notiz) {
   try {
-    const data = await api.getTourHeute();
-    tour   = data.tour;
-    stopps = data.stopps || [];
-    render();
+    await fetch(`/api/touren/${tourId}/stopps/${stoppId}/ueberspringen`, {
+      method:  'POST',
+      headers: { 'Authorization': 'Bearer ' + Auth.getToken(), 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ notiz }),
+    });
+    const s = alleStopps.find(x => x.id === stoppId);
+    if (s) { s.status = 'uebersprungen'; s.notiz_abschluss = notiz; s.status_lokal = null; }
+    renderTour();
   } catch (err) {
-    document.getElementById('main').innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">⚠️</div>
-        <div class="empty-title">Fehler beim Laden</div>
-        <div class="empty-sub">${err.message}</div>
-      </div>`;
+    showAlert('alerts', 'error', err.message);
   }
 }
 
-init();
+// ── INIT ──────────────────────────────────────────────────────
+loadTouren();
 </script>
 </body>
 </html>
