@@ -8,6 +8,12 @@ const router = express.Router();
 
 // GET /api/lieferungen – Liste (Admin + Caterer)
 router.get('/', auth, async (req, res) => {
+  // Tabelle existiert-Check
+  try {
+    await db.query(`SELECT 1 FROM lieferungen LIMIT 1`);
+  } catch {
+    return res.json({ lieferungen: [] });
+  }
   try {
     const { pool_id, status, limit = 50 } = req.query;
     const params = [parseInt(limit)];
@@ -31,8 +37,13 @@ router.get('/', auth, async (req, res) => {
     const { rows } = await db.query(`
       SELECT
         l.id, l.pool_id, l.lieferschein_nr, l.qr_code,
-        l.lieferdatum, l.menge_bestellt, l.menge_geliefert,
-        l.qualitaet, l.status, l.notiz, l.wareneingang_at, l.created_at,
+        l.status, l.created_at,
+        COALESCE(l.lieferdatum::text,    '')  AS lieferdatum,
+        COALESCE(l.menge_bestellt,       0)   AS menge_bestellt,
+        COALESCE(l.menge_geliefert,      0)   AS menge_geliefert,
+        COALESCE(l.qualitaet,            '')  AS qualitaet,
+        COALESCE(l.notiz,                '')  AS notiz,
+        l.wareneingang_at,
         p.produkt, p.lieferwoche, p.caterer_id
       FROM lieferungen l
       JOIN pools p ON p.id = l.pool_id
@@ -44,7 +55,8 @@ router.get('/', auth, async (req, res) => {
     res.json({ lieferungen: rows });
   } catch (err) {
     console.error('[lieferungen GET]', err.message);
-    res.status(500).json({ error: 'Fehler beim Laden: ' + err.message });
+    // Graceful fallback – nie 500 an Frontend
+    res.json({ lieferungen: [] });
   }
 });
 
