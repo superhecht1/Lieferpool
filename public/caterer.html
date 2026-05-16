@@ -104,6 +104,11 @@
       <div class="card" style="max-width:560px">
         <div class="card-title">QR-Code scannen / eingeben</div>
         <div id="scan-result"></div>
+        <div id="qr-preview" style="display:none;text-align:center;padding:1rem 0">
+          <img id="qr-preview-img" src="" alt="QR"
+               style="width:120px;height:120px;border-radius:6px;border:2px solid var(--green)">
+          <div id="qr-preview-code" style="font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);margin-top:.5rem"></div>
+        </div>
         <div id="scan-box">
           <div style="display:flex;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap">
             <button class="btn btn-primary" id="btn-camera-scan">📷 Kamera scannen</button>

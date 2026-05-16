@@ -153,19 +153,35 @@
 
     <!-- LIEFERSCHEIN -->
     <div id="view-lieferung-neu" class="view" style="display:none">
-      <div class="card" style="max-width:560px">
-        <div class="card-title">Lieferschein erstellen</div>
-        <div id="lief-create-result"></div>
-        <div id="lief-create-form">
-          <div class="form-group">
-            <label class="form-label">Pool</label>
-            <select class="form-control" id="lief-pool-sel"></select>
+      <div class="grid2">
+        <div class="card" style="grid-column:1 / -1">
+          <div class="section-hdr">
+            <span class="section-title">Alle Lieferscheine</span>
+            <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+              <select class="form-control" id="lief-filter-status" style="width:140px;padding:5px 8px">
+                <option value="">Alle Status</option>
+                <option value="erstellt">Erstellt</option>
+                <option value="eingegangen">Eingegangen</option>
+                <option value="abgeschlossen">Abgeschlossen</option>
+                <option value="storniert">Storniert</option>
+              </select>
+              <button class="btn btn-sm" id="btn-reload-lieferscheine">↻</button>
+              <button class="btn btn-primary btn-sm" id="btn-show-lief-form">+ Neuer Lieferschein</button>
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label">Lieferdatum</label>
-            <input class="form-control" type="date" id="lief-datum">
+          <div id="lief-admin-list"><div class="spinner"></div></div>
+        </div>
+        <div class="card" id="lief-create-card" style="display:none">
+          <div class="section-hdr">
+            <span class="card-title" style="margin:0">Neuer Lieferschein</span>
+            <button class="btn btn-sm" id="btn-lief-form-close">✕</button>
           </div>
-          <button class="btn btn-primary" id="btn-create-lief">Lieferschein erstellen</button>
+          <div id="lief-create-result"></div>
+          <div id="lief-create-form">
+            <div class="form-group"><label class="form-label">Pool (geschlossen)</label><select class="form-control" id="lief-pool-sel"></select></div>
+            <div class="form-group"><label class="form-label">Lieferdatum (optional)</label><input class="form-control" type="date" id="lief-datum"></div>
+            <button class="btn btn-primary" id="btn-create-lief">Lieferschein erstellen</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1010,16 +1026,69 @@ document.getElementById('caterer-mgmt-search')?.addEventListener('input', e => {
 document.getElementById('btn-reload-fahrer')?.addEventListener('click', loadFahrerMgmt);
 
 
-// ── LIEFERSCHEIN ──────────────────────────────────────────────
+// ── LIEFERSCHEINE ─────────────────────────────────────────────
 async function loadLieferungNeu() {
+  loadLieferscheineListe();
+  // Pool-Dropdown befüllen
   try {
     const { pools } = await api.getPools({ status: 'geschlossen' });
     const sel = document.getElementById('lief-pool-sel');
     if (sel) sel.innerHTML = pools.length
       ? pools.map(p => `<option value="${p.id}">${p.produkt} – ${p.lieferwoche} (${Math.round(p.menge_committed)} kg)</option>`).join('')
       : '<option>Keine geschlossenen Pools</option>';
+  } catch (err) {}
+}
+
+async function loadLieferscheineListe() {
+  try {
+    const status = document.getElementById('lief-filter-status')?.value || '';
+    const { lieferungen } = await fetch(`/api/lieferungen${status?'?status='+status:''}`, {
+      headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
+    }).then(r => r.json());
+
+    setHTML('lief-admin-list', lieferungen?.length ? `
+      <table class="tbl">
+        <thead><tr>
+          <th>Nr.</th><th>Produkt</th><th>Lieferwoche</th><th>Datum</th>
+          <th>Menge best.</th><th>Menge gel.</th><th>Status</th><th>QR-Code</th><th></th>
+        </tr></thead>
+        <tbody>${lieferungen.map(l => `
+          <tr>
+            <td style="font-family:'DM Mono',monospace;font-size:11px">${l.lieferschein_nr}</td>
+            <td style="font-weight:500">${l.produkt||'—'}</td>
+            <td class="pool-meta">${l.lieferwoche||'—'}</td>
+            <td class="pool-meta">${l.lieferdatum ? new Date(l.lieferdatum).toLocaleDateString('de-DE') : '—'}</td>
+            <td class="pool-meta">${l.menge_bestellt ? fmt(l.menge_bestellt,0)+' kg' : '—'}</td>
+            <td class="pool-meta">${l.menge_geliefert ? fmt(l.menge_geliefert,0)+' kg' : '—'}</td>
+            <td>${statusBadge(l.status)}</td>
+            <td>
+              <img src="/api/lieferungen/qr/${l.qr_code}"
+                   alt="${l.qr_code}"
+                   style="width:44px;height:44px;border-radius:4px;border:1px solid var(--border);cursor:pointer"
+                   title="${l.qr_code}"
+                   onclick="window.open('/api/lieferungen/qr/${l.qr_code}','_blank')">
+            </td>
+            <td>
+              <div style="display:flex;gap:.35rem">
+                <button class="btn btn-sm" onclick="window.open('/api/print/lieferung/${l.id}','_blank')">🖨</button>
+              </div>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    ` : '<p style="color:var(--text3);font-size:13px">Noch keine Lieferscheine</p>');
   } catch (err) { showAlert('alerts','error',err.message); }
 }
+
+document.getElementById('lief-filter-status')?.addEventListener('change', loadLieferscheineListe);
+document.getElementById('btn-reload-lieferscheine')?.addEventListener('click', loadLieferscheineListe);
+document.getElementById('btn-show-lief-form')?.addEventListener('click', () => {
+  const c = document.getElementById('lief-create-card');
+  if (c) { c.style.display = 'block'; c.scrollIntoView({behavior:'smooth'}); }
+});
+document.getElementById('btn-lief-form-close')?.addEventListener('click', () => {
+  const c = document.getElementById('lief-create-card'); if(c) c.style.display='none';
+});
 document.getElementById('btn-create-lief')?.addEventListener('click', async () => {
   const pool_id=document.getElementById('lief-pool-sel').value;
   const lieferdatum=document.getElementById('lief-datum').value;
@@ -1028,7 +1097,21 @@ document.getElementById('btn-create-lief')?.addEventListener('click', async () =
   btn.disabled=true; btn.innerHTML='<span class="spinner"></span>';
   try {
     const {lieferung}=await api.createLieferung(pool_id,lieferdatum||null);
-    setHTML('lief-create-result',`<div class="success-box"><div class="success-icon">✓</div><div class="success-title">Lieferschein erstellt</div><div class="success-sub">Nr: ${lieferung.lieferschein_nr} · QR: ${lieferung.qr_code}</div><div style="margin-top:.75rem;display:flex;gap:.5rem;justify-content:center"><span class="qr-code">${lieferung.qr_code}</span></div><div style="margin-top:.875rem"><button class="btn btn-sm btn-primary" onclick="window.open('/api/print/lieferung/${lieferung.id}','_blank')">🖨 Lieferschein drucken</button></div></div>`);
+    loadLieferscheineListe();
+    setHTML('lief-create-result',`<div class="success-box">
+      <div class="success-icon">✓</div>
+      <div class="success-title">Lieferschein erstellt</div>
+      <div class="success-sub">Nr: ${lieferung.lieferschein_nr}</div>
+      <div style="margin-top:1rem;display:flex;flex-direction:column;align-items:center;gap:.75rem">
+        <img src="/api/lieferungen/qr/${lieferung.qr_code}"
+             alt="QR-Code ${lieferung.qr_code}"
+             style="width:160px;height:160px;border-radius:8px;border:2px solid var(--border)">
+        <span style="font-family:'DM Mono',monospace;font-size:13px;color:var(--text2)">${lieferung.qr_code}</span>
+      </div>
+      <div style="margin-top:.875rem;display:flex;gap:.5rem;justify-content:center">
+        <button class="btn btn-sm btn-primary" onclick="window.open('/api/print/lieferung/${lieferung.id}','_blank')">🖨 Lieferschein drucken</button>
+      </div>
+    </div>`);
     const f=document.getElementById('lief-create-form'); if(f) f.style.display='none';
   } catch(err){btn.textContent='Lieferschein erstellen';btn.disabled=false;showAlert('alerts','error',err.message);}
 });
