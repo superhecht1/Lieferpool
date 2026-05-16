@@ -231,6 +231,60 @@ async function sendWochenbericht({ adminEmail, stats }) {
   });
 }
 
+
+async function sendLieferscheinErstellt({ catererEmail, catererName, produkt, lieferwoche, lieferscheinNr, qrCode }) {
+  return send({
+    to: { email: catererEmail, name: catererName },
+    subject: `FrischKette: Lieferschein ${lieferscheinNr} für ${produkt}`,
+    html: template('Lieferschein erstellt', `
+      <h1>Lieferschein bereit</h1>
+      <p>Der Lieferschein für Ihren Pool wurde erstellt.</p>
+      <div class="box">
+        <div class="box-row"><span>Produkt</span><span>${produkt}</span></div>
+        <div class="box-row"><span>Lieferwoche</span><span>${lieferwoche}</span></div>
+        <div class="box-row"><span>Lieferschein-Nr.</span><span>${lieferscheinNr}</span></div>
+        <div class="box-row"><span>QR-Code</span><span>${qrCode}</span></div>
+      </div>
+      <p>Bitte halten Sie den QR-Code für den Wareneingang bereit.</p>
+      <a href="${process.env.APP_URL||''}/caterer" class="btn">Zum Caterer-Dashboard</a>
+    `),
+  });
+}
+
+async function sendPoolGeschlossenErzeuger({ erzeugerEmail, betriebName, produkt, lieferwoche, menge, preis }) {
+  const erloes = (parseFloat(menge) * parseFloat(preis) * 0.99).toFixed(2);
+  return send({
+    to: { email: erzeugerEmail, name: betriebName },
+    subject: `FrischKette: Pool geschlossen – ${produkt} ${lieferwoche}`,
+    html: template('Pool geschlossen', `
+      <h1>Ihr Pool wurde geschlossen</h1>
+      <p>Der Pool für ${produkt} wurde erfolgreich geschlossen. Ihre Zusage ist verbindlich bestätigt.</p>
+      <div class="box">
+        <div class="box-row"><span>Produkt</span><span>${produkt}</span></div>
+        <div class="box-row"><span>Lieferwoche</span><span>${lieferwoche}</span></div>
+        <div class="box-row"><span>Ihre Menge</span><span>${menge} kg</span></div>
+        <div class="box-row"><span>Erwarteter Erlös</span><span>${erloes} € (nach 1% Gebühr)</span></div>
+      </div>
+      <p>Der Lieferschein wird in Kürze vom Hub-Admin erstellt und in Ihrem Dashboard sichtbar sein.</p>
+      <a href="${process.env.APP_URL||''}/erzeuger" class="btn">Zum Dashboard</a>
+    `),
+  });
+}
+
+async function sendPasswordReset({ email, name, resetUrl }) {
+  return send({
+    to: { email, name: name || 'Nutzer:in' },
+    subject: 'FrischKette: Passwort zurücksetzen',
+    html: template('Passwort zurücksetzen', `
+      <h1>Passwort zurücksetzen</h1>
+      <p>Du hast eine Anfrage zum Zurücksetzen deines Passworts gestellt.</p>
+      <p>Klicke auf den Button um ein neues Passwort zu setzen. Der Link ist <strong>2 Stunden</strong> gültig.</p>
+      <a href="${resetUrl}" class="btn">Passwort jetzt zurücksetzen</a>
+      <p style="margin-top:16px;font-size:12px;color:#8a9a84">Falls du diese Anfrage nicht gestellt hast, ignoriere diese E-Mail.</p>
+    `),
+  });
+}
+
 module.exports = {
   send,
   sendPoolVoll,
@@ -240,4 +294,7 @@ module.exports = {
   sendNeuerPool,
   sendWareneingangBestaetigt,
   sendWochenbericht,
+  sendLieferscheinErstellt,
+  sendPoolGeschlossenErzeuger,
+  sendPasswordReset,
 };
