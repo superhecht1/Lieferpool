@@ -93,7 +93,7 @@ router.post('/', auth, role('admin', 'caterer'), async (req, res) => {
 
     const { rows: [lief] } = await db.query(`
       INSERT INTO lieferungen (pool_id, lieferschein_nr, qr_code, lieferdatum, menge_bestellt, status)
-      VALUES ($1, $2, $3, $4, $5, 'offen')
+      VALUES ($1, $2, $3, $4, $5, 'erstellt')
       RETURNING *
     `, [pool_id, nr, qr, dat, pool.menge_committed]);
 
