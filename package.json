@@ -31,7 +31,8 @@
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.11.3",
     "web-push": "^3.6.7",
-    "stripe": "^14.0.0"
+    "stripe": "^14.0.0",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^4.0.0",
