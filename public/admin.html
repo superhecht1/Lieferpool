@@ -1071,6 +1071,7 @@ async function loadLieferscheineListe() {
             <td>
               <div style="display:flex;gap:.35rem">
                 <button class="btn btn-sm" onclick="window.open('/api/print/lieferung/${l.id}','_blank')">🖨</button>
+                ${l.status!=='abgeschlossen'?`<button class="btn btn-sm btn-danger" data-action="del-lief" data-id="${l.id}" data-nr="${l.lieferschein_nr}" style="padding:3px 8px">✕</button>`:''}
               </div>
             </td>
           </tr>`).join('')}
@@ -1080,6 +1081,20 @@ async function loadLieferscheineListe() {
   } catch (err) { showAlert('alerts','error',err.message); }
 }
 
+document.getElementById('lief-admin-list')?.addEventListener('click', async e => {
+  const btn = e.target.closest('[data-action="del-lief"]');
+  if (!btn) return;
+  if (!confirm(`Lieferschein ${btn.dataset.nr} wirklich löschen?`)) return;
+  try {
+    const r = await fetch('/api/lieferungen/' + btn.dataset.id, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
+    }).then(r => r.json());
+    if (r.error) throw new Error(r.error);
+    toast('Lieferschein gelöscht');
+    loadLieferscheineListe();
+  } catch (err) { showAlert('alerts','error',err.message); }
+});
 document.getElementById('lief-filter-status')?.addEventListener('change', loadLieferscheineListe);
 document.getElementById('btn-reload-lieferscheine')?.addEventListener('click', loadLieferscheineListe);
 document.getElementById('btn-show-lief-form')?.addEventListener('click', () => {

@@ -252,6 +252,17 @@
       </div>
     </div>
 
+    <!-- LIEFERSCHEINE -->
+    <div id="view-lieferscheine" class="view" style="display:none">
+      <div class="card">
+        <div class="section-hdr">
+          <span class="section-title">Meine Lieferscheine</span>
+          <button class="btn btn-sm" id="btn-reload-lief-erz">↻</button>
+        </div>
+        <div id="lief-erz-list"><div class="spinner"></div></div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -684,6 +695,49 @@ document.getElementById('commitments-list')?.addEventListener('click', async e =
     }
   }
 });
+
+// ── MEINE LIEFERSCHEINE ───────────────────────────────────────
+async function loadMeineLieferscheine() {
+  try {
+    const { lieferungen } = await fetch('/api/lieferungen/meine', {
+      headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
+    }).then(r => r.json());
+
+    setHTML('lief-erz-list', lieferungen?.length ? `
+      <table class="tbl">
+        <thead><tr>
+          <th>Nr.</th><th>Produkt</th><th>KW</th><th>Lieferdatum</th>
+          <th>Meine Menge</th><th>Mein Anteil</th><th>Status</th><th>QR</th><th></th>
+        </tr></thead>
+        <tbody>${lieferungen.map(l => `
+          <tr>
+            <td style="font-family:'DM Mono',monospace;font-size:11px">${l.lieferschein_nr}</td>
+            <td style="font-weight:500">${l.produkt}</td>
+            <td class="pool-meta">${l.lieferwoche}</td>
+            <td class="pool-meta">${l.lieferdatum ? new Date(l.lieferdatum).toLocaleDateString('de-DE') : '—'}</td>
+            <td style="font-family:'DM Mono',monospace">${l.meine_menge ? fmt(l.meine_menge,0)+' kg' : '—'}</td>
+            <td style="font-family:'DM Mono',monospace;color:var(--green);font-weight:600">
+              ${l.mein_anteil && l.mein_anteil > 0 ? fmt(l.mein_anteil) + ' €' : '—'}
+            </td>
+            <td>${statusBadge(l.status)}</td>
+            <td>
+              <img src="/api/lieferungen/qr/${l.qr_code}"
+                   alt="${l.qr_code}"
+                   style="width:44px;height:44px;border-radius:4px;border:1px solid var(--border);cursor:pointer"
+                   title="${l.qr_code}"
+                   onclick="window.open('/api/lieferungen/qr/${l.qr_code}','_blank')">
+            </td>
+            <td>
+              <button class="btn btn-sm" onclick="window.open('/api/print/lieferung-erz/${l.id}','_blank')" title="Lieferschein drucken">🖨</button>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    ` : '<p style="color:var(--text3);font-size:13px">Noch keine Lieferscheine vorhanden</p>');
+  } catch (err) { showAlert('alerts','error',err.message); }
+}
+
+document.getElementById('btn-reload-lief-erz')?.addEventListener('click', loadMeineLieferscheine);
 
 // ── INIT ──────────────────────────────────────────────────────
 loadPools();
