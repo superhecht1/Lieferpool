@@ -203,4 +203,56 @@ router.get('/qr-svg/:code', async (req, res) => {
   }
 });
 
+
+// DELETE /api/lieferungen/:id – Lieferschein löschen (nur Admin, nur wenn nicht abgeschlossen)
+router.delete('/:id', auth, role('admin'), async (req, res) => {
+  try {
+    const { rows: [lief] } = await db.query(
+      `SELECT id, status, lieferschein_nr FROM lieferungen WHERE id=$1`, [req.params.id]
+    );
+    if (!lief) return res.status(404).json({ error: 'Lieferschein nicht gefunden' });
+    if (lief.status === 'abgeschlossen') {
+      return res.status(400).json({ error: 'Abgeschlossene Lieferscheine können nicht gelöscht werden' });
+    }
+    await db.query(`DELETE FROM lieferungen WHERE id=$1`, [req.params.id]);
+    res.json({ message: `Lieferschein ${lief.lieferschein_nr} gelöscht` });
+  } catch (err) {
+    console.error('[lieferungen DELETE]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// GET /api/lieferungen/meine – Erzeuger sieht seine Lieferscheine
+router.get('/meine', auth, role('erzeuger'), async (req, res) => {
+  try {
+    const { rows: [erz] } = await db.query(
+      `SELECT id FROM erzeuger WHERE user_id=$1`, [req.user.id]
+    );
+    if (!erz) return res.json({ lieferungen: [] });
+
+    const { rows } = await db.query(`
+      SELECT DISTINCT
+        l.id, l.lieferschein_nr, l.qr_code, l.lieferdatum,
+        l.menge_bestellt, l.menge_geliefert, l.status, l.created_at,
+        p.produkt, p.lieferwoche, p.preis_pro_einheit,
+        c.menge AS meine_menge,
+        -- Mein Anteil: meine Menge / Gesamtmenge * Nettobetrag
+        ROUND(
+          (c.menge / NULLIF(p.menge_committed, 0))
+          * (l.menge_geliefert * p.preis_pro_einheit * 0.99)
+        , 2) AS mein_anteil
+      FROM lieferungen l
+      JOIN pools p       ON p.id = l.pool_id
+      JOIN commitments c ON c.pool_id = p.id AND c.erzeuger_id = $1 AND c.status = 'aktiv'
+      ORDER BY l.created_at DESC
+    `, [erz.id]);
+
+    res.json({ lieferungen: rows });
+  } catch (err) {
+    console.error('[lieferungen/meine]', err.message);
+    res.json({ lieferungen: [] });
+  }
+});
+
 module.exports = router;

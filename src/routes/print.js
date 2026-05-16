@@ -289,4 +289,113 @@ ${tour.notiz ? `<div class="info-box" style="margin-bottom:16px"><div class="inf
   }
 });
 
+
+// ── Erzeuger-Lieferschein ──────────────────────────────────────
+router.get('/lieferung-erz/:id', auth, role('erzeuger'), async (req, res) => {
+  try {
+    const { rows: [erz] } = await db.query(
+      `SELECT e.*, u.email FROM erzeuger e JOIN users u ON u.id=e.user_id WHERE e.user_id=$1`,
+      [req.user.id]
+    );
+    if (!erz) return res.status(403).send('Kein Zugriff');
+
+    const { rows: [lief] } = await db.query(`
+      SELECT l.*, p.produkt, p.lieferwoche, p.preis_pro_einheit, p.menge_committed,
+             c.menge AS meine_menge,
+             ROUND((c.menge / NULLIF(p.menge_committed,0)) * (COALESCE(l.menge_geliefert,l.menge_bestellt,0) * p.preis_pro_einheit * 0.99), 2) AS mein_anteil
+      FROM lieferungen l
+      JOIN pools p ON p.id = l.pool_id
+      JOIN commitments c ON c.pool_id = p.id AND c.erzeuger_id = $1 AND c.status='aktiv'
+      WHERE l.id = $2
+    `, [erz.id, req.params.id]);
+
+    if (!lief) return res.status(404).send('Lieferschein nicht gefunden oder kein Zugriff');
+
+    const html = `<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Lieferschein ${lief.lieferschein_nr}</title>
+${PRINT_CSS}
+</head>
+<body>
+<div class="no-print">
+  <button onclick="window.print()" style="padding:8px 20px;background:#2e7d3e;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:13px;margin-right:8px">🖨 Drucken</button>
+  <button onclick="window.close()" style="padding:8px 16px;background:#f4f5f2;border:1px solid #dde0d8;border-radius:4px;cursor:pointer;font-size:13px">Schließen</button>
+</div>
+
+<div class="head">
+  <div><div class="logo">Frisch<span>Kette</span></div></div>
+  <div class="meta">
+    <strong>LIEFERSCHEIN (ERZEUGER-KOPIE)</strong><br>
+    Nr: ${lief.lieferschein_nr}<br>
+    Datum: ${new Date().toLocaleDateString('de-DE')}<br>
+    ${lief.lieferdatum ? 'Lieferdatum: '+new Date(lief.lieferdatum).toLocaleDateString('de-DE') : ''}
+  </div>
+</div>
+
+<div class="info-grid">
+  <div class="info-box">
+    <div class="info-label">Erzeuger:in</div>
+    <div class="info-val">${erz.betrieb_name}</div>
+    <div style="font-size:11px;color:#4a5244;margin-top:4px">
+      ${erz.adresse ? erz.adresse+', '+(erz.plz||'')+' '+(erz.ort||'') : ''}<br>
+      ${erz.email}
+    </div>
+  </div>
+  <div class="info-box">
+    <div class="info-label">Produkt</div>
+    <div class="info-val">${lief.produkt}</div>
+    <div style="font-size:11px;color:#4a5244;margin-top:4px">
+      Lieferwoche: ${lief.lieferwoche}<br>
+      Preis: ${parseFloat(lief.preis_pro_einheit).toFixed(2)} €/kg
+    </div>
+  </div>
+</div>
+
+<div class="info-grid" style="margin-bottom:16px">
+  <div class="info-box" style="background:#eaf4ec;border-color:#b8dfc0">
+    <div class="info-label">Meine Liefermenge</div>
+    <div class="info-val">${parseFloat(lief.meine_menge||0).toFixed(0)} kg</div>
+  </div>
+  <div class="info-box" style="background:#eaf4ec;border-color:#b8dfc0">
+    <div class="info-label">Mein erwarteter Erlös (nach 1 % Gebühr)</div>
+    <div class="info-val" style="color:#2e7d3e">${lief.mein_anteil > 0 ? parseFloat(lief.mein_anteil).toFixed(2)+' €' : 'Nach Lieferbestätigung'}</div>
+  </div>
+</div>
+
+<div style="margin-bottom:16px;display:flex;align-items:flex-start;gap:20px">
+  <div>
+    <div class="info-label">QR-Code für Wareneingang</div>
+    <img src="/api/lieferungen/qr/${lief.qr_code}"
+         style="width:100px;height:100px;border-radius:4px;border:1px solid #dde0d8;display:block;margin-top:6px">
+    <div style="font-family:monospace;font-size:10px;color:#4a5244;margin-top:4px">${lief.qr_code}</div>
+  </div>
+  <div style="font-size:11px;color:#4a5244;line-height:1.7;padding-top:4px">
+    Dieser Lieferschein bestätigt Ihre Mengenzusage.<br>
+    Bitte beim Abliefern am Hub vorzeigen oder QR-Code scannen lassen.<br>
+    <strong>Status: ${lief.status}</strong>
+  </div>
+</div>
+
+<div class="sign-box">
+  <div class="sign-line">Unterschrift Erzeuger:in</div>
+  <div class="sign-line">Unterschrift Hub-Mitarbeiter:in</div>
+  <div class="sign-line">Datum & Uhrzeit Abgabe</div>
+</div>
+
+<div class="foot">
+  FrischKette · superhecht.ai · Lackgässchen 24, 50968 Köln · Erzeuger-Kopie · automatisch generiert
+</div>
+</body>
+</html>`;
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  } catch (err) {
+    console.error('[print lieferung-erz]', err.message);
+    res.status(500).send('Fehler: ' + err.message);
+  }
+});
+
 module.exports = router;
