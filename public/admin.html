@@ -1062,11 +1062,11 @@ async function loadLieferscheineListe() {
             <td class="pool-meta">${l.menge_geliefert ? fmt(l.menge_geliefert,0)+' kg' : '—'}</td>
             <td>${statusBadge(l.status)}</td>
             <td>
-              <img src="/api/lieferungen/qr/${l.qr_code}"
+              <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(location.origin+'/caterer?qr='+l.qr_code)}&color=0d1f15&margin=2"
                    alt="${l.qr_code}"
-                   style="width:44px;height:44px;border-radius:4px;border:1px solid var(--border);cursor:pointer"
+                   style="width:48px;height:48px;border-radius:4px;border:1px solid var(--border);cursor:pointer"
                    title="${l.qr_code}"
-                   onclick="window.open('/api/lieferungen/qr/${l.qr_code}','_blank')">
+                   onclick="window.open(this.src.replace('120x120','300x300'),'_blank')">
             </td>
             <td>
               <div style="display:flex;gap:.35rem">
