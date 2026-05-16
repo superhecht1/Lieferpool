@@ -1,6 +1,7 @@
 const express = require('express');
 const db      = require('../db');
-const { auth, role } = require('../middleware/auth');
+const { auth, role }   = require('../middleware/auth');
+const { validateUpload } = require('../middleware/upload-validate');
 const chain   = require('../services/chain');
 const email   = require('../services/email');
 const crypto  = require('crypto');

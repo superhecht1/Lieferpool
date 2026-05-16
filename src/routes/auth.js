@@ -76,6 +76,12 @@ router.post('/login', async (req, res) => {
 
     // Erfolg loggen + alte Fehlversuche löschen
     try { await db.query(`DELETE FROM login_attempts WHERE email=$1`,[emailLower]); } catch {}
+    // 2FA-Check für Admin
+    if (user.role === 'admin' && user.totp_enabled) {
+      const pendingToken = signToken({ id:user.id, role:user.role, pending2fa:true }, '5m');
+      return res.json({ requires2fa:true, pendingToken, userId:user.id });
+    }
+
     const token        = signToken({ id:user.id, email:user.email, role:user.role, name:user.name });
     const refreshToken = await createRefreshToken(user.id);
     res.json({ token, refreshToken, user:{ id:user.id, email:user.email, role:user.role, name:user.name }, redirect:REDIRECT[user.role]||'/' });
@@ -279,6 +285,30 @@ router.post('/reset-password/confirm', async (req, res) => {
   } catch (err) {
     console.error('[pw-reset confirm]', err.message);
     res.status(500).json({ error: 'Fehler' });
+  }
+});
+
+
+// POST /api/auth/2fa-complete – Nach 2FA-Verifikation volles Token ausstellen
+router.post('/2fa-complete', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'Kein Token' });
+
+  try {
+    const jwt = require('jsonwebtoken');
+    const pending = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET);
+    if (!pending.pending2fa) return res.status(400).json({ error: 'Kein pending 2FA' });
+
+    const { rows:[user] } = await db.query(
+      `SELECT id, email, role, name FROM users WHERE id=$1`, [pending.id]
+    );
+    if (!user) return res.status(401).json({ error: 'Nutzer nicht gefunden' });
+
+    const token        = signToken({ id:user.id, email:user.email, role:user.role, name:user.name });
+    const refreshToken = await createRefreshToken(user.id);
+    res.json({ token, refreshToken, user, redirect:'/admin' });
+  } catch (err) {
+    res.status(401).json({ error: 'Token ungültig' });
   }
 });
 

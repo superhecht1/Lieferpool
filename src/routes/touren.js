@@ -1,6 +1,7 @@
 const express = require('express');
 const db      = require('../db');
-const { auth, role } = require('../middleware/auth');
+const { auth, role }   = require('../middleware/auth');
+const { validateBase64Upload } = require('../middleware/upload-validate');
 
 const router = express.Router();
 
