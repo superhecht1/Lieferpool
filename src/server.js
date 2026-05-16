@@ -92,6 +92,7 @@ app.use('/api/reports',      require('./routes/reports'));
 app.use('/api/stripe',       require('./routes/stripe'));
 app.use('/api/sepa',         require('./routes/sepa'));
 app.use('/api/print',        require('./routes/print'));
+app.use('/api/tracking',     require('./routes/tracking'));
 app.use('/api/audit',        require('./middleware/audit').router);
 
 // Chain Status
