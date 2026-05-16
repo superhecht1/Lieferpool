@@ -94,6 +94,7 @@ app.use('/api/sepa',         require('./routes/sepa'));
 app.use('/api/print',        require('./routes/print'));
 app.use('/api/tracking',     require('./routes/tracking'));
 app.use('/api/audit',        require('./middleware/audit').router);
+app.use('/api/contact',      require('./routes/contact'));
 
 // Chain Status
 app.get('/api/chain/status', async (req, res) => {
