@@ -442,6 +442,86 @@ async function doUeberspringen(tourId, stoppId, notiz) {
   }
 }
 
+// ── GPS LIVE TRACKING ────────────────────────────────────────
+let trackingInterval  = null;
+let trackingActive    = false;
+let lastTourId        = null;
+
+function startTracking(tourId) {
+  if (trackingActive) return;
+  if (!navigator.geolocation) {
+    console.warn('[tracking] Geolocation nicht verfügbar');
+    return;
+  }
+  trackingActive = true;
+  lastTourId     = tourId || null;
+  updateTrackingBadge(true);
+
+  // Sofort einmal senden, dann alle 30s
+  sendPosition();
+  trackingInterval = setInterval(sendPosition, 30000);
+  console.log('[tracking] gestartet');
+
+  // Offline melden beim Verlassen
+  window.addEventListener('beforeunload', stopTracking);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) sendPosition(); // letzte Position beim Tab-Wechsel
+  });
+}
+
+function stopTracking() {
+  if (!trackingActive) return;
+  trackingActive = false;
+  if (trackingInterval) { clearInterval(trackingInterval); trackingInterval = null; }
+  updateTrackingBadge(false);
+  // Offline melden
+  navigator.sendBeacon('/api/tracking/offline',
+    new Blob([JSON.stringify({})], { type: 'application/json' })
+  );
+  fetch('/api/tracking/offline', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + Auth.getToken() },
+  }).catch(() => {});
+  console.log('[tracking] gestoppt');
+}
+
+async function sendPosition() {
+  if (!trackingActive) return;
+  navigator.geolocation.getCurrentPosition(async pos => {
+    try {
+      await fetch('/api/tracking/position', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + Auth.getToken() },
+        body: JSON.stringify({
+          lat:        pos.coords.latitude,
+          lon:        pos.coords.longitude,
+          speed_kmh:  pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : null,
+          heading:    pos.coords.heading || null,
+          accuracy_m: pos.coords.accuracy || null,
+          tour_id:    lastTourId,
+        }),
+      });
+    } catch (err) { console.warn('[tracking]', err.message); }
+  }, err => console.warn('[tracking] GPS Fehler:', err.message), {
+    enableHighAccuracy: true, timeout: 10000, maximumAge: 20000,
+  });
+}
+
+function updateTrackingBadge(active) {
+  const badge = document.getElementById('tracking-badge');
+  if (badge) {
+    badge.textContent  = active ? '📡 Tracking aktiv' : '📡 Tracking inaktiv';
+    badge.style.background = active ? 'var(--green)' : 'var(--text3)';
+  }
+}
+
+// Tracking starten wenn Tour aktiv
+function checkStartTracking() {
+  if (aktiveTourId && !trackingActive) {
+    startTracking(aktiveTourId);
+  }
+}
+
 // ── INIT ──────────────────────────────────────────────────────
 loadTouren();
 </script>

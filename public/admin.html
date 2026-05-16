@@ -11,6 +11,8 @@
   .overview-grid3{grid-template-columns:1fr !important}
 }
 </style>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
 <div class="app">
@@ -464,6 +466,28 @@
       </div>
     </div>
 
+    <!-- TRACKING -->
+    <div id="view-tracking" class="view" style="display:none">
+      <div class="grid4" style="margin-bottom:1rem" id="tracking-metrics"></div>
+      <div class="grid2">
+        <div class="card" style="grid-column:1 / -1">
+          <div class="section-hdr">
+            <span class="section-title">Live-Karte</span>
+            <div style="display:flex;gap:.5rem;align-items:center">
+              <span id="tracking-last-update" class="pool-meta"></span>
+              <button class="btn btn-sm" id="btn-reload-tracking">↻ Aktualisieren</button>
+              <button class="btn btn-primary btn-sm" id="btn-tracking-auto">▶ Auto (15s)</button>
+            </div>
+          </div>
+          <div id="tracking-map" style="height:420px;border-radius:var(--radius);overflow:hidden;background:var(--bg);"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:1rem">
+        <div class="card-title">Aktive Fahrer</div>
+        <div id="tracking-list"></div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -484,6 +508,7 @@ const NAV = [
   { id: 'reports',       label: 'Reports'      },
   { id: 'logistik',      label: 'Logistik'     },
   { id: 'pools-alle',    label: 'Pools'        },
+  { id: 'tracking',      label: '📡 Tracking'  },
   { id: 'fahrer-mgmt',   label: 'Fahrer'       },
 ];
 
@@ -502,6 +527,7 @@ async function loadView(v) {
   if (v === 'reports')       loadReports();
   if (v === 'logistik')      loadLogistik();
   if (v === 'pools-alle')    loadPoolsAlle();
+  if (v === 'tracking')      loadTracking();
   if (v === 'fahrer-mgmt')   loadFahrerMgmt();
 }
 
@@ -1572,6 +1598,140 @@ document.getElementById('btn-push-test')?.addEventListener('click', async () => 
 
 // Push-Test Fahrer-Dropdown befüllen wenn Tab geöffnet
 // Push-Test Dropdown befüllen wird in loadFahrerMgmt erledigt
+
+// ── LIVE TRACKING ────────────────────────────────────────────
+let trackingMap      = null;
+let trackingMarkers  = {};
+let trackingTrails   = {};
+let trackingAutoInt  = null;
+let trackingAutoOn   = false;
+
+const TRUCK_ICON = (color = '#2e7d3e') => L.divIcon({
+  html: `<div style="font-size:22px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.4))">🚚</div>`,
+  className: '', iconSize: [28,28], iconAnchor: [14,14],
+});
+
+async function loadTracking() {
+  // Karte initialisieren
+  if (!trackingMap) {
+    const HUB_LAT = parseFloat('50.92' || '50.9245');
+    const HUB_LON = 6.9195;
+    trackingMap = L.map('tracking-map').setView([50.9245, 6.9195], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© <a href="https://www.openstreetmap.org/">OpenStreetMap</a>',
+      maxZoom: 19,
+    }).addTo(trackingMap);
+
+    // Hub-Marker
+    L.marker([50.9245, 6.9195], {
+      icon: L.divIcon({ html: '<div style="font-size:20px">🏭</div>', className:'', iconSize:[24,24], iconAnchor:[12,12] })
+    }).addTo(trackingMap).bindPopup('<strong>Hub / Lager</strong>');
+  }
+
+  await refreshTracking();
+}
+
+async function refreshTracking() {
+  try {
+    const { positions } = await fetch('/api/tracking/positions', {
+      headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
+    }).then(r => r.json());
+
+    // Metriken
+    const online  = positions.filter(p => p.ist_aktiv).length;
+    const unterwegs = positions.filter(p => p.tour_status === 'gestartet').length;
+    setHTML('tracking-metrics', `
+      <div class="metric"><div class="metric-label">Fahrer online</div><div class="metric-val green">${online}</div></div>
+      <div class="metric"><div class="metric-label">Unterwegs</div><div class="metric-val">${unterwegs}</div></div>
+      <div class="metric"><div class="metric-label">Gesamt (2h)</div><div class="metric-val">${positions.length}</div></div>
+      <div class="metric"><div class="metric-label">Letztes Update</div><div class="metric-val" style="font-size:13px">${new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}</div></div>
+    `);
+
+    // Karten-Marker aktualisieren
+    const aktiveIds = new Set(positions.map(p => p.fahrer_id));
+
+    // Alte Marker entfernen
+    Object.keys(trackingMarkers).forEach(id => {
+      if (!aktiveIds.has(id)) { trackingMap.removeLayer(trackingMarkers[id]); delete trackingMarkers[id]; }
+    });
+
+    positions.forEach(p => {
+      const lat = parseFloat(p.lat), lon = parseFloat(p.lon);
+      const color = p.ist_aktiv ? '#2e7d3e' : '#8a9484';
+      const popup = `
+        <div style="font-size:13px;min-width:200px">
+          <strong>${p.fahrer_name}</strong>
+          <div style="color:${color};font-size:11px;margin-top:2px">${p.ist_aktiv ? '● Online' : `● Zuletzt: ${Math.round(p.sekunden_her/60)} Min`}</div>
+          ${p.tour_typ ? `<div style="margin-top:6px;font-size:12px">Tour: ${p.tour_typ} · ${p.tour_datum}</div>` : ''}
+          ${p.stopp_name ? `<div style="font-size:12px">Nächster Stopp: <strong>${p.stopp_name}</strong></div>` : ''}
+          ${p.stopps_gesamt ? `<div style="font-size:11px;color:#8a9484">${p.stopps_done}/${p.stopps_gesamt} Stopps</div>` : ''}
+          ${p.speed_kmh ? `<div style="font-size:11px;color:#8a9484">${p.speed_kmh} km/h</div>` : ''}
+          <div style="margin-top:6px">
+            <button onclick="loadTrail('${p.fahrer_id}')" style="font-size:11px;padding:2px 8px;background:#eaf4ec;border:1px solid #b8dfc0;border-radius:4px;cursor:pointer">Route anzeigen</button>
+          </div>
+        </div>`;
+
+      if (trackingMarkers[p.fahrer_id]) {
+        trackingMarkers[p.fahrer_id].setLatLng([lat, lon]).getPopup().setContent(popup);
+      } else {
+        trackingMarkers[p.fahrer_id] = L.marker([lat, lon], { icon: TRUCK_ICON(color) })
+          .addTo(trackingMap).bindPopup(popup);
+      }
+    });
+
+    // Fahrerliste
+    setHTML('tracking-list', positions.length ? `
+      <table class="tbl" style="font-size:12px">
+        <thead><tr><th>Fahrer</th><th>Status</th><th>Tour</th><th>Stopp</th><th>Fortschritt</th><th>Speed</th><th>Letztes Signal</th><th></th></tr></thead>
+        <tbody>${positions.map(p => `<tr>
+          <td style="font-weight:500">${p.fahrer_name}</td>
+          <td><span class="badge ${p.ist_aktiv?'badge-green':'badge-gray'}">${p.ist_aktiv?'Online':'Inaktiv'}</span></td>
+          <td class="pool-meta">${p.tour_typ||'—'} ${p.tour_datum?'· '+p.tour_datum:''}</td>
+          <td class="pool-meta">${p.stopp_name||'—'}</td>
+          <td class="pool-meta">${p.stopps_gesamt?p.stopps_done+'/'+p.stopps_gesamt:' —'}</td>
+          <td class="pool-meta">${p.speed_kmh?p.speed_kmh+' km/h':'—'}</td>
+          <td class="pool-meta">${p.sekunden_her<60?'Gerade eben':Math.round(p.sekunden_her/60)+' Min'}</td>
+          <td>
+            <button class="btn btn-sm" onclick="if(trackingMarkers['${p.fahrer_id}']){trackingMap.setView(trackingMarkers['${p.fahrer_id}'].getLatLng(),15);trackingMarkers['${p.fahrer_id}'].openPopup();}">Zoom</button>
+          </td>
+        </tr>`).join('')}</tbody>
+      </table>
+    ` : '<p style="color:var(--text3);font-size:13px">Keine aktiven Fahrer</p>');
+
+    setHTML('tracking-last-update', 'Stand: ' + new Date().toLocaleTimeString('de-DE'));
+  } catch(err) { showAlert('alerts','error',err.message); }
+}
+
+async function loadTrail(fahrerId) {
+  try {
+    const { trail } = await fetch('/api/tracking/trail/' + fahrerId, {
+      headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
+    }).then(r => r.json());
+    if (!trail.length) return toast('Kein Trail vorhanden');
+
+    // Alten Trail entfernen
+    if (trackingTrails[fahrerId]) { trackingMap.removeLayer(trackingTrails[fahrerId]); }
+
+    const points = trail.map(t => [parseFloat(t.lat), parseFloat(t.lon)]);
+    trackingTrails[fahrerId] = L.polyline(points, { color:'#2e7d3e', weight:3, opacity:.7, dashArray:'6,4' })
+      .addTo(trackingMap);
+    trackingMap.fitBounds(trackingTrails[fahrerId].getBounds(), { padding:[30,30] });
+  } catch(err) { toast(err.message,'error'); }
+}
+
+document.getElementById('btn-reload-tracking')?.addEventListener('click', refreshTracking);
+
+document.getElementById('btn-tracking-auto')?.addEventListener('click', () => {
+  const btn = document.getElementById('btn-tracking-auto');
+  if (trackingAutoOn) {
+    clearInterval(trackingAutoInt); trackingAutoInt=null; trackingAutoOn=false;
+    btn.textContent='▶ Auto (15s)'; btn.classList.remove('btn-primary');
+  } else {
+    trackingAutoInt = setInterval(refreshTracking, 15000);
+    trackingAutoOn = true;
+    btn.textContent='⏹ Auto stoppen'; btn.classList.add('btn-primary');
+  }
+});
 
 // ── INIT ──────────────────────────────────────────────────────
 loadOverview();
