@@ -676,7 +676,12 @@ async function loadVertraege() {
                 </td>
                 <td class="pool-meta">${p.erzeuger_count || 0}</td>
                 <td>${statusBadge(p.status)}</td>
-                <td><button class="btn btn-sm" data-action="detail" data-id="${p.id}">Details →</button></td>
+                <td>
+                  <div style="display:flex;gap:.35rem">
+                    <button class="btn btn-sm" data-action="detail" data-id="${p.id}">Details</button>
+                    ${p.status==='offen'?`<button class="btn btn-primary btn-sm" data-action="close-pool" data-id="${p.id}">✓ Annehmen</button>`:''}
+                  </div>
+                </td>
               </tr>`;
           }).join('')}
         </tbody>
