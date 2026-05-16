@@ -570,6 +570,48 @@
       </div>
     </div>
 
+    <!-- EINSTELLUNGEN -->
+    <div id="view-settings" class="view" style="display:none">
+      <div class="grid2">
+
+        <!-- 2FA -->
+        <div class="card">
+          <div class="card-title">🔐 Zwei-Faktor-Authentifizierung</div>
+          <p class="pool-meta" style="margin-bottom:1rem">Sichert deinen Admin-Account mit einem zusätzlichen Code aus einer Authenticator-App (Google Authenticator, Authy etc.)</p>
+          <div id="2fa-status"><div class="spinner"></div></div>
+          <div id="2fa-setup-area" style="display:none">
+            <p class="pool-meta" style="margin-bottom:.75rem">Scanne den QR-Code mit deiner Authenticator-App:</p>
+            <img id="2fa-qr-img" src="" alt="QR" style="width:180px;height:180px;border-radius:8px;border:2px solid var(--border);display:block;margin-bottom:.75rem">
+            <p class="pool-meta" style="font-family:'DM Mono',monospace;font-size:11px;margin-bottom:.75rem" id="2fa-secret-display"></p>
+            <div class="form-group">
+              <label class="form-label">Code zur Bestätigung eingeben</label>
+              <input type="text" class="form-control" id="2fa-confirm-code" maxlength="6" placeholder="123456" style="letter-spacing:.25rem;font-family:'DM Mono',monospace">
+            </div>
+            <button class="btn btn-primary" id="btn-2fa-activate">2FA aktivieren</button>
+          </div>
+          <div id="2fa-disable-area" style="display:none">
+            <div class="success-box" style="margin-bottom:1rem">✓ 2FA ist aktiv</div>
+            <div class="form-group">
+              <label class="form-label">Code eingeben um 2FA zu deaktivieren</label>
+              <input type="text" class="form-control" id="2fa-disable-code" maxlength="6" placeholder="123456" style="letter-spacing:.25rem;font-family:'DM Mono',monospace">
+            </div>
+            <button class="btn btn-danger" id="btn-2fa-disable">2FA deaktivieren</button>
+          </div>
+        </div>
+
+        <!-- Passwort ändern -->
+        <div class="card">
+          <div class="card-title">🔑 Passwort ändern</div>
+          <div id="pw-change-result"></div>
+          <div class="form-group"><label class="form-label">Aktuelles Passwort</label><input type="password" class="form-control" id="pw-current"></div>
+          <div class="form-group"><label class="form-label">Neues Passwort (min. 8 Zeichen)</label><input type="password" class="form-control" id="pw-new"></div>
+          <div class="form-group"><label class="form-label">Neues Passwort wiederholen</label><input type="password" class="form-control" id="pw-repeat"></div>
+          <button class="btn btn-primary" id="btn-change-pw">Passwort ändern</button>
+        </div>
+
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -593,6 +635,7 @@ const NAV = [
   { id: 'tracking',      label: '📡 Tracking'  },
   { id: 'fahrer-mgmt',   label: 'Fahrer'       },
   { id: 'audit',          label: '🔍 Audit-Log'  },
+  { id: 'settings',       label: '⚙ Einstellungen'},
 ];
 
 renderHeader('overview', NAV, (v) => { showView(v); loadView(v); });
@@ -613,6 +656,7 @@ async function loadView(v) {
   if (v === 'tracking')      loadTracking();
   if (v === 'fahrer-mgmt')   loadFahrerMgmt();
   if (v === 'audit')          loadAuditLog();
+  if (v === 'settings')       loadSettings();
 }
 
 // ── ÜBERSICHT ─────────────────────────────────────────────────
@@ -1897,6 +1941,76 @@ document.getElementById('btn-tracking-auto')?.addEventListener('click', () => {
     trackingAutoOn = true;
     btn.textContent='⏹ Auto stoppen'; btn.classList.add('btn-primary');
   }
+});
+
+// ── SETTINGS ──────────────────────────────────────────────────
+async function loadSettings() {
+  // 2FA Status laden
+  try {
+    const r = await fetch('/api/admin/2fa/setup', {
+      headers:{'Authorization':'Bearer '+Auth.getToken()}
+    }).then(r=>r.json());
+
+    const statusEl = document.getElementById('2fa-status');
+    const setupEl  = document.getElementById('2fa-setup-area');
+    const disableEl= document.getElementById('2fa-disable-area');
+
+    if (r.alreadyEnabled) {
+      statusEl.innerHTML='';
+      if(setupEl) setupEl.style.display='none';
+      if(disableEl) disableEl.style.display='block';
+    } else {
+      statusEl.innerHTML='<p class="pool-meta" style="margin-bottom:.75rem">2FA ist nicht aktiv</p>';
+      if(setupEl) { setupEl.style.display='block'; }
+      const img = document.getElementById('2fa-qr-img');
+      const sec = document.getElementById('2fa-secret-display');
+      if(img) img.src=r.qrDataUrl||'';
+      if(sec) sec.textContent='Manuell: '+r.secret;
+    }
+  } catch {}
+}
+
+document.getElementById('btn-2fa-activate')?.addEventListener('click', async () => {
+  const code = document.getElementById('2fa-confirm-code')?.value.trim();
+  if (!code) return;
+  try {
+    const r = await fetch('/api/admin/2fa/verify', {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+Auth.getToken()},
+      body:JSON.stringify({code})
+    }).then(r=>r.json());
+    if(r.error) throw new Error(r.error);
+    toast('2FA aktiviert ✓'); loadSettings();
+  } catch(e) { showAlert('alerts','error',e.message); }
+});
+
+document.getElementById('btn-2fa-disable')?.addEventListener('click', async () => {
+  const code = document.getElementById('2fa-disable-code')?.value.trim();
+  if (!code||!confirm('2FA wirklich deaktivieren?')) return;
+  try {
+    const r = await fetch('/api/admin/2fa/disable', {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+Auth.getToken()},
+      body:JSON.stringify({code})
+    }).then(r=>r.json());
+    if(r.error) throw new Error(r.error);
+    toast('2FA deaktiviert'); loadSettings();
+  } catch(e) { showAlert('alerts','error',e.message); }
+});
+
+document.getElementById('btn-change-pw')?.addEventListener('click', async () => {
+  const current = document.getElementById('pw-current')?.value;
+  const pw      = document.getElementById('pw-new')?.value;
+  const repeat  = document.getElementById('pw-repeat')?.value;
+  if (pw !== repeat) return setHTML('pw-change-result','<div class="alert alert-error">Passwörter stimmen nicht überein</div>');
+  if (!pw || pw.length < 8) return setHTML('pw-change-result','<div class="alert alert-error">Mindestens 8 Zeichen</div>');
+  try {
+    const r = await fetch('/api/auth/change-password', {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+Auth.getToken()},
+      body:JSON.stringify({ currentPassword:current, newPassword:pw })
+    }).then(r=>r.json());
+    if(r.error) throw new Error(r.error);
+    setHTML('pw-change-result','<div class="alert alert-success" style="margin-bottom:.75rem">✓ Passwort geändert</div>');
+    ['pw-current','pw-new','pw-repeat'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  } catch(e) { setHTML('pw-change-result','<div class="alert alert-error">'+e.message+'</div>'); }
 });
 
 // ── AUDIT LOG ─────────────────────────────────────────────────

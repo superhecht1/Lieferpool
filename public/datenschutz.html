@@ -1,107 +1,162 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230d1f15'/><text y='24' x='4' font-size='22' font-family='monospace' font-weight='bold' fill='%237ab648'>L</text></svg>">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Datenschutz – LieferPool</title>
-  <link rel="stylesheet" href="/style.css">
-  <style>
-    .legal-page { max-width: 720px; margin: 0 auto; padding: 3rem 1.5rem; }
-    .legal-back { display:inline-flex; align-items:center; gap:.5rem; color:var(--green); font-size:13px; text-decoration:none; margin-bottom:2rem; }
-    .legal-back:hover { text-decoration:underline; }
-    .legal-logo { font-family:'DM Mono',monospace; font-size:13px; color:var(--text3); margin-bottom:.5rem; }
-    .legal-logo span { color:var(--green); }
-    h1 { font-size:1.75rem; font-weight:300; color:var(--text); margin-bottom:2rem; }
-    h2 { font-size:1.1rem; font-weight:600; color:var(--text); margin:2rem 0 .5rem; border-bottom:1px solid var(--border); padding-bottom:.35rem; }
-    h3 { font-size:.95rem; font-weight:600; color:var(--text); margin:1.25rem 0 .35rem; }
-    p, li { font-size:14px; color:var(--text2); line-height:1.8; margin-bottom:.5rem; }
-    ul { padding-left:1.25rem; margin-bottom:.75rem; }
-    a { color:var(--green); }
-    .info-box { background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); padding:1rem 1.25rem; margin:1rem 0; font-size:13px; color:var(--text2); }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Datenschutzerklärung – FrischKette</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:Arial,sans-serif; color:#171d13; background:#faf7f0; line-height:1.7; font-size:16px; }
+  .container { max-width:760px; margin:0 auto; padding:3rem 1.5rem 4rem; }
+  h1 { font-size:2rem; color:#0d1f15; margin-bottom:.5rem; }
+  h2 { font-size:1.2rem; color:#0d1f15; margin:2rem 0 .5rem; border-bottom:2px solid #c8912a; padding-bottom:.25rem; }
+  h3 { font-size:1rem; color:#2e7d3e; margin:1rem 0 .25rem; }
+  p, li { color:#4a5244; margin-bottom:.6rem; }
+  ul { padding-left:1.5rem; margin-bottom:.75rem; }
+  a { color:#2e7d3e; }
+  .badge { display:inline-block; background:#eaf4ec; color:#2e7d3e; font-size:12px; padding:2px 8px; border-radius:4px; border:1px solid #b8dfc0; margin-left:.5rem; }
+  .warn { background:#fff3cd; border:1px solid #ffc107; border-radius:6px; padding:.75rem 1rem; margin:1rem 0; font-size:14px; }
+  nav { background:#0d1f15; padding:.75rem 1.5rem; }
+  nav a { color:rgba(255,255,255,.7); text-decoration:none; font-size:14px; }
+  nav a:hover { color:#fff; }
+  .updated { font-size:13px; color:#8a9a84; margin-bottom:2rem; }
+</style>
 </head>
 <body>
-<div class="legal-page">
-  <a class="legal-back" href="/">← Zurück zur Startseite</a>
-  <div class="legal-logo">Liefer<span>Pool</span></div>
+<nav><a href="/">← FrischKette</a></nav>
+<div class="container">
   <h1>Datenschutzerklärung</h1>
-
-  <div class="info-box">
-    Stand: Januar 2025 · Verantwortlicher: Mark Rusniok, superhecht.ai, Gottesweg 20, 50969 Köln
-  </div>
+  <p class="updated">Letzte Aktualisierung: Mai 2026 | Gültig ab: Betriebsstart FrischKette</p>
 
   <h2>1. Verantwortlicher</h2>
   <p>
-    Verantwortlicher im Sinne der DSGVO ist:<br>
-    Mark Rusniok · superhecht.ai<br>
-    Gottesweg 20, 50969 Köln<br>
-    E-Mail: <a href="mailto:info@think-cloud.org">info@think-cloud.org</a>
+    <strong>Mark Rusniok · superhecht.ai (in Gründung)</strong><br>
+    Lackgässchen 24 · 50968 Köln<br>
+    E-Mail: <a href="mailto:rusniok@googlemail.com">rusniok@googlemail.com</a><br>
+    Web: frischkette.de
   </p>
 
-  <h2>2. Erhobene Daten und Zwecke</h2>
+  <h2>2. Welche Daten wir verarbeiten</h2>
 
-  <h3>2.1 Registrierung und Account</h3>
-  <p>Bei der Registrierung erheben wir:</p>
+  <h3>2.1 Erzeuger:innen</h3>
   <ul>
-    <li>Name und E-Mail-Adresse (Pflicht)</li>
-    <li>Passwort (verschlüsselt gespeichert, bcrypt)</li>
-    <li>Rolle (Erzeuger:in, Caterer, Fahrer:in)</li>
+    <li>Betriebsname, Adresse, PLZ, Ort, Region</li>
+    <li>E-Mail-Adresse, Telefonnummer</li>
+    <li>IBAN (für SEPA-Auszahlungen) <span class="badge">verschlüsselt gespeichert</span></li>
+    <li>USt-ID (für steuerliche Abrechnung)</li>
+    <li>Bio-/Qualitätszertifikate (PDF/Bild)</li>
+    <li>Liefermengen und Pool-Commitments</li>
+    <li>Auszahlungshistorie</li>
   </ul>
-  <p>Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO (Vertragserfüllung)</p>
 
-  <h3>2.2 Erzeuger:innen-Profil</h3>
-  <p>Freiwillige Angaben: Betriebsadresse, Telefon, Website, Produktsortiment, Kapazität, IBAN (für Auszahlungen), USt-ID.</p>
-  <p>Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO</p>
-
-  <h3>2.3 Lieferpools und Commitments</h3>
-  <p>Wir speichern Mengenzusagen, Pool-Teilnahmen und Auszahlungsdaten. Bei aktivierter Blockchain-Option werden kryptografische Hashes (keine personenbezogenen Daten) auf dem Polygon-Netzwerk gespeichert.</p>
-
-  <h3>2.4 Zertifikate</h3>
-  <p>Eingereichte Zertifikatsdaten (Typ, Nummer, Gültigkeitsdatum) werden gespeichert und durch Hub-Administratoren geprüft.</p>
-
-  <h3>2.5 E-Mail-Benachrichtigungen</h3>
-  <p>Wir versenden transaktionale E-Mails über Brevo (Sendinblue). Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO.</p>
-
-  <h3>2.6 Push-Benachrichtigungen</h3>
-  <p>Bei freiwilliger Aktivierung speichern wir Push-Subscriptions (Endpoint, Schlüssel) für Benachrichtigungen über neue Touren. Jederzeit deaktivierbar.</p>
-
-  <h2>3. Datenweitergabe</h2>
-  <p>Wir geben Daten nur weiter an:</p>
+  <h3>2.2 Caterer / Kantinen / Betriebsküchen</h3>
   <ul>
-    <li><strong>Render.com</strong> (Hosting, USA) – Standardvertragsklauseln</li>
-    <li><strong>Brevo/Sendinblue</strong> (E-Mail, EU) – EU-Datenschutz</li>
-    <li><strong>Stripe</strong> (Zahlungen, USA) – Standardvertragsklauseln, eigene Datenschutzerklärung</li>
+    <li>Firmenname, Adresse, Küchen-Typ</li>
+    <li>E-Mail-Adresse, Telefonnummer</li>
+    <li>IBAN (für Zahlungsabwicklung)</li>
+    <li>Erstellte Pools und Bedarfsmengen</li>
+    <li>Wareneingang-Bestätigungen</li>
   </ul>
-  <p>Eine Weitergabe zu anderen Zwecken oder an Dritte erfolgt nicht.</p>
 
-  <h2>4. Speicherdauer</h2>
-  <p>Wir speichern personenbezogene Daten solange wie für die Vertragserfüllung notwendig, mindestens jedoch nach gesetzlichen Aufbewahrungsfristen (10 Jahre für Buchungsdaten gem. § 147 AO).</p>
-
-  <h2>5. Ihre Rechte</h2>
-  <p>Sie haben das Recht auf:</p>
+  <h3>2.3 Fahrer:innen</h3>
   <ul>
-    <li>Auskunft (Art. 15 DSGVO)</li>
-    <li>Berichtigung (Art. 16 DSGVO)</li>
-    <li>Löschung (Art. 17 DSGVO)</li>
-    <li>Einschränkung der Verarbeitung (Art. 18 DSGVO)</li>
-    <li>Datenübertragbarkeit (Art. 20 DSGVO)</li>
-    <li>Widerspruch (Art. 21 DSGVO)</li>
+    <li>Name, E-Mail-Adresse</li>
+    <li>GPS-Standortdaten während aktiver Tour <span class="badge">nur während Tour</span></li>
+    <li>Tour-Fotos bei Stopp-Bestätigung</li>
+    <li>Tourenhistorie</li>
   </ul>
-  <p>Anfragen richten Sie bitte an: <a href="mailto:info@think-cloud.org">info@think-cloud.org</a></p>
 
-  <h2>6. Beschwerderecht</h2>
-  <p>
-    Sie haben das Recht, sich bei der zuständigen Datenschutzbehörde zu beschweren:<br>
-    Landesbeauftragte für Datenschutz und Informationsfreiheit NRW<br>
-    <a href="https://www.ldi.nrw.de" target="_blank" rel="noopener">www.ldi.nrw.de</a>
-  </p>
+  <h3>2.4 Technische Daten (alle Nutzer)</h3>
+  <ul>
+    <li>IP-Adresse (im Audit-Log, 90-Tage Aufbewahrung)</li>
+    <li>Login-Zeitstempel und -Versuche</li>
+    <li>Audit-Log aller Aktionen (2 Jahre Aufbewahrung)</li>
+    <li>JWT-Token (im Browser, kein Cookie)</li>
+  </ul>
 
-  <h2>7. Cookies</h2>
-  <p>LieferPool verwendet keine Tracking-Cookies. Wir nutzen ausschließlich technisch notwendige localStorage-Einträge (JWT-Token) für die Authentifizierung.</p>
+  <h2>3. Rechtsgrundlagen</h2>
+  <ul>
+    <li><strong>Art. 6 Abs. 1 lit. b DSGVO</strong> – Vertragserfüllung (Lieferverträge, Auszahlungen)</li>
+    <li><strong>Art. 6 Abs. 1 lit. c DSGVO</strong> – Gesetzliche Pflicht (Steuer, Handelsrecht §257 HGB)</li>
+    <li><strong>Art. 6 Abs. 1 lit. f DSGVO</strong> – Berechtigtes Interesse (Plattformbetrieb, Sicherheit)</li>
+    <li><strong>Art. 6 Abs. 1 lit. a DSGVO</strong> – Einwilligung (E-Mail-Benachrichtigungen)</li>
+  </ul>
 
-  <h2>8. Sicherheit</h2>
-  <p>Alle Verbindungen sind SSL/TLS-verschlüsselt. Passwörter werden mit bcrypt (Kostenfaktor 10) gehasht. JWT-Tokens laufen nach 7 Tagen ab.</p>
+  <h2>4. Drittanbieter und Auftragsverarbeitung</h2>
+
+  <h3>4.1 Render.com (Hosting) <span class="badge">AVV vorhanden</span></h3>
+  <p>Server und Datenbank werden auf Render.com gehostet. US-amerikanisches Unternehmen mit EU-Datenschutzrahmen (DPF) und Standardvertragsklauseln (SCCs). Alle FrischKette-Server laufen in der EU-Region (Frankfurt).<br>
+  Datenschutz: <a href="https://render.com/privacy" target="_blank">render.com/privacy</a></p>
+
+  <h3>4.2 Brevo / Sendinblue (E-Mail) <span class="badge">AVV vorhanden</span></h3>
+  <p>Transaktionale E-Mails werden über Brevo (ehem. Sendinblue) versendet. Französisches Unternehmen, EU-Datenschutz. Nur E-Mail-Adresse und Name werden übermittelt.<br>
+  Datenschutz: <a href="https://www.brevo.com/de/legal/privacypolicy/" target="_blank">brevo.com/de/legal/privacypolicy</a></p>
+
+  <h3>4.3 Stripe (Zahlungsabwicklung) <span class="badge">AVV vorhanden</span></h3>
+  <p>Stripe wird für optionale Zahlungsfunktionen genutzt. US-amerikanisches Unternehmen mit SCCs. Stripe verarbeitet keine IBAN – SEPA-Überweisungen erfolgen direkt über Banken via pain.001-Export.<br>
+  Datenschutz: <a href="https://stripe.com/de/privacy" target="_blank">stripe.com/de/privacy</a></p>
+
+  <h3>4.4 Polygon Blockchain (Audit-Trail)</h3>
+  <p>Zur unveränderlichen Nachweisführung werden kryptografische <strong>Hashes</strong> (keine personenbezogenen Daten) auf der öffentlichen Polygon-Blockchain gespeichert. Die Blockchain-Funktion ist optional und deaktivierbar. Da keine personenbezogenen Daten on-chain gespeichert werden, gilt diese Verarbeitung als anonym gem. Erwägungsgrund 26 DSGVO.</p>
+
+  <h3>4.5 api.qrserver.com (QR-Code-Generierung)</h3>
+  <p>QR-Codes werden über den externen Dienst api.qrserver.com generiert. Dabei wird der QR-Code-Inhalt (Lieferschein-Nummer + FrischKette-URL) übermittelt. Kein Personenbezug. Datenschutz: <a href="https://goqr.me/de/privacy-policy/" target="_blank">goqr.me</a></p>
+
+  <h2>5. Blockchain-Daten und Unveränderlichkeit</h2>
+  <div class="warn">
+    ⚠ Auf der Polygon-Blockchain gespeicherte Hashes können technisch nicht gelöscht werden. Da es sich nicht um personenbezogene Daten handelt (nur kryptografische Prüfsummen), ist dies mit der DSGVO vereinbar (Art. 17 Abs. 3 lit. e DSGVO).
+  </div>
+
+  <h2>6. IP-Logging und Audit-Log</h2>
+  <p>Zur Sicherheit und Missbrauchsprävention werden IP-Adressen aller Anfragen temporär gespeichert. Der Audit-Log protokolliert alle sicherheitsrelevanten Aktionen (Logins, Passwortänderungen, Auszahlungen). Aufbewahrungsdauer: 90 Tage (IP), 2 Jahre (Audit-Log). Rechtsgrundlage: Art. 6 Abs. 1 lit. f DSGVO.</p>
+
+  <h2>7. GPS-Tracking (Fahrer:innen)</h2>
+  <p>GPS-Standortdaten werden nur während aktiver Touren übertragen und gespeichert. Nach Tourenabschluss werden Live-Positionen automatisch gelöscht. Historische Tourdaten (ohne GPS-Trajektorie) werden 2 Jahre aufbewahrt.</p>
+
+  <h2>8. Deine Rechte (Art. 15–22 DSGVO)</h2>
+  <ul>
+    <li><strong>Auskunft (Art. 15)</strong> – Welche Daten wir über dich haben</li>
+    <li><strong>Berichtigung (Art. 16)</strong> – Korrektur falscher Daten</li>
+    <li><strong>Löschung (Art. 17)</strong> – Konto-Löschung über Profil-Einstellungen oder per E-Mail</li>
+    <li><strong>Einschränkung (Art. 18)</strong> – Verarbeitungseinschränkung auf Anfrage</li>
+    <li><strong>Datenübertragbarkeit (Art. 20)</strong> – JSON-Export aller Daten über Profil-Einstellungen</li>
+    <li><strong>Widerspruch (Art. 21)</strong> – Widerspruch gegen Verarbeitung per E-Mail</li>
+  </ul>
+  <p>Zur Ausübung deiner Rechte: <a href="mailto:rusniok@googlemail.com">rusniok@googlemail.com</a> oder über die Profil-Einstellungen im Dashboard.</p>
+  <p>Du hast das Recht, eine Beschwerde bei der Datenschutzaufsichtsbehörde einzureichen:<br>
+  <strong>LDI NRW</strong> · Kavalleriestraße 2–4 · 40213 Düsseldorf · <a href="https://www.ldi.nrw.de" target="_blank">ldi.nrw.de</a></p>
+
+  <h2>9. Datensicherheit</h2>
+  <ul>
+    <li>HTTPS / TLS-Verschlüsselung (alle Übertragungen)</li>
+    <li>HSTS (HTTP Strict Transport Security)</li>
+    <li>bcrypt-Passwort-Hashing (Kostenfaktor 10)</li>
+    <li>JWT-Token ohne Cookie (CSRF-resistenz)</li>
+    <li>Rate-Limiting und Progressive Lockout</li>
+    <li>Origin-Validierung (CSRF-Schutz)</li>
+    <li>Content-Security-Policy (XSS-Schutz)</li>
+    <li>Input-Sanitization und Parameterisierte SQL-Queries</li>
+    <li>Datei-Upload-Validierung (Magic-Bytes-Check)</li>
+    <li>Admin-Zwei-Faktor-Authentifizierung (TOTP)</li>
+    <li>Regelmäßige Sicherheitsaudits</li>
+  </ul>
+
+  <h2>10. Aufbewahrungsfristen</h2>
+  <ul>
+    <li>Kontodaten: bis Löschung + 1 Monat</li>
+    <li>Abrechnungsdaten (IBAN, Auszahlungen): 10 Jahre (§257 HGB)</li>
+    <li>IP-Adressen (Audit-Log): 90 Tage</li>
+    <li>Audit-Log (Aktionen): 2 Jahre</li>
+    <li>GPS-Live-Daten: Sofort nach Tour</li>
+    <li>Passwort-Reset-Token: 2 Stunden nach Erstellung</li>
+  </ul>
+
+  <h2>11. Cookies</h2>
+  <p>FrischKette setzt <strong>keine Tracking-Cookies</strong> und verwendet kein Analytics. Die Authentifizierung erfolgt über JWT-Token im localStorage des Browsers, nicht über Cookies. Es werden keine Werbenetzwerke eingebunden.</p>
+
+  <h2>12. Änderungen dieser Datenschutzerklärung</h2>
+  <p>Bei wesentlichen Änderungen informieren wir registrierte Nutzer per E-Mail mindestens 14 Tage vor Inkrafttreten.</p>
+
 </div>
 </body>
 </html>

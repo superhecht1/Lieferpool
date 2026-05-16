@@ -260,7 +260,26 @@
           <button class="btn btn-sm" id="btn-reload-lief-erz">↻</button>
         </div>
         <div id="lief-erz-list"><div class="spinner"></div></div>
-      </div>
+      
+      <!-- DSGVO -->
+      <div class="card" style="border-color:#ffcdd2">
+        <div class="card-title" style="color:#c62828">Meine Daten (DSGVO)</div>
+        <div id="dsgvo-result"></div>
+        <div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem">
+          <button class="btn btn-sm" id="btn-dsgvo-export">↓ Meine Daten exportieren</button>
+          <button class="btn btn-sm btn-danger" id="btn-dsgvo-delete-show">Konto löschen</button>
+        </div>
+        <div id="dsgvo-delete-area" style="display:none;border-top:1px solid var(--border);padding-top:1rem;margin-top:.5rem">
+          <p style="font-size:13px;color:#c62828;margin-bottom:.75rem">⚠ Diese Aktion kann nicht rückgängig gemacht werden. Dein Konto wird unwiderruflich anonymisiert.</p>
+          <div class="form-group"><label class="form-label">Passwort zur Bestätigung</label><input type="password" class="form-control" id="dsgvo-confirm-pw"></div>
+          <div class="form-group"><label class="form-label">Grund (optional)</label><input type="text" class="form-control" id="dsgvo-reason" placeholder="z.B. kein Bedarf mehr"></div>
+          <div style="display:flex;gap:.75rem">
+            <button class="btn btn-danger" id="btn-dsgvo-delete-confirm">Konto endgültig löschen</button>
+            <button class="btn" id="btn-dsgvo-delete-cancel">Abbrechen</button>
+          </div>
+        </div>
+        <p style="font-size:11px;color:var(--text3);margin-top:.5rem">Gem. DSGVO Art. 17 + 20. Abrechnungsdaten werden 10 Jahre aufbewahrt (§257 HGB).</p>
+      </div></div>
     </div>
 
   </main>
@@ -765,6 +784,32 @@ function checkDeadlineAlerts(pools) {
     `⏰ ${soon.length} Pool${soon.length>1?'s':''} läuft bald ab: ${names}`);
 }
 
+
+document.getElementById('btn-dsgvo-export')?.addEventListener('click', async () => {
+  window.open('/api/dsgvo/export', '_blank');
+});
+document.getElementById('btn-dsgvo-delete-show')?.addEventListener('click', () => {
+  document.getElementById('dsgvo-delete-area').style.display='block';
+});
+document.getElementById('btn-dsgvo-delete-cancel')?.addEventListener('click', () => {
+  document.getElementById('dsgvo-delete-area').style.display='none';
+});
+document.getElementById('btn-dsgvo-delete-confirm')?.addEventListener('click', async () => {
+  const pw = document.getElementById('dsgvo-confirm-pw')?.value;
+  const reason = document.getElementById('dsgvo-reason')?.value;
+  if (!pw) return showAlert('alerts','error','Passwort eingeben');
+  if (!confirm('Konto wirklich löschen? Diese Aktion ist NICHT rückgängig machbar.')) return;
+  try {
+    const r = await fetch('/api/dsgvo/account', {
+      method:'DELETE',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+Auth.getToken()},
+      body:JSON.stringify({password:pw, reason})
+    }).then(r=>r.json());
+    if(r.error) throw new Error(r.error);
+    setHTML('dsgvo-result','<div class="success-box">'+r.message+'</div>');
+    setTimeout(()=>{ Auth.logout?.(); window.location.href='/login'; }, 3000);
+  } catch(e) { showAlert('alerts','error',e.message); }
+});
 // ── INIT ──────────────────────────────────────────────────────
 loadPools();
 </script>
