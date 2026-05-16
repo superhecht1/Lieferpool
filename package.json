@@ -1,7 +1,7 @@
 {
   "name": "lieferpool",
   "version": "1.0.0",
-  "description": "Virtuelle Lieferkooperative – Food Hub Köln",
+  "description": "Virtuelle Lieferkooperative \u2013 Food Hub K\u00f6ln",
   "main": "server.js",
   "scripts": {
     "start": "node src/server.js",
@@ -11,7 +11,7 @@
     "migrate:flow": "node scripts/migrate_flow.js",
     "migrate:fix": "node scripts/migrate_fix.js",
     "migrate:fix2": "node scripts/migrate_fix2.js",
-    "migrate:all": "node scripts/migrate.js && node scripts/migrate_hub.js && node scripts/migrate_flow.js && node scripts/migrate_fix.js && node scripts/migrate_fix2.js && node scripts/migrate_fix3.js && node scripts/migrate_fix4.js && node scripts/migrate_fix5.js && node scripts/migrate_security.js",
+    "migrate:all": "node scripts/migrate.js && node scripts/migrate_hub.js && node scripts/migrate_flow.js && node scripts/migrate_fix.js && node scripts/migrate_fix2.js && node scripts/migrate_fix3.js && node scripts/migrate_fix4.js && node scripts/migrate_fix5.js && node scripts/migrate_security.js && node scripts/migrate_tracking.js",
     "seed": "node scripts/seed.js",
     "chain:deploy:test": "npx hardhat run scripts/deploy.js --network mumbai",
     "chain:deploy:main": "npx hardhat run scripts/deploy.js --network polygon",
