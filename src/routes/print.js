@@ -110,7 +110,18 @@ ${PRINT_CSS}
 
 <div style="margin-bottom:16px">
   <div class="info-label">QR-Code für Wareneingang</div>
-  <div class="qr-box">${lief.qr_code}</div>
+  <div style="display:flex;align-items:flex-start;gap:20px;margin-top:6px">
+    <div>
+      <img src="/api/lieferungen/qr/${lief.qr_code}"
+           alt="QR ${lief.qr_code}"
+           style="width:110px;height:110px;border-radius:4px;border:1px solid #dde0d8;display:block">
+      <div style="font-family:monospace;font-size:10px;color:#4a5244;margin-top:4px;text-align:center">${lief.qr_code}</div>
+    </div>
+    <div style="font-size:11px;color:#4a5244;line-height:1.6;max-width:300px">
+      <strong>Scannen:</strong> FrischKette öffnen → Wareneingang → Kamera auf Code richten<br>
+      <strong>Manuell:</strong> Code eingeben: <strong style="font-family:monospace">${lief.qr_code}</strong>
+    </div>
+  </div>
 </div>
 
 <h2>Erzeuger:innen (${commitments.length})</h2>

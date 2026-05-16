@@ -156,4 +156,51 @@ router.post('/:id/wareneingang', auth, role('caterer', 'admin'), async (req, res
   }
 });
 
+
+// GET /api/lieferungen/qr/:code – QR-Code als PNG zurückgeben
+router.get('/qr/:code', async (req, res) => {
+  try {
+    const QRCode = require('qrcode');
+    const appUrl  = process.env.APP_URL || 'https://frischkette.onrender.com';
+    const content = `${appUrl}/caterer?qr=${req.params.code}`;
+
+    const png = await QRCode.toBuffer(content, {
+      type:         'png',
+      width:        300,
+      margin:       2,
+      color: { dark: '#0d1f15', light: '#ffffff' },
+      errorCorrectionLevel: 'M',
+    });
+
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.send(png);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/lieferungen/qr-svg/:code – QR-Code als SVG (für Druckansicht)
+router.get('/qr-svg/:code', async (req, res) => {
+  try {
+    const QRCode = require('qrcode');
+    const appUrl  = process.env.APP_URL || 'https://frischkette.onrender.com';
+    const content = `${appUrl}/caterer?qr=${req.params.code}`;
+
+    const svg = await QRCode.toString(content, {
+      type:                 'svg',
+      width:                200,
+      margin:               2,
+      color: { dark: '#0d1f15', light: '#ffffff' },
+      errorCorrectionLevel: 'M',
+    });
+
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.setHeader('Cache-Control', 'public, max-age=86400');
+    res.send(svg);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
