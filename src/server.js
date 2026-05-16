@@ -10,6 +10,11 @@ const app = express();
 app.set('trust proxy', 1);
 
 // ── X-Request-ID ───────────────────────────────────────────────
+// ── CSRF + Origin Check ─────────────────────────
+const { originCheck, csrfTokenCheck } = require('./middleware/csrf');
+app.use(originCheck);
+app.use(csrfTokenCheck);
+
 app.use((req, res, next) => {
   req.id = req.headers['x-request-id'] || crypto.randomUUID();
   res.setHeader('X-Request-ID', req.id);
@@ -95,6 +100,8 @@ app.use('/api/print',        require('./routes/print'));
 app.use('/api/tracking',     require('./routes/tracking'));
 app.use('/api/audit',        require('./middleware/audit').router);
 app.use('/api/contact',      require('./routes/contact'));
+app.use('/api/admin/2fa',    require('./routes/admin-2fa'));
+app.use('/api/dsgvo',        require('./routes/dsgvo'));
 
 // Chain Status
 app.get('/api/chain/status', async (req, res) => {
