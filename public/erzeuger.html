@@ -298,6 +298,7 @@ async function loadView(v) {
 
 // ── POOLS ─────────────────────────────────────────────────────
 async function loadPools() {
+  // Deadline-Alert wird nach dem Laden geprüft
   try {
     const [{ pools }, me] = await Promise.all([
       api.getPools({ status: 'offen' }),
@@ -719,7 +720,11 @@ async function loadMeineLieferscheine() {
             <td style="font-family:'DM Mono',monospace;color:var(--green);font-weight:600">
               ${l.mein_anteil && l.mein_anteil > 0 ? fmt(l.mein_anteil) + ' €' : '—'}
             </td>
-            <td>${statusBadge(l.status)}</td>
+            <td>
+              ${statusBadge(l.status)}
+              ${l.status==='eingegangen'?'<span style="font-size:10px;color:var(--green);display:block;margin-top:2px">✓ Wareneingang bestätigt</span>':''}
+              ${l.wareneingang_at?'<span style="font-size:10px;color:var(--text3);display:block">'+new Date(l.wareneingang_at).toLocaleDateString('de-DE')+'</span>':''}
+            </td>
             <td>
               <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent((window.location.origin||'') + '/caterer?qr=' + l.qr_code)}&color=0d1f15&bgcolor=ffffff&margin=2"
                    alt="${l.qr_code}"
@@ -738,6 +743,27 @@ async function loadMeineLieferscheine() {
 }
 
 document.getElementById('btn-reload-lief-erz')?.addEventListener('click', loadMeineLieferscheine);
+
+// ── POOL SUCHE ────────────────────────────────────────────────
+document.getElementById('pool-search-erz')?.addEventListener('input', function() {
+  const q = this.value.toLowerCase();
+  document.querySelectorAll('#pools-erz-list tr[data-produkt]').forEach(row => {
+    row.style.display = row.dataset.produkt.toLowerCase().includes(q) ? '' : 'none';
+  });
+});
+
+// ── DEADLINE ALERT ─────────────────────────────────────────────
+function checkDeadlineAlerts(pools) {
+  const soon = pools.filter(p => {
+    if (!p.deadline || p.status !== 'offen') return false;
+    const ms = new Date(p.deadline) - new Date();
+    return ms > 0 && ms < 48 * 3600000; // < 48 Stunden
+  });
+  if (!soon.length) return;
+  const names = soon.map(p => p.produkt).join(', ');
+  showAlert('alerts','warning',
+    `⏰ ${soon.length} Pool${soon.length>1?'s':''} läuft bald ab: ${names}`);
+}
 
 // ── INIT ──────────────────────────────────────────────────────
 loadPools();

@@ -10,6 +10,49 @@
 @media(max-width:900px){
   .overview-grid3{grid-template-columns:1fr !important}
 }
+
+/* ── MOBILE ADMIN ───────────────────────────────────────── */
+@media (max-width: 768px) {
+  .sidebar { display: none !important; }
+  .main-content { margin-left: 0 !important; padding: .75rem !important; }
+  .admin-header { padding: .75rem 1rem !important; }
+  .stats-grid { grid-template-columns: 1fr 1fr !important; gap: .5rem !important; }
+  .grid2 { grid-template-columns: 1fr !important; }
+  .grid3 { grid-template-columns: 1fr !important; }
+  .card { padding: .875rem !important; }
+  .tbl { font-size: 11px !important; }
+  .tbl th, .tbl td { padding: 5px 6px !important; }
+  .section-hdr { flex-direction: column !important; align-items: flex-start !important; gap: .5rem !important; }
+  .section-hdr div { flex-wrap: wrap !important; }
+  .pool-meta { display: none !important; }
+
+  /* Mobile nav bar at bottom */
+  .mobile-nav {
+    display: flex !important;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--forest);
+    border-top: 1px solid rgba(255,255,255,.1);
+    z-index: 200;
+    padding: 4px 0 calc(4px + env(safe-area-inset-bottom));
+    overflow-x: auto;
+    gap: 0;
+  }
+  .mobile-nav-btn {
+    flex: 1; min-width: 56px;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 6px 4px;
+    font-size: 10px; color: rgba(255,255,255,.6);
+    background: none; border: none; cursor: pointer;
+    white-space: nowrap;
+  }
+  .mobile-nav-btn.active { color: var(--amber) !important; }
+  .mobile-nav-btn .mnav-icon { font-size: 18px; margin-bottom: 2px; }
+  .main-content { padding-bottom: 70px !important; }
+}
+@media (min-width: 769px) {
+  .mobile-nav { display: none !important; }
+}
 </style>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css">
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
@@ -504,6 +547,29 @@
       </div>
     </div>
 
+    <!-- AUDIT LOG -->
+    <div id="view-audit" class="view" style="display:none">
+      <div class="card">
+        <div class="section-hdr">
+          <span class="section-title">Audit-Log</span>
+          <div style="display:flex;gap:.5rem">
+            <select class="form-control" id="audit-filter-action" style="width:200px;padding:5px 8px">
+              <option value="">Alle Aktionen</option>
+              <option value="auth.login">Logins</option>
+              <option value="auth.password_changed">Passwort-Änderungen</option>
+              <option value="auszahlung.veranlasst">Auszahlungen veranlasst</option>
+              <option value="pool.geschlossen">Pools geschlossen</option>
+              <option value="zertifikat.verifiziert">Zertifikate verifiziert</option>
+            </select>
+            <button class="btn btn-sm" id="btn-reload-audit">↻</button>
+            <button class="btn btn-sm" id="btn-export-audit-csv">↓ CSV</button>
+          </div>
+        </div>
+        <div id="audit-log-list"><div class="spinner"></div></div>
+        <div id="audit-pagination" style="margin-top:.75rem;display:flex;justify-content:space-between;align-items:center"></div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -526,6 +592,7 @@ const NAV = [
   { id: 'pools-alle',    label: 'Pools'        },
   { id: 'tracking',      label: '📡 Tracking'  },
   { id: 'fahrer-mgmt',   label: 'Fahrer'       },
+  { id: 'audit',          label: '🔍 Audit-Log'  },
 ];
 
 renderHeader('overview', NAV, (v) => { showView(v); loadView(v); });
@@ -545,6 +612,7 @@ async function loadView(v) {
   if (v === 'pools-alle')    loadPoolsAlle();
   if (v === 'tracking')      loadTracking();
   if (v === 'fahrer-mgmt')   loadFahrerMgmt();
+  if (v === 'audit')          loadAuditLog();
 }
 
 // ── ÜBERSICHT ─────────────────────────────────────────────────
@@ -1831,8 +1899,92 @@ document.getElementById('btn-tracking-auto')?.addEventListener('click', () => {
   }
 });
 
+// ── AUDIT LOG ─────────────────────────────────────────────────
+let auditPage = 1;
+async function loadAuditLog(page = 1) {
+  auditPage = page;
+  const action = document.getElementById('audit-filter-action')?.value || '';
+  try {
+    const params = new URLSearchParams({ limit: 50, page });
+    if (action) params.set('action', action);
+    const { logs, total } = await fetch(`/api/audit?${params}`, {
+      headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
+    }).then(r => r.json());
+
+    setHTML('audit-log-list', logs?.length ? `
+      <table class="tbl" style="font-size:12px">
+        <thead><tr><th>Zeit</th><th>Nutzer</th><th>Rolle</th><th>Aktion</th><th>Details</th><th>IP</th></tr></thead>
+        <tbody>${logs.map(l => `<tr>
+          <td class="pool-meta" style="white-space:nowrap">${new Date(l.created_at).toLocaleString('de-DE',{dateStyle:'short',timeStyle:'short'})}</td>
+          <td style="font-weight:500">${l.name||l.email||'—'}</td>
+          <td><span class="badge badge-gray">${l.role||'—'}</span></td>
+          <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--green)">${l.action}</td>
+          <td class="pool-meta" style="font-size:11px">${l.details && Object.keys(l.details).length ? Object.entries(l.details).map(([k,v])=>`${k}: ${v}`).join(' · ') : '—'}</td>
+          <td class="pool-meta" style="font-size:10px">${l.ip||'—'}</td>
+        </tr>`).join('')}</tbody>
+      </table>
+    ` : '<p style="color:var(--text3);font-size:13px">Keine Einträge</p>');
+
+    const pages = Math.ceil((total||0)/50);
+    setHTML('audit-pagination', `
+      <span class="pool-meta">${total||0} Einträge</span>
+      <div style="display:flex;gap:.35rem">
+        <button class="btn btn-sm" ${page<=1?'disabled':''} onclick="loadAuditLog(${page-1})">← Zurück</button>
+        <span class="pool-meta" style="padding:5px 8px">Seite ${page} / ${Math.max(1,pages)}</span>
+        <button class="btn btn-sm" ${page>=pages?'disabled':''} onclick="loadAuditLog(${page+1})">Weiter →</button>
+      </div>
+    `);
+  } catch(err) { showAlert('alerts','error',err.message); }
+}
+
+document.getElementById('audit-filter-action')?.addEventListener('change', () => loadAuditLog(1));
+document.getElementById('btn-reload-audit')?.addEventListener('click', () => loadAuditLog(1));
+document.getElementById('btn-export-audit-csv')?.addEventListener('click', () => {
+  const action = document.getElementById('audit-filter-action')?.value || '';
+  window.open(`/api/audit/csv?action=${action}&token=${Auth.getToken()}`, '_blank');
+});
+
+// ── BULK + CSV BUTTONS ────────────────────────────────────────
+document.getElementById('btn-export-erzeuger-csv')?.addEventListener('click', () => {
+  window.open('/api/erzeuger/export/csv', '_blank');
+});
+
+document.getElementById('bulk-select-all')?.addEventListener('change', function() {
+  document.querySelectorAll('.bulk-pool-cb').forEach(cb => cb.checked = this.checked);
+  document.getElementById('btn-bulk-close-pools').style.display =
+    this.checked ? 'inline-flex' : 'none';
+});
+
+document.getElementById('btn-bulk-close-pools')?.addEventListener('click', async () => {
+  const ids = [...document.querySelectorAll('.bulk-pool-cb:checked')].map(cb => cb.dataset.id);
+  if (!ids.length || !confirm(`${ids.length} Pool(s) schließen?`)) return;
+  let ok=0, fail=0;
+  for (const id of ids) {
+    try {
+      const r = await fetch(`/api/pools/${id}/status`, {
+        method:'PUT', headers:{'Content-Type':'application/json','Authorization':'Bearer '+Auth.getToken()},
+        body: JSON.stringify({ status:'geschlossen' })
+      }).then(r=>r.json());
+      if (r.error) fail++; else ok++;
+    } catch { fail++; }
+  }
+  toast(`${ok} geschlossen${fail?', '+fail+' Fehler':''}`);
+  loadPools();
+  document.getElementById('btn-bulk-close-pools').style.display='none';
+  document.getElementById('bulk-select-all').checked=false;
+});
+
 // ── INIT ──────────────────────────────────────────────────────
 loadOverview();
 </script>
+
+<nav class="mobile-nav" id="mobile-nav">
+  <button class="mobile-nav-btn" onclick="switchView('dashboard')"><span class="mnav-icon">📊</span>Dashboard</button>
+  <button class="mobile-nav-btn" onclick="switchView('pools')"><span class="mnav-icon">🌊</span>Pools</button>
+  <button class="mobile-nav-btn" onclick="switchView('lieferung-neu')"><span class="mnav-icon">📋</span>Lieferscheine</button>
+  <button class="mobile-nav-btn" onclick="switchView('erzeuger')"><span class="mnav-icon">🌱</span>Erzeuger</button>
+  <button class="mobile-nav-btn" onclick="switchView('logistik')"><span class="mnav-icon">🚲</span>Logistik</button>
+  <button class="mobile-nav-btn" onclick="switchView('auszahlungen')"><span class="mnav-icon">💶</span>Zahlung</button>
+</nav>
 </body>
 </html>

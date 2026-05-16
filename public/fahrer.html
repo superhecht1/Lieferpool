@@ -94,6 +94,10 @@
 
     <!-- TOUR AUSWÄHLEN -->
     <div id="view-tours">
+      <div style="margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center">
+        <span></span>
+        <button class="btn btn-sm" id="btn-show-hist" style="font-size:12px">📋 Meine Touren</button>
+      </div>
       <div style="margin-bottom:1rem">
         <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:.5rem">Meine Tour heute</div>
         <div id="tour-datum" style="font-size:22px;font-weight:300;color:var(--text)"></div>
@@ -117,6 +121,16 @@
         <button class="btn btn-sm" style="margin-top:1rem" id="btn-back-tours">Zurück zur Übersicht</button>
       </div>
     </div>
+
+    <!-- TOURHISTORIE -->
+    <div id="view-historie" style="display:none;padding:1rem">
+      <div style="margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center">
+        <strong style="font-size:1rem">Meine Touren</strong>
+        <button class="btn btn-sm" id="btn-back-from-hist">← Zurück</button>
+      </div>
+      <div id="tour-hist-list"><div class="spinner"></div></div>
+    </div>
+
   </div>
 </div>
 

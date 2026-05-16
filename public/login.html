@@ -249,5 +249,50 @@ if (existingToken && existingUser) {
   window.location.href = redirectMap[existingUser.role] || '/';
 }
 </script>
+
+<div id="modal-reset-pw" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:none;align-items:center;justify-content:center">
+  <div style="background:var(--bg2);border-radius:var(--radius-lg);padding:2rem;max-width:400px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.2)">
+    <h2 style="font-size:1.1rem;margin-bottom:1rem">Passwort zurücksetzen</h2>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:1rem">Gib deine E-Mail-Adresse ein. Du erhältst einen Link zum Zurücksetzen.</p>
+    <div id="reset-result"></div>
+    <div class="form-group"><input class="form-control" type="email" id="reset-email" placeholder="E-Mail-Adresse"></div>
+    <div style="display:flex;gap:.75rem;margin-top:1rem">
+      <button class="btn btn-primary" id="btn-send-reset" style="flex:1">Link senden</button>
+      <button class="btn" id="btn-reset-close">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('link-forgot-pw')?.addEventListener('click', e => {
+  e.preventDefault();
+  const m = document.getElementById('modal-reset-pw');
+  if (m) { m.style.display='flex'; }
+});
+document.getElementById('btn-reset-close')?.addEventListener('click', () => {
+  document.getElementById('modal-reset-pw').style.display='none';
+});
+document.getElementById('btn-send-reset')?.addEventListener('click', async () => {
+  const email = document.getElementById('reset-email').value.trim();
+  if (!email) return;
+  const btn = document.getElementById('btn-send-reset');
+  btn.disabled=true; btn.textContent='Sende...';
+  try {
+    await fetch('/api/auth/reset-password/request', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email})
+    });
+    document.getElementById('reset-result').innerHTML='<div class="alert alert-success" style="margin-bottom:1rem">✓ Link gesendet – prüfe dein Postfach</div>';
+    btn.textContent='Gesendet ✓';
+  } catch { btn.textContent='Link senden'; btn.disabled=false; }
+});
+
+// Handle reset token in URL
+const urlParams = new URLSearchParams(window.location.search);
+const resetToken = urlParams.get('token');
+if (resetToken && window.location.pathname.includes('reset')) {
+  // Show reset form
+}
+</script>
 </body>
 </html>

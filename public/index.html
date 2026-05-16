@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230d1f15'/><text y='24' x='4' font-size='22' font-family='monospace' font-weight='bold' fill='%237ab648'>L</text></svg>">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LieferPool – Regionale Lieferkooperative</title>
-  <meta name="description" content="LieferPool verbindet regionale Erzeuger:innen mit Caterern. Digitales Rückgrat für Food Hubs – transparente Pools, faire Auszahlungen, blockchain-gesichert.">
+  <title>FrischKette – Regionale Lieferkooperative</title>
+  <meta name="description" content="FrischKette verbindet regionale Erzeuger:innen mit Caterern. Digitales Rückgrat für Food Hubs – transparente Pools, faire Auszahlungen, blockchain-gesichert.">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -153,7 +153,7 @@
 <section class="hero">
   <div class="hero-kicker">Regionale Lebensmittelkooperative</div>
   <h1>Das digitale Rückgrat<br>für <strong>Food Hubs</strong> in deiner Region</h1>
-  <p>LieferPool verbindet regionale Erzeuger:innen mit Caterern — faire Pools, transparente Auszahlungen, blockchain-gesichert.</p>
+  <p>FrischKette verbindet regionale Erzeuger:innen mit Caterern — faire Pools, transparente Auszahlungen, blockchain-gesichert.</p>
   <div class="hero-btns">
     <a class="btn-hero btn-hero-primary" href="/login#register">
       <i class="ti ti-seedling"></i> Jetzt starten
@@ -303,7 +303,7 @@
   <div class="section-inner">
     <div class="section-kicker">Rollen</div>
     <div class="section-title">Für jeden Teil der Kette</div>
-    <div class="section-sub">LieferPool hat ein eigenes Dashboard für jede Rolle — maßgeschneidert auf die täglichen Aufgaben.</div>
+    <div class="section-sub">FrischKette hat ein eigenes Dashboard für jede Rolle — maßgeschneidert auf die täglichen Aufgaben.</div>
     <div class="rollen-grid">
 
       <div class="rollen-card">
@@ -355,6 +355,86 @@
 </section>
 
 <!-- FOOTER -->
+
+<!-- KONTAKTFORMULAR -->
+<section id="kontakt" style="background:#0d1f15;padding:5rem 0">
+  <div class="container" style="max-width:640px">
+    <div style="text-align:center;margin-bottom:2.5rem">
+      <span class="s-label" style="color:rgba(255,255,255,.45)">Kontakt</span>
+      <h2 class="s-title" style="color:#fff;font-size:2.5rem">Demo anfragen</h2>
+      <p style="color:rgba(255,255,255,.55);font-size:1rem;line-height:1.7">
+        Wir richten deinen Food Hub persönlich ein. Kein Formular-Dschungel — nur ein kurzes Gespräch.
+      </p>
+    </div>
+    <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:2rem">
+      <div id="contact-result"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+        <div>
+          <label style="display:block;font-size:12px;color:rgba(255,255,255,.5);margin-bottom:.4rem;letter-spacing:.08em;text-transform:uppercase">Name</label>
+          <input id="cf-name" type="text" placeholder="Dein Name"
+                 style="width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:.6rem .875rem;color:#fff;font-size:14px;outline:none;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="display:block;font-size:12px;color:rgba(255,255,255,.5);margin-bottom:.4rem;letter-spacing:.08em;text-transform:uppercase">E-Mail</label>
+          <input id="cf-email" type="email" placeholder="deine@email.de"
+                 style="width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:.6rem .875rem;color:#fff;font-size:14px;outline:none;box-sizing:border-box">
+        </div>
+      </div>
+      <div style="margin-bottom:1rem">
+        <label style="display:block;font-size:12px;color:rgba(255,255,255,.5);margin-bottom:.4rem;letter-spacing:.08em;text-transform:uppercase">Organisation / Food Hub</label>
+        <input id="cf-org" type="text" placeholder="Name deines Food Hubs oder Vereins"
+               style="width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:.6rem .875rem;color:#fff;font-size:14px;outline:none;box-sizing:border-box">
+      </div>
+      <div style="margin-bottom:1.5rem">
+        <label style="display:block;font-size:12px;color:rgba(255,255,255,.5);margin-bottom:.4rem;letter-spacing:.08em;text-transform:uppercase">Nachricht</label>
+        <textarea id="cf-msg" rows="4" placeholder="Wie viele Erzeuger? Welche Region? Was ist dein größtes Problem aktuell?"
+                  style="width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:.6rem .875rem;color:#fff;font-size:14px;outline:none;resize:vertical;box-sizing:border-box;font-family:inherit"></textarea>
+      </div>
+      <button id="btn-contact-send"
+              style="width:100%;background:#c8912a;color:#fff;border:none;border-radius:6px;padding:.875rem;font-size:14px;font-weight:600;cursor:pointer;letter-spacing:.04em">
+        Demo anfragen →
+      </button>
+    </div>
+  </div>
+</section>
+
+<script>
+document.getElementById('btn-contact-send')?.addEventListener('click', async () => {
+  const name  = document.getElementById('cf-name').value.trim();
+  const email = document.getElementById('cf-email').value.trim();
+  const org   = document.getElementById('cf-org').value.trim();
+  const msg   = document.getElementById('cf-msg').value.trim();
+
+  if (!name || !email || !msg) {
+    document.getElementById('contact-result').innerHTML =
+      '<p style="color:#ff5252;font-size:13px;margin-bottom:1rem">Bitte Name, E-Mail und Nachricht ausfüllen.</p>';
+    return;
+  }
+
+  const btn = document.getElementById('btn-contact-send');
+  btn.disabled = true; btn.textContent = 'Sende...';
+
+  try {
+    const res = await fetch('/api/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, org, message: msg })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Fehler');
+
+    document.getElementById('contact-result').innerHTML =
+      '<div style="background:rgba(74,158,92,.15);border:1px solid rgba(74,158,92,.3);border-radius:6px;padding:.875rem;margin-bottom:1rem;color:#4a9e5c;font-size:13px">✓ Danke! Wir melden uns innerhalb von 24 Stunden.</div>';
+    btn.textContent = 'Gesendet ✓';
+    ['cf-name','cf-email','cf-org','cf-msg'].forEach(id => document.getElementById(id).value = '');
+  } catch (err) {
+    document.getElementById('contact-result').innerHTML =
+      '<p style="color:#ff5252;font-size:13px;margin-bottom:1rem">' + err.message + '</p>';
+    btn.textContent = 'Demo anfragen →';
+    btn.disabled = false;
+  }
+});
+</script>
 <footer>
   <div class="footer-inner">
     <div class="footer-logo">Liefer<span>Pool</span></div>
@@ -362,9 +442,9 @@
       <a href="/impressum.html">Impressum</a>
       <a href="/datenschutz.html">Datenschutz</a>
       <a href="/agb.html">AGB</a>
-      <a href="mailto:info@lieferpool.de">Kontakt</a>
+      <a href="mailto:info@frischkette.de">Kontakt</a>
     </div>
-    <div style="font-size:12px">© 2025 LieferPool · superhecht.ai · Köln</div>
+    <div style="font-size:12px">© 2025 FrischKette · superhecht.ai · Köln</div>
   </div>
 </footer>
 
