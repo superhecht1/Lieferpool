@@ -357,46 +357,317 @@
 <!-- FOOTER -->
 
 <!-- KONTAKTFORMULAR -->
-<section id="kontakt" style="background:#0d1f15;padding:5rem 0">
-  <div class="container" style="max-width:640px">
-    <div style="text-align:center;margin-bottom:2.5rem">
-      <span class="s-label" style="color:rgba(255,255,255,.45)">Kontakt</span>
-      <h2 class="s-title" style="color:#fff;font-size:2.5rem">Demo anfragen</h2>
-      <p style="color:rgba(255,255,255,.55);font-size:1rem;line-height:1.7">
-        Wir richten deinen Food Hub persönlich ein. Kein Formular-Dschungel — nur ein kurzes Gespräch.
+<section id="kontakt" style="background:#0d1f15;padding:6rem 0">
+  <div class="container" style="max-width:700px">
+
+    <div style="text-align:center;margin-bottom:3rem">
+      <span class="s-label" style="color:rgba(255,255,255,.4);letter-spacing:.14em;font-size:11px;text-transform:uppercase;display:block;margin-bottom:.75rem">Kontakt</span>
+      <h2 style="font-family:'Cormorant Garamond',Georgia,serif;font-size:2.8rem;color:#fff;line-height:1.1;margin-bottom:.75rem">
+        Starte mit einer<br><em style="color:#c8912a">persönlichen Demo</em>
+      </h2>
+      <p style="color:rgba(255,255,255,.5);font-size:1rem;line-height:1.7;max-width:480px;margin:0 auto">
+        Kein Formular-Dschungel. Sag uns wer du bist — wir melden uns innerhalb von 24 Stunden.
       </p>
     </div>
-    <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:2rem">
-      <div id="contact-result"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
-        <div>
-          <label style="display:block;font-size:12px;color:rgba(255,255,255,.5);margin-bottom:.4rem;letter-spacing:.08em;text-transform:uppercase">Name</label>
-          <input id="cf-name" type="text" placeholder="Dein Name"
-                 style="width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:.6rem .875rem;color:#fff;font-size:14px;outline:none;box-sizing:border-box">
+
+    <!-- Step Indicator -->
+    <div id="cf-steps" style="display:flex;justify-content:center;gap:.5rem;margin-bottom:2.5rem">
+      <div class="cf-step cf-step-active" data-step="1">
+        <div class="cf-step-dot"></div><span>Rolle</span>
+      </div>
+      <div class="cf-step-line"></div>
+      <div class="cf-step" data-step="2">
+        <div class="cf-step-dot"></div><span>Details</span>
+      </div>
+      <div class="cf-step-line"></div>
+      <div class="cf-step" data-step="3">
+        <div class="cf-step-dot"></div><span>Senden</span>
+      </div>
+    </div>
+
+    <div id="cf-form-wrap" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:2.5rem;backdrop-filter:blur(8px)">
+
+      <!-- STEP 1: Wer bist du? -->
+      <div id="cf-step-1">
+        <p style="color:rgba(255,255,255,.6);font-size:13px;margin-bottom:1.25rem;text-transform:uppercase;letter-spacing:.1em">Schritt 1 — Wer bist du?</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.875rem">
+          <button class="cf-role-btn" data-role="erzeuger">
+            <span style="font-size:2rem;display:block;margin-bottom:.5rem">🌱</span>
+            <strong>Erzeuger:in</strong>
+            <span>Hof, Gärtnerei,<br>Betrieb</span>
+          </button>
+          <button class="cf-role-btn" data-role="caterer">
+            <span style="font-size:2rem;display:block;margin-bottom:.5rem">🍽</span>
+            <strong>Caterer</strong>
+            <span>Restaurant, Catering,<br>Großküche</span>
+          </button>
+          <button class="cf-role-btn" data-role="kantine">
+            <span style="font-size:2rem;display:block;margin-bottom:.5rem">🏢</span>
+            <strong>Kantine / Betriebsküche</strong>
+            <span>Unternehmen, Schule,<br>Klinik</span>
+          </button>
+          <button class="cf-role-btn" data-role="hub">
+            <span style="font-size:2rem;display:block;margin-bottom:.5rem">🔗</span>
+            <strong>Food Hub / Initiative</strong>
+            <span>Ernährungsrat,<br>Genossenschaft</span>
+          </button>
+          <button class="cf-role-btn" data-role="foerder" style="grid-column:span 2">
+            <span style="font-size:1.5rem;display:inline;margin-right:.5rem">💶</span>
+            <strong>Investor / Fördergeber / Presse</strong>
+          </button>
         </div>
-        <div>
-          <label style="display:block;font-size:12px;color:rgba(255,255,255,.5);margin-bottom:.4rem;letter-spacing:.08em;text-transform:uppercase">E-Mail</label>
-          <input id="cf-email" type="email" placeholder="deine@email.de"
-                 style="width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:.6rem .875rem;color:#fff;font-size:14px;outline:none;box-sizing:border-box">
+      </div>
+
+      <!-- STEP 2: Details -->
+      <div id="cf-step-2" style="display:none">
+        <p style="color:rgba(255,255,255,.6);font-size:13px;margin-bottom:1.25rem;text-transform:uppercase;letter-spacing:.1em">Schritt 2 — Deine Details</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+          <div>
+            <label class="cf-label">Name *</label>
+            <input class="cf-input" type="text" id="cf-name" placeholder="Dein Name">
+          </div>
+          <div>
+            <label class="cf-label">E-Mail *</label>
+            <input class="cf-input" type="email" id="cf-email" placeholder="deine@email.de">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+          <div>
+            <label class="cf-label" id="cf-org-label">Organisation</label>
+            <input class="cf-input" type="text" id="cf-org" placeholder="Name deines Betriebs">
+          </div>
+          <div>
+            <label class="cf-label">Region</label>
+            <input class="cf-input" type="text" id="cf-region" placeholder="z.B. Köln / Rheinland">
+          </div>
+        </div>
+        <div id="cf-dynamic-fields" style="margin-bottom:1rem"></div>
+        <div style="margin-bottom:1.25rem">
+          <label class="cf-label">Dein größtes Problem aktuell *</label>
+          <textarea class="cf-input" id="cf-msg" rows="3" placeholder="Was beschäftigt dich? Je konkreter, desto besser." style="resize:vertical"></textarea>
+        </div>
+        <div style="display:flex;gap:.75rem">
+          <button class="cf-btn-secondary" id="cf-back-1">← Zurück</button>
+          <button class="cf-btn-primary" id="cf-to-3" style="flex:1">Weiter →</button>
         </div>
       </div>
-      <div style="margin-bottom:1rem">
-        <label style="display:block;font-size:12px;color:rgba(255,255,255,.5);margin-bottom:.4rem;letter-spacing:.08em;text-transform:uppercase">Organisation / Food Hub</label>
-        <input id="cf-org" type="text" placeholder="Name deines Food Hubs oder Vereins"
-               style="width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:.6rem .875rem;color:#fff;font-size:14px;outline:none;box-sizing:border-box">
+
+      <!-- STEP 3: Bestätigung -->
+      <div id="cf-step-3" style="display:none">
+        <p style="color:rgba(255,255,255,.6);font-size:13px;margin-bottom:1.25rem;text-transform:uppercase;letter-spacing:.1em">Schritt 3 — Abschicken</p>
+        <div id="cf-summary" style="background:rgba(255,255,255,.06);border-radius:8px;padding:1.25rem;margin-bottom:1.25rem;font-size:13px;color:rgba(255,255,255,.7);line-height:1.8"></div>
+        <div style="margin-bottom:1.25rem">
+          <label style="display:flex;align-items:flex-start;gap:.6rem;cursor:pointer;font-size:12px;color:rgba(255,255,255,.5)">
+            <input type="checkbox" id="cf-consent" style="margin-top:2px;flex-shrink:0">
+            <span>Ich stimme zu, dass FrischKette meine Daten zur Bearbeitung meiner Anfrage nutzt. <a href="/datenschutz.html" target="_blank" style="color:#c8912a">Datenschutz</a></span>
+          </label>
+        </div>
+        <div id="cf-error" style="display:none;color:#ff5252;font-size:13px;margin-bottom:.75rem"></div>
+        <div style="display:flex;gap:.75rem">
+          <button class="cf-btn-secondary" id="cf-back-2">← Zurück</button>
+          <button class="cf-btn-primary" id="cf-submit" style="flex:1">Demo anfragen →</button>
+        </div>
       </div>
-      <div style="margin-bottom:1.5rem">
-        <label style="display:block;font-size:12px;color:rgba(255,255,255,.5);margin-bottom:.4rem;letter-spacing:.08em;text-transform:uppercase">Nachricht</label>
-        <textarea id="cf-msg" rows="4" placeholder="Wie viele Erzeuger? Welche Region? Was ist dein größtes Problem aktuell?"
-                  style="width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:.6rem .875rem;color:#fff;font-size:14px;outline:none;resize:vertical;box-sizing:border-box;font-family:inherit"></textarea>
+
+      <!-- SUCCESS -->
+      <div id="cf-success" style="display:none;text-align:center;padding:2rem 0">
+        <div style="font-size:3rem;margin-bottom:1rem">✅</div>
+        <h3 style="color:#fff;font-size:1.4rem;margin-bottom:.5rem">Anfrage gesendet!</h3>
+        <p style="color:rgba(255,255,255,.6);font-size:14px;line-height:1.7">Wir melden uns innerhalb von 24 Stunden bei dir.<br>Schau auch in deinen Spam-Ordner.</p>
       </div>
-      <button id="btn-contact-send"
-              style="width:100%;background:#c8912a;color:#fff;border:none;border-radius:6px;padding:.875rem;font-size:14px;font-weight:600;cursor:pointer;letter-spacing:.04em">
-        Demo anfragen →
-      </button>
+
     </div>
   </div>
 </section>
+
+<style>
+.cf-role-btn {
+  background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:10px;
+  padding:1.25rem 1rem;
+  cursor:pointer;
+  text-align:center;
+  transition:all .2s;
+  color:rgba(255,255,255,.8);
+  display:flex;flex-direction:column;align-items:center;gap:.15rem;
+}
+.cf-role-btn strong { display:block;font-size:14px;color:#fff;margin-bottom:.15rem; }
+.cf-role-btn span { font-size:12px;color:rgba(255,255,255,.45);line-height:1.4; }
+.cf-role-btn:hover,.cf-role-btn.selected {
+  background:rgba(200,145,42,.15);
+  border-color:#c8912a;
+  color:#fff;
+}
+.cf-role-btn.selected { box-shadow:0 0 0 2px rgba(200,145,42,.3); }
+.cf-label { display:block;font-size:11px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.4rem; }
+.cf-input {
+  width:100%;background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.15);border-radius:8px;
+  padding:.65rem .875rem;color:#fff;font-size:14px;
+  outline:none;transition:border-color .2s;box-sizing:border-box;font-family:inherit;
+}
+.cf-input:focus { border-color:#c8912a; }
+.cf-input::placeholder { color:rgba(255,255,255,.25); }
+.cf-btn-primary {
+  background:#c8912a;color:#fff;border:none;border-radius:8px;
+  padding:.75rem 1.5rem;font-size:14px;font-weight:600;cursor:pointer;
+  transition:background .2s;
+}
+.cf-btn-primary:hover { background:#e0a83a; }
+.cf-btn-primary:disabled { background:#555;cursor:not-allowed; }
+.cf-btn-secondary {
+  background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);
+  border:1px solid rgba(255,255,255,.15);border-radius:8px;
+  padding:.75rem 1rem;font-size:14px;cursor:pointer;
+}
+.cf-step { display:flex;flex-direction:column;align-items:center;gap:.25rem;font-size:11px;color:rgba(255,255,255,.3); }
+.cf-step-dot { width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.2);transition:all .3s; }
+.cf-step-active { color:rgba(255,255,255,.8); }
+.cf-step-active .cf-step-dot { background:#c8912a;box-shadow:0 0 0 3px rgba(200,145,42,.3); }
+.cf-step-done .cf-step-dot { background:#4a9e5c; }
+.cf-step-line { flex:1;height:1px;background:rgba(255,255,255,.15);max-width:60px;margin-top:5px;align-self:flex-start;margin-top:10px; }
+</style>
+
+<script>
+(function() {
+  let selectedRole = '';
+  let currentStep  = 1;
+
+  const ROLE_LABELS = {
+    erzeuger: '🌱 Erzeuger:in',
+    caterer:  '🍽 Caterer',
+    kantine:  '🏢 Kantine / Betriebsküche',
+    hub:      '🔗 Food Hub / Initiative',
+    foerder:  '💶 Investor / Fördergeber / Presse',
+  };
+
+  const DYNAMIC_FIELDS = {
+    erzeuger: `<label class="cf-label">Wie viele kg/Woche könntest du liefern?</label>
+               <input class="cf-input" id="cf-extra" placeholder="z.B. 200 kg Gemüse / Woche">`,
+    caterer:  `<label class="cf-label">Wie viele Mahlzeiten pro Tag?</label>
+               <input class="cf-input" id="cf-extra" placeholder="z.B. 150 Mittagessen täglich">`,
+    kantine:  `<label class="cf-label">Wie viele Essen täglich / Mitarbeiter?</label>
+               <input class="cf-input" id="cf-extra" placeholder="z.B. 300 Mittagessen / 1.200 Mitarbeiter">`,
+    hub:      `<label class="cf-label">Wie viele Erzeuger:innen habt ihr?</label>
+               <input class="cf-input" id="cf-extra" placeholder="z.B. 25 Höfe in der Region">`,
+    foerder:  `<label class="cf-label">Was ist dein Interesse?</label>
+               <input class="cf-input" id="cf-extra" placeholder="z.B. Förderprogramm, Presseanfrage, Investment">`,
+  };
+
+  // Role selection
+  document.querySelectorAll('.cf-role-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.cf-role-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      selectedRole = btn.dataset.role;
+
+      // Auto-advance
+      setTimeout(() => goStep(2), 300);
+    });
+  });
+
+  function goStep(step) {
+    document.getElementById('cf-step-1').style.display = step===1 ? 'block' : 'none';
+    document.getElementById('cf-step-2').style.display = step===2 ? 'block' : 'none';
+    document.getElementById('cf-step-3').style.display = step===3 ? 'block' : 'none';
+    currentStep = step;
+
+    // Update step indicator
+    document.querySelectorAll('.cf-step').forEach(el => {
+      const s = parseInt(el.dataset.step);
+      el.classList.toggle('cf-step-active', s === step);
+      el.classList.toggle('cf-step-done',   s < step);
+    });
+
+    // Dynamic fields
+    if (step === 2) {
+      document.getElementById('cf-dynamic-fields').innerHTML = DYNAMIC_FIELDS[selectedRole] || '';
+      document.getElementById('cf-org-label').textContent =
+        selectedRole === 'erzeuger' ? 'Betrieb / Hofname' :
+        selectedRole === 'hub'      ? 'Name des Food Hubs' : 'Organisation';
+    }
+
+    // Summary
+    if (step === 3) {
+      const name = document.getElementById('cf-name')?.value || '—';
+      const email= document.getElementById('cf-email')?.value || '—';
+      const org  = document.getElementById('cf-org')?.value || '';
+      const region=document.getElementById('cf-region')?.value || '';
+      const extra= document.getElementById('cf-extra')?.value || '';
+      const msg  = document.getElementById('cf-msg')?.value || '—';
+      document.getElementById('cf-summary').innerHTML = `
+        <div style="display:grid;grid-template-columns:auto 1fr;gap:.35rem 1rem">
+          <span style="color:rgba(255,255,255,.35)">Rolle</span><span>${ROLE_LABELS[selectedRole]}</span>
+          <span style="color:rgba(255,255,255,.35)">Name</span><span>${name}</span>
+          <span style="color:rgba(255,255,255,.35)">E-Mail</span><span>${email}</span>
+          ${org   ?`<span style="color:rgba(255,255,255,.35)">Org.</span><span>${org}</span>`:''}
+          ${region?`<span style="color:rgba(255,255,255,.35)">Region</span><span>${region}</span>`:''}
+          ${extra ?`<span style="color:rgba(255,255,255,.35)">Details</span><span>${extra}</span>`:''}
+          <span style="color:rgba(255,255,255,.35)">Nachricht</span><span>${msg}</span>
+        </div>`;
+    }
+  }
+
+  document.getElementById('cf-back-1')?.addEventListener('click', () => goStep(1));
+  document.getElementById('cf-to-3')?.addEventListener('click', () => {
+    const name  = document.getElementById('cf-name')?.value.trim();
+    const email = document.getElementById('cf-email')?.value.trim();
+    const msg   = document.getElementById('cf-msg')?.value.trim();
+    if (!name || !email || !msg) {
+      alert('Bitte Name, E-Mail und Nachricht ausfüllen.');
+      return;
+    }
+    goStep(3);
+  });
+  document.getElementById('cf-back-2')?.addEventListener('click', () => goStep(2));
+
+  document.getElementById('cf-submit')?.addEventListener('click', async () => {
+    if (!document.getElementById('cf-consent')?.checked) {
+      document.getElementById('cf-error').style.display='block';
+      document.getElementById('cf-error').textContent='Bitte Datenschutz-Zustimmung geben.';
+      return;
+    }
+
+    const btn = document.getElementById('cf-submit');
+    btn.disabled=true; btn.textContent='Sende...';
+
+    try {
+      const payload = {
+        name:    document.getElementById('cf-name')?.value.trim(),
+        email:   document.getElementById('cf-email')?.value.trim(),
+        org:     (document.getElementById('cf-org')?.value||'') + (document.getElementById('cf-region')?.value ? ' · ' + document.getElementById('cf-region').value : ''),
+        message: `[${ROLE_LABELS[selectedRole]}]
+` +
+                 (document.getElementById('cf-extra')?.value ? document.getElementById('cf-extra').value + '
+
+' : '') +
+                 document.getElementById('cf-msg')?.value,
+      };
+
+      const res = await fetch('/api/contact', {
+        method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Fehler');
+
+      document.getElementById('cf-form-wrap').innerHTML = `
+        <div style="text-align:center;padding:3rem 1rem">
+          <div style="font-size:3.5rem;margin-bottom:1rem">✅</div>
+          <h3 style="color:#fff;font-size:1.5rem;margin-bottom:.75rem">Anfrage gesendet!</h3>
+          <p style="color:rgba(255,255,255,.6);font-size:14px;line-height:1.8">
+            Wir melden uns innerhalb von 24 Stunden.<br>
+            <strong style="color:#c8912a">${payload.email}</strong>
+          </p>
+        </div>`;
+    } catch(err) {
+      document.getElementById('cf-error').style.display='block';
+      document.getElementById('cf-error').textContent=err.message;
+      btn.disabled=false; btn.textContent='Demo anfragen →';
+    }
+  });
+})();
+</script>
 
 <script>
 document.getElementById('btn-contact-send')?.addEventListener('click', async () => {
