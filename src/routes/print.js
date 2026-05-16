@@ -367,7 +367,7 @@ ${PRINT_CSS}
 <div style="margin-bottom:16px;display:flex;align-items:flex-start;gap:20px">
   <div>
     <div class="info-label">QR-Code für Wareneingang</div>
-    <img src="/api/lieferungen/qr/${lief.qr_code}"
+    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent((process.env.APP_URL||'')+'/caterer?qr='+lief.qr_code)}&color=0d1f15&margin=2"
          style="width:100px;height:100px;border-radius:4px;border:1px solid #dde0d8;display:block;margin-top:6px">
     <div style="font-family:monospace;font-size:10px;color:#4a5244;margin-top:4px">${lief.qr_code}</div>
   </div>

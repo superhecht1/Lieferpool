@@ -157,49 +157,47 @@ router.post('/:id/wareneingang', auth, role('caterer', 'admin'), async (req, res
 });
 
 
-// GET /api/lieferungen/qr/:code – QR-Code als PNG zurückgeben
+// GET /api/lieferungen/qr/:code – QR-Code als PNG
 router.get('/qr/:code', async (req, res) => {
+  const code   = req.params.code;
+  const appUrl = process.env.APP_URL || 'https://frischkette.onrender.com';
+  const qrData = `${appUrl}/caterer?qr=${code}`;
+
   try {
     const QRCode = require('qrcode');
-    const appUrl  = process.env.APP_URL || 'https://frischkette.onrender.com';
-    const content = `${appUrl}/caterer?qr=${req.params.code}`;
-
-    const png = await QRCode.toBuffer(content, {
-      type:         'png',
-      width:        300,
-      margin:       2,
+    const png = await QRCode.toBuffer(qrData, {
+      type: 'png', width: 300, margin: 2,
       color: { dark: '#0d1f15', light: '#ffffff' },
       errorCorrectionLevel: 'M',
     });
-
     res.setHeader('Content-Type', 'image/png');
     res.setHeader('Cache-Control', 'public, max-age=86400');
-    res.send(png);
+    return res.send(png);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    // Fallback: Redirect zu externem QR-Generator
+    console.warn('[qr] qrcode Paket Fehler, Fallback:', err.message);
+    return res.redirect(`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrData)}&color=0d1f15`);
   }
 });
 
-// GET /api/lieferungen/qr-svg/:code – QR-Code als SVG (für Druckansicht)
+// GET /api/lieferungen/qr-svg/:code – QR als SVG
 router.get('/qr-svg/:code', async (req, res) => {
+  const code   = req.params.code;
+  const appUrl = process.env.APP_URL || 'https://frischkette.onrender.com';
+  const qrData = `${appUrl}/caterer?qr=${code}`;
+
   try {
     const QRCode = require('qrcode');
-    const appUrl  = process.env.APP_URL || 'https://frischkette.onrender.com';
-    const content = `${appUrl}/caterer?qr=${req.params.code}`;
-
-    const svg = await QRCode.toString(content, {
-      type:                 'svg',
-      width:                200,
-      margin:               2,
+    const svg = await QRCode.toString(qrData, {
+      type: 'svg', width: 200, margin: 2,
       color: { dark: '#0d1f15', light: '#ffffff' },
       errorCorrectionLevel: 'M',
     });
-
     res.setHeader('Content-Type', 'image/svg+xml');
     res.setHeader('Cache-Control', 'public, max-age=86400');
-    res.send(svg);
+    return res.send(svg);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.redirect(`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrData)}&color=0d1f15`);
   }
 });
 
