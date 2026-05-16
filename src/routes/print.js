@@ -6,7 +6,7 @@
 
 const express = require('express');
 const db      = require('../db');
-const { auth } = require('../middleware/auth');
+const { auth, role } = require('../middleware/auth');
 
 const router = express.Router();
 
