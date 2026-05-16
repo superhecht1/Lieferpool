@@ -173,7 +173,7 @@ router.post('/:id/commit', auth, role('erzeuger'), async (req, res) => {
   const { menge } = req.body;
   if (!menge || menge <= 0) return res.status(400).json({ error: 'Ungültige Menge' });
 
-  const client = await db.pool.connect();
+  const client = await db.connect();
   try {
     await client.query('BEGIN');
 
@@ -309,7 +309,7 @@ router.put('/:id/commit', auth, role('erzeuger'), async (req, res) => {
   const { menge } = req.body;
   if (!menge || menge <= 0) return res.status(400).json({ error: 'Ungültige Menge' });
 
-  const client = await db.pool.connect();
+  const client = await db.connect();
   try {
     await client.query('BEGIN');
 
