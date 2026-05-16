@@ -5,39 +5,38 @@ const db = new Pool({ connectionString: process.env.DATABASE_URL });
 async function run() {
   const client = await db.connect();
   try {
-    console.log('Migration Security...');
+    console.log('Migration Security – 2FA + DSGVO...');
     await client.query(`
-      -- Audit-Log: jede sicherheitsrelevante Aktion
-      CREATE TABLE IF NOT EXISTS audit_log (
-        id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id     UUID REFERENCES users(id) ON DELETE SET NULL,
-        action      VARCHAR(100) NOT NULL,
-        entity_type VARCHAR(50),
-        entity_id   VARCHAR(100),
-        details     JSONB,
-        ip          VARCHAR(45),
-        user_agent  VARCHAR(300),
-        created_at  TIMESTAMPTZ DEFAULT NOW()
-      );
-      CREATE INDEX IF NOT EXISTS idx_audit_user     ON audit_log(user_id);
-      CREATE INDEX IF NOT EXISTS idx_audit_action   ON audit_log(action);
-      CREATE INDEX IF NOT EXISTS idx_audit_created  ON audit_log(created_at DESC);
+      -- 2FA für Admin
+      ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS totp_secret    VARCHAR(100),
+        ADD COLUMN IF NOT EXISTS totp_enabled   BOOLEAN DEFAULT FALSE,
+        ADD COLUMN IF NOT EXISTS totp_verified  BOOLEAN DEFAULT FALSE;
 
-      -- Login-Versuche für Progressive Lockout
-      CREATE TABLE IF NOT EXISTS login_attempts (
+      -- DSGVO: Einwilligung + Löschanfrage
+      ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS dsgvo_consent     BOOLEAN DEFAULT FALSE,
+        ADD COLUMN IF NOT EXISTS dsgvo_consent_at  TIMESTAMPTZ,
+        ADD COLUMN IF NOT EXISTS deletion_requested_at TIMESTAMPTZ;
+
+      -- CSRF tokens
+      CREATE TABLE IF NOT EXISTS csrf_tokens (
         id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        email      VARCHAR(255) NOT NULL,
-        ip         VARCHAR(45),
-        success    BOOLEAN DEFAULT FALSE,
+        token      VARCHAR(100) NOT NULL UNIQUE,
+        session_id VARCHAR(100),
+        expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '2 hours',
         created_at TIMESTAMPTZ DEFAULT NOW()
       );
-      CREATE INDEX IF NOT EXISTS idx_login_email  ON login_attempts(email, created_at DESC);
-      CREATE INDEX IF NOT EXISTS idx_login_ip     ON login_attempts(ip, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_csrf_token ON csrf_tokens(token);
 
-      -- Cleanup alte Login-Versuche nach 24h (via Cron)
-      -- ALTER TABLE login_attempts ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ DEFAULT NOW() + INTERVAL '24 hours';
+      -- Datenexport-Log
+      CREATE TABLE IF NOT EXISTS data_exports (
+        id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
     `);
-    console.log('Security Migration OK');
+    console.log('Migration Security OK');
   } finally { client.release(); await db.end(); }
 }
 run().catch(e => { console.error(e); process.exit(1); });
