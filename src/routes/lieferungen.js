@@ -97,6 +97,20 @@ router.post('/', auth, role('admin', 'caterer'), async (req, res) => {
       RETURNING *
     `, [pool_id, nr, qr, dat, pool.menge_committed]);
 
+    // E-Mail an Caterer
+    try {
+      const { rows:[cat] } = await db.query(
+        `SELECT c.firma_name, u.email FROM caterer c JOIN users u ON u.id=c.user_id WHERE c.id=$1`,
+        [pool.caterer_id]
+      );
+      if (cat?.email) {
+        require('../services/email').sendLieferscheinErstellt({
+          catererEmail: cat.email, catererName: cat.firma_name,
+          produkt: pool.produkt, lieferwoche: pool.lieferwoche,
+          lieferscheinNr: lief.lieferschein_nr, qrCode: lief.qr_code,
+        }).catch(()=>{});
+      }
+    } catch {}
     res.status(201).json({ lieferung: { ...lief, produkt: pool.produkt, lieferwoche: pool.lieferwoche } });
   } catch (err) {
     console.error('[lieferungen POST]', err.message);

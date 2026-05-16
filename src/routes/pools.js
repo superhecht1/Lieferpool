@@ -161,6 +161,27 @@ router.put('/:id/status', auth, role('admin', 'caterer'), async (req, res) => {
       );
     }
 
+    // E-Mail an alle Erzeuger wenn Pool geschlossen
+    if (status === 'geschlossen') {
+      try {
+        const email = require('../services/email');
+        const { rows: comms } = await db.query(`
+          SELECT e.betrieb_name, u.email, c.menge
+          FROM commitments c
+          JOIN erzeuger e ON e.id = c.erzeuger_id
+          JOIN users u ON u.id = e.user_id
+          WHERE c.pool_id=$1 AND c.status='aktiv'
+        `, [req.params.id]);
+        for (const c of comms) {
+          email.sendPoolGeschlossenErzeuger({
+            erzeugerEmail: c.email, betriebName: c.betrieb_name,
+            produkt: pool.produkt, lieferwoche: pool.lieferwoche,
+            menge: parseFloat(c.menge).toFixed(0), preis: pool.preis_pro_einheit,
+          }).catch(()=>{});
+        }
+      } catch {}
+    }
+
     res.json({ pool, message: `Pool auf "${status}" gesetzt` });
   } catch (err) {
     console.error(err);

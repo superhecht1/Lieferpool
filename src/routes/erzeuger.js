@@ -233,4 +233,39 @@ router.get('/detail/:id', auth, role('admin'), async (req, res) => {
   }
 });
 
+
+// GET /api/erzeuger/export/csv – Admin exportiert Erzeuger-Liste als CSV
+router.get('/export/csv', auth, role('admin'), async (req, res) => {
+  try {
+    const { rows } = await db.query(`
+      SELECT e.betrieb_name, u.email, e.region, e.adresse, e.plz, e.ort,
+             e.telefon, e.iban, e.ust_id, e.sortiment, e.max_kapazitaet,
+             COUNT(DISTINCT c.id)::int AS commitments,
+             COALESCE(SUM(a.netto),0)::numeric(10,2) AS ausgezahlt_gesamt,
+             e.created_at::date
+      FROM erzeuger e
+      JOIN users u ON u.id = e.user_id
+      LEFT JOIN commitments c ON c.erzeuger_id = e.id
+      LEFT JOIN auszahlungen a ON a.erzeuger_id = e.id AND a.status='ausgezahlt'
+      GROUP BY e.id, u.email
+      ORDER BY e.betrieb_name
+    `);
+
+    const headers = ['Betrieb','E-Mail','Region','Adresse','PLZ','Ort','Telefon','IBAN','USt-ID','Sortiment','Kapazität (kg/Wo)','Commitments','Ausgezahlt (€)','Mitglied seit'];
+    const rows_csv = rows.map(r => [
+      r.betrieb_name, r.email, r.region||'', r.adresse||'', r.plz||'', r.ort||'',
+      r.telefon||'', r.iban||'', r.ust_id||'', r.sortiment||'', r.max_kapazitaet||'',
+      r.commitments, r.ausgezahlt_gesamt, r.created_at,
+    ].map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(';'));
+
+    const csv = [headers.join(';'), ...rows_csv].join('\n');
+    const filename = `frischkette-erzeuger-${new Date().toISOString().slice(0,10)}.csv`;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send('\uFEFF' + csv); // BOM für Excel
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

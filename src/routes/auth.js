@@ -226,4 +226,60 @@ router.get('/fahrer-list', auth, role('admin'), async (req, res) => {
   }
 });
 
+
+// POST /api/auth/reset-password/request – Reset-Link per E-Mail senden
+router.post('/reset-password/request', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'E-Mail erforderlich' });
+  try {
+    const { rows:[user] } = await db.query(
+      `SELECT id, name FROM users WHERE email=$1`, [email.toLowerCase()]
+    );
+    // Immer OK zurückgeben (kein User-Enumeration)
+    if (!user) return res.json({ message: 'Falls die E-Mail existiert, wurde ein Link gesendet' });
+
+    const crypto = require('crypto');
+    const token  = crypto.randomBytes(32).toString('hex');
+    await db.query(
+      `INSERT INTO password_reset_tokens (user_id, token) VALUES ($1, $2)
+       ON CONFLICT DO NOTHING`,
+      [user.id, token]
+    );
+
+    const resetUrl = `${process.env.APP_URL || ''}/reset-password?token=${token}`;
+    const emailSvc = require('../services/email');
+    await emailSvc.sendPasswordReset({ email: email.toLowerCase(), name: user.name, resetUrl });
+
+    res.json({ message: 'Falls die E-Mail existiert, wurde ein Link gesendet' });
+  } catch (err) {
+    console.error('[pw-reset request]', err.message);
+    res.status(500).json({ error: 'Fehler' });
+  }
+});
+
+// POST /api/auth/reset-password/confirm – Neues Passwort setzen
+router.post('/reset-password/confirm', async (req, res) => {
+  const { token, password } = req.body;
+  if (!token || !password) return res.status(400).json({ error: 'Token und Passwort erforderlich' });
+  if (password.length < 8) return res.status(400).json({ error: 'Passwort min. 8 Zeichen' });
+  try {
+    const { rows:[t] } = await db.query(
+      `SELECT * FROM password_reset_tokens
+       WHERE token=$1 AND used=FALSE AND expires_at > NOW()`,
+      [token]
+    );
+    if (!t) return res.status(400).json({ error: 'Token ungültig oder abgelaufen' });
+
+    const hash = await bcrypt.hash(password, 10);
+    await db.query(`UPDATE users SET password=$1 WHERE id=$2`, [hash, t.user_id]);
+    await db.query(`UPDATE password_reset_tokens SET used=TRUE WHERE token=$1`, [token]);
+    await db.query(`DELETE FROM refresh_tokens WHERE user_id=$1`, [t.user_id]);
+
+    res.json({ message: 'Passwort erfolgreich geändert. Bitte neu anmelden.' });
+  } catch (err) {
+    console.error('[pw-reset confirm]', err.message);
+    res.status(500).json({ error: 'Fehler' });
+  }
+});
+
 module.exports = router;
