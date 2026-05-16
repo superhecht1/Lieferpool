@@ -28,7 +28,7 @@ app.use(helmet({
       scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc:      ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net'],
       fontSrc:       ["'self'", 'https://fonts.gstatic.com', 'https://cdn.jsdelivr.net'],
-      connectSrc:    ["'self'", 'https://api.stripe.com'],
+      connectSrc:    ["'self'", 'https://api.stripe.com', 'https://cdn.jsdelivr.net'],
       imgSrc:        ["'self'", 'data:', 'blob:', 'https://*.tile.openstreetmap.org'],
       frameSrc:      ["'self'", 'https://js.stripe.com'],
       objectSrc:     ["'none'"],
