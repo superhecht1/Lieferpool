@@ -9,7 +9,7 @@ const router = express.Router();
 // ── GET /api/pools ─────────────────────────────────────────────
 router.get('/', auth, async (req, res) => {
   try {
-    const { status, region, produkt, page = 1, limit = 50 } = req.query;
+    const { status, region, produkt, page = 1, limit = 50, mine } = req.query;
 
     // Filter-Params (für WHERE)
     const filterParams = [];
@@ -17,6 +17,11 @@ router.get('/', auth, async (req, res) => {
     if (status)  { filterParams.push(status);        filters.push(`p.status = $${filterParams.length}`); }
     if (region)  { filterParams.push(region);         filters.push(`p.region = $${filterParams.length}`); }
     if (produkt) { filterParams.push(`%${produkt}%`); filters.push(`p.produkt ILIKE $${filterParams.length}`); }
+    // mine=1 → nur eigene Pools (für Caterer)
+    if (mine && req.user.role === 'caterer') {
+      const { rows: [cat] } = await db.query('SELECT id FROM caterer WHERE user_id=$1', [req.user.id]);
+      if (cat) { filterParams.push(cat.id); filters.push(`p.caterer_id = $${filterParams.length}`); }
+    }
     const where = filters.length ? 'WHERE ' + filters.join(' AND ') : '';
 
     // Haupt-Query-Params: Filter + Pagination
