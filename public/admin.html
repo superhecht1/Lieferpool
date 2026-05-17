@@ -2689,9 +2689,15 @@ async function einladungLoeschen(id) {
 async function loadVorlagen() {
   // Caterer-Dropdown befüllen
   try {
-    const {caterer} = await api.getAllCaterer?.() || {};
+    const { caterer } = await fetch('/api/caterer', {
+      headers:{'Authorization':'Bearer '+Auth.getToken()}
+    }).then(r=>r.json());
     const sel = document.getElementById('vl-caterer');
-    if (sel && caterer) sel.innerHTML = caterer.map(c=>`<option value="${c.id}">${c.firma_name}</option>`).join('');
+    if (sel && caterer?.length) {
+      sel.innerHTML = caterer.map(c=>`<option value="${c.id}">${c.firma_name}</option>`).join('');
+    } else if (sel) {
+      sel.innerHTML = '<option value="">Kein Caterer vorhanden</option>';
+    }
   } catch {}
 
   try {

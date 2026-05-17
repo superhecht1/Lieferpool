@@ -311,6 +311,40 @@
       </div></div>
     </div>
 
+    <!-- VORLAGEN -->
+    <div id="view-vorlagen" class="view" style="display:none">
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">🔄 Neue Pool-Vorlage</div>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:.875rem">
+            Erstelle eine Vorlage für wiederkehrende Lieferungen. Per Knopfdruck wird ein fertiger Pool für die nächste Kalenderwoche angelegt.
+          </p>
+          <div id="vorlage-cat-result"></div>
+          <div class="form-group"><label class="form-label">Produkt</label><input class="form-control" id="vl-cat-produkt" placeholder="z.B. Karotten"></div>
+          <div class="form-group">
+            <label class="form-label">Liefertag</label>
+            <select class="form-control" id="vl-cat-wochentag">
+              <option value="1">Montag</option><option value="2">Dienstag</option>
+              <option value="3">Mittwoch</option><option value="4">Donnerstag</option>
+              <option value="5">Freitag</option>
+            </select>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+            <div class="form-group"><label class="form-label">Menge (kg)</label><input class="form-control" type="number" id="vl-cat-menge" placeholder="200"></div>
+            <div class="form-group"><label class="form-label">Preis/kg (€)</label><input class="form-control" type="number" id="vl-cat-preis" placeholder="2.50" step="0.10"></div>
+          </div>
+          <div class="form-group"><label class="form-label">Deadline (Tage vor Lieferung)</label><input class="form-control" type="number" id="vl-cat-deadline" value="3" min="1" max="14"></div>
+          <div class="form-group"><label class="form-label">Notiz (optional)</label><input class="form-control" type="text" id="vl-cat-notiz" placeholder="z.B. Bio bitte"></div>
+          <button class="btn btn-primary" id="btn-vorlage-cat-erstellen">Vorlage speichern</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">📋 Meine Vorlagen</div>
+          <div id="vorlagen-cat-list"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -853,6 +887,95 @@ document.getElementById('btn-dsgvo-delete-confirm')?.addEventListener('click', a
     setTimeout(()=>{ Auth.logout?.(); window.location.href='/login'; }, 3000);
   } catch(e) { showAlert('alerts','error',e.message); }
 });
+// ── CATERER VORLAGEN ──────────────────────────────────────────
+async function loadCatererVorlagen() {
+  try {
+    const { vorlagen } = await fetch('/api/pool-vorlagen', {
+      headers: {'Authorization': 'Bearer ' + Auth.getToken()}
+    }).then(r => r.json());
+
+    const TAGE = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+    setHTML('vorlagen-cat-list', vorlagen?.length ? `
+      <div style="display:flex;flex-direction:column;gap:.75rem">
+        ${vorlagen.map(v => `
+          <div style="border:1px solid var(--border);border-radius:var(--radius);padding:1rem;background:var(--bg2)">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem">
+              <div>
+                <div style="font-weight:600;font-size:.9rem">${v.produkt}</div>
+                <div style="font-size:12px;color:var(--text3);margin-top:.2rem">
+                  jeden ${TAGE[v.wochentag]||'?'} · ${v.menge_ziel||'?'} kg · ${v.preis_pro_einheit||'?'} €/kg
+                </div>
+              </div>
+              <div style="display:flex;gap:.5rem;align-items:center">
+                ${v.aktiv
+                  ? '<span class="badge badge-green" style="font-size:10px">Aktiv</span>'
+                  : '<span class="badge badge-red" style="font-size:10px">Inaktiv</span>'}
+              </div>
+            </div>
+            <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+              <button class="btn btn-sm btn-primary" onclick="poolAusVorlageCat('${v.id}')">
+                ▶ Pool für nächste KW erstellen
+              </button>
+              <button class="btn btn-sm btn-danger" onclick="vorlageLoeschenCat('${v.id}')">Löschen</button>
+            </div>
+          </div>`).join('')}
+      </div>
+    ` : `
+      <div style="text-align:center;padding:2rem;color:var(--text3)">
+        <div style="font-size:2rem;margin-bottom:.5rem">🔄</div>
+        <div style="font-weight:500;margin-bottom:.25rem">Noch keine Vorlagen</div>
+        <div style="font-size:13px">Erstelle links deine erste Vorlage für wiederkehrende Pools</div>
+      </div>
+    `);
+  } catch(err) { showAlert('alerts','error',err.message); }
+}
+
+document.getElementById('btn-vorlage-cat-erstellen')?.addEventListener('click', async () => {
+  const produkt   = document.getElementById('vl-cat-produkt')?.value.trim();
+  const wochentag = parseInt(document.getElementById('vl-cat-wochentag')?.value);
+  const menge     = parseFloat(document.getElementById('vl-cat-menge')?.value)||null;
+  const preis     = parseFloat(document.getElementById('vl-cat-preis')?.value)||null;
+  const deadline  = parseInt(document.getElementById('vl-cat-deadline')?.value)||3;
+  const notiz     = document.getElementById('vl-cat-notiz')?.value||'';
+
+  if (!produkt) return setHTML('vorlage-cat-result','<div class="alert alert-error">Produkt eingeben</div>');
+
+  try {
+    const r = await fetch('/api/pool-vorlagen',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+Auth.getToken()},
+      body:JSON.stringify({produkt, wochentag, menge_ziel:menge, preis_pro_einheit:preis, deadline_tage:deadline, notiz})
+    }).then(r=>r.json());
+    if(r.error) throw new Error(r.error);
+    setHTML('vorlage-cat-result',`<div class="alert alert-success" style="margin-bottom:.75rem">✓ ${r.message}</div>`);
+    document.getElementById('vl-cat-produkt').value='';
+    loadCatererVorlagen();
+  } catch(err) { setHTML('vorlage-cat-result',`<div class="alert alert-error">${err.message}</div>`); }
+});
+
+async function poolAusVorlageCat(id) {
+  try {
+    const r = await fetch(`/api/pool-vorlagen/${id}/erstellen`,{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+Auth.getToken()}
+    }).then(r=>r.json());
+    if(r.error) throw new Error(r.error);
+    toast(r.message);
+    loadCatererVorlagen();
+    // Tab zu Pools wechseln
+    setTimeout(() => switchView('pools-erstellen'), 500);
+  } catch(err) { showAlert('alerts','error',err.message); }
+}
+
+async function vorlageLoeschenCat(id) {
+  if(!confirm('Vorlage löschen?')) return;
+  try {
+    await fetch(`/api/pool-vorlagen/${id}`,{method:'DELETE',headers:{'Authorization':'Bearer '+Auth.getToken()}});
+    toast('Vorlage gelöscht');
+    loadCatererVorlagen();
+  } catch(err) { showAlert('alerts','error',err.message); }
+}
+
 // ── INIT ──────────────────────────────────────────────────────
 loadOverview();
 </script>
