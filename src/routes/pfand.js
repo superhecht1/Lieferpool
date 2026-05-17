@@ -91,4 +91,89 @@ router.get('/stats', auth, role('admin'), async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+
+// GET /api/pfand/alle – Alle Lieferungen mit Pfand (auch vollständig abgeglichen)
+router.get('/alle', auth, role('admin'), async (req, res) => {
+  try {
+    const { rows } = await db.query(`
+      SELECT l.id, l.lieferschein_nr, l.pfand_kisten_geliefert,
+             l.pfand_kisten_zurueck, l.pfand_pro_kiste,
+             l.pfand_gesamt, l.pfand_offen,
+             l.lieferdatum, l.status,
+             p.produkt, p.lieferwoche,
+             e.betrieb_name, eu.email AS erzeuger_email,
+             c.firma_name,  cu.email AS caterer_email
+      FROM lieferungen l
+      JOIN pools p    ON p.id = l.pool_id
+      LEFT JOIN erzeuger e  ON e.id  = (
+        SELECT cm.erzeuger_id FROM commitments cm
+        WHERE cm.pool_id=p.id AND cm.status='aktiv' LIMIT 1
+      )
+      LEFT JOIN users eu ON eu.id = e.user_id
+      LEFT JOIN caterer c  ON c.id  = p.caterer_id
+      LEFT JOIN users cu ON cu.id = c.user_id
+      WHERE l.pfand_kisten_geliefert > 0
+      ORDER BY l.lieferdatum DESC
+    `);
+    res.json({ alle_pfande: rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/pfand/bewegungen – Bewegungshistorie
+router.get('/bewegungen', auth, role('admin'), async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 50;
+    const { rows } = await db.query(`
+      SELECT pb.*, l.lieferschein_nr,
+             u.name AS gebucht_von
+      FROM pfand_bewegungen pb
+      LEFT JOIN lieferungen l ON l.id = pb.lieferung_id
+      LEFT JOIN users u       ON u.id = pb.created_by
+      ORDER BY pb.created_at DESC
+      LIMIT $1
+    `, [limit]);
+    res.json({ bewegungen: rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/pfand/export-csv – CSV-Export
+router.get('/export-csv', async (req, res) => {
+  const jwt = require('jsonwebtoken');
+  try {
+    const token = req.query.token;
+    if (!token) return res.status(401).json({ error: 'Token fehlt' });
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded.role !== 'admin') return res.status(403).json({ error: 'Kein Zugriff' });
+  } catch { return res.status(401).json({ error: 'Ungültiger Token' }); }
+
+  try {
+    const { rows } = await db.query(`
+      SELECT l.lieferschein_nr, p.produkt, p.lieferwoche,
+             l.lieferdatum::text, l.pfand_kisten_geliefert,
+             l.pfand_kisten_zurueck, l.pfand_pro_kiste::text,
+             l.pfand_gesamt::text, l.pfand_offen::text,
+             e.betrieb_name, c.firma_name, l.status
+      FROM lieferungen l
+      JOIN pools p ON p.id=l.pool_id
+      LEFT JOIN erzeuger e ON e.id=(SELECT cm.erzeuger_id FROM commitments cm WHERE cm.pool_id=p.id AND cm.status='aktiv' LIMIT 1)
+      LEFT JOIN caterer c ON c.id=p.caterer_id
+      WHERE l.pfand_kisten_geliefert > 0
+      ORDER BY l.lieferdatum DESC
+    `);
+
+    const headers = ['Lieferschein','Produkt','KW','Lieferdatum','Kisten geliefert','Kisten zurück','Pfand/Kiste','Pfand gesamt','Pfand offen','Erzeuger','Caterer','Status'];
+    const csv = [headers.join(';'),
+      ...rows.map(r => [r.lieferschein_nr,r.produkt,r.lieferwoche,r.lieferdatum,
+        r.pfand_kisten_geliefert,r.pfand_kisten_zurueck,r.pfand_pro_kiste,
+        r.pfand_gesamt,r.pfand_offen,r.betrieb_name||'',r.firma_name||'',r.status
+      ].map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(';'))
+    ].join('
+');
+
+    res.setHeader('Content-Type','text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition',`attachment; filename="pfand-${new Date().toISOString().slice(0,10)}.csv"`);
+    res.send('﻿' + csv);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 module.exports = router;

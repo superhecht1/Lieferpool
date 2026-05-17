@@ -15,7 +15,7 @@ router.get('/', auth, async (req, res) => {
     return res.json({ lieferungen: [] });
   }
   try {
-    const { pool_id, status, limit = 50 } = req.query;
+    const { pool_id, status, nr, limit = 50 } = req.query;
     const params = [parseInt(limit)];
     const filters = [];
 
@@ -31,6 +31,7 @@ router.get('/', auth, async (req, res) => {
 
     if (pool_id) { params.push(pool_id); filters.push(`l.pool_id = $${params.length}`); }
     if (status)  { params.push(status);  filters.push(`l.status = $${params.length}`); }
+    if (nr)     { params.push(nr.toUpperCase()); filters.push(`l.lieferschein_nr = $${params.length}`); }
 
     const where = filters.length ? 'WHERE ' + filters.join(' AND ') : '';
 
