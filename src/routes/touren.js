@@ -345,4 +345,121 @@ router.post('/:id/stopps/:sid/ueberspringen', auth, async (req, res) => {
   }
 });
 
+
+// GET /api/touren/meine – Fahrer sieht seine heutigen Touren
+router.get('/meine', auth, role('fahrer'), async (req, res) => {
+  try {
+    const datum = req.query.datum || new Date().toISOString().slice(0,10);
+    const { rows:[fp] } = await db.query(`SELECT id FROM fahrer_profile WHERE user_id=$1`, [req.user.id]);
+    if (!fp) return res.json({ touren: [] });
+
+    const { rows } = await db.query(`
+      SELECT t.*, f.bezeichnung AS fahrzeug_bezeichnung,
+        COUNT(ts.id)::int                                                 AS stopps_total,
+        COUNT(ts.id) FILTER (WHERE ts.status IN ('abgeschlossen','uebersprungen'))::int AS stopps_erledigt
+      FROM touren t
+      LEFT JOIN fahrzeuge f ON f.id = t.fahrzeug_id
+      LEFT JOIN tour_stopps ts ON ts.tour_id = t.id
+      WHERE t.fahrer_id=$1 AND t.datum=$2
+      GROUP BY t.id, f.bezeichnung
+      ORDER BY t.startzeit
+    `, [fp.id, datum]);
+
+    res.json({ touren: rows });
+  } catch (err) { console.error(err); res.json({ touren: [] }); }
+});
+
+// GET /api/touren/meine/alle – Tourhistorie Fahrer
+router.get('/meine/alle', auth, role('fahrer'), async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 30;
+    const { rows:[fp] } = await db.query(`SELECT id FROM fahrer_profile WHERE user_id=$1`, [req.user.id]);
+    if (!fp) return res.json({ touren: [] });
+
+    const { rows } = await db.query(`
+      SELECT t.*, f.bezeichnung AS fahrzeug_bezeichnung,
+        COUNT(ts.id)::int                                                 AS stopps_total,
+        COUNT(ts.id) FILTER (WHERE ts.status IN ('abgeschlossen','uebersprungen'))::int AS stopps_erledigt
+      FROM touren t
+      LEFT JOIN fahrzeuge f ON f.id = t.fahrzeug_id
+      LEFT JOIN tour_stopps ts ON ts.tour_id = t.id
+      WHERE t.fahrer_id=$1
+      GROUP BY t.id, f.bezeichnung
+      ORDER BY t.datum DESC, t.startzeit DESC
+      LIMIT $2
+    `, [fp.id, limit]);
+
+    res.json({ touren: rows });
+  } catch (err) { console.error(err); res.json({ touren: [] }); }
+});
+
+// GET /api/touren/:id – Tour mit Stopps für Fahrer
+router.get('/:id', auth, async (req, res) => {
+  try {
+    const { rows:[tour] } = await db.query(`
+      SELECT t.*, f.bezeichnung AS fahrzeug_bezeichnung
+      FROM touren t
+      LEFT JOIN fahrzeuge f ON f.id=t.fahrzeug_id
+      WHERE t.id=$1
+    `, [req.params.id]);
+    if (!tour) return res.status(404).json({ error: 'Tour nicht gefunden' });
+
+    let stopps = [];
+    if (req.query.stopps === 'true') {
+      const { rows } = await db.query(`
+        SELECT ts.*,
+          e.betrieb_name AS erzeuger_name,
+          c.firma_name   AS caterer_name,
+          l.lieferschein_nr, l.qr_code
+        FROM tour_stopps ts
+        LEFT JOIN erzeuger e ON e.id = ts.erzeuger_id
+        LEFT JOIN caterer  c ON c.id = ts.caterer_id
+        LEFT JOIN lieferungen l ON l.id = ts.lieferung_id
+        WHERE ts.tour_id=$1
+        ORDER BY ts.reihenfolge
+      `, [req.params.id]);
+      stopps = rows;
+    }
+
+    res.json({ tour, stopps });
+  } catch (err) { console.error(err); res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/touren/:id/stopps/:stoppId/bestaetigen
+router.post('/:id/stopps/:stoppId/bestaetigen', auth, role('fahrer'), async (req, res) => {
+  const { menge_geliefert, notiz, foto } = req.body;
+  try {
+    await db.query(`
+      UPDATE tour_stopps SET
+        status         = 'abgeschlossen',
+        menge_geliefert= $1,
+        notiz          = COALESCE($2, notiz),
+        foto_base64    = COALESCE($3, foto_base64),
+        bestaetigt_at  = NOW()
+      WHERE id=$4 AND tour_id=$5
+    `, [menge_geliefert || null, notiz || null, foto || null, req.params.stoppId, req.params.id]);
+
+    // Lieferschein-Status aktualisieren falls vorhanden
+    await db.query(`
+      UPDATE lieferungen SET status='eingegangen', wareneingang_at=NOW()
+      WHERE id=(SELECT lieferung_id FROM tour_stopps WHERE id=$1)
+      AND status NOT IN ('abgeschlossen','storniert')
+    `, [req.params.stoppId]).catch(()=>{});
+
+    res.json({ message: 'Stopp bestätigt' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/touren/:id/stopps/:stoppId/ueberspringen
+router.post('/:id/stopps/:stoppId/ueberspringen', auth, role('fahrer'), async (req, res) => {
+  const { grund } = req.body;
+  try {
+    await db.query(`
+      UPDATE tour_stopps SET status='uebersprungen', notiz=$1
+      WHERE id=$2 AND tour_id=$3
+    `, [grund || null, req.params.stoppId, req.params.id]);
+    res.json({ message: 'Stopp übersprungen' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 module.exports = router;
