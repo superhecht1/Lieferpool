@@ -657,14 +657,65 @@
 
     <!-- PFAND -->
     <div id="view-pfand" class="view" style="display:none">
-      <div class="card">
-        <div class="section-hdr">
-          <span class="section-title">🧺 Offene Pfandkisten</span>
-          <button class="btn btn-sm" id="btn-reload-pfand">↻ Aktualisieren</button>
+
+      <!-- Statistiken -->
+      <div id="pfand-stats-wrap" style="display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1rem"></div>
+
+      <div class="grid2">
+
+        <!-- Offene Pfände -->
+        <div class="card" style="grid-column:1/-1">
+          <div class="section-hdr">
+            <span class="section-title">📋 Offene Pfandkisten</span>
+            <div style="display:flex;gap:.5rem">
+              <select class="form-control" id="pfand-filter" style="width:160px;padding:5px 8px">
+                <option value="offen">Nur offene</option>
+                <option value="alle">Alle anzeigen</option>
+              </select>
+              <button class="btn btn-sm" id="btn-reload-pfand">↻</button>
+              <button class="btn btn-sm" id="btn-pfand-csv">↓ CSV</button>
+            </div>
+          </div>
+          <div id="pfand-list"><div class="spinner"></div></div>
         </div>
-        <div id="pfand-stats-wrap" style="display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1rem"></div>
-        <div id="pfand-list"><div class="spinner"></div></div>
+
+        <!-- Manuelle Buchung -->
+        <div class="card">
+          <div class="card-title">📥 Rückgabe buchen</div>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:.875rem">Kisten manuell zurückbuchen ohne aus der Tabelle zu suchen.</p>
+          <div class="form-group">
+            <label class="form-label">Lieferschein-Nr.</label>
+            <input class="form-control" type="text" id="pfand-lief-nr" placeholder="LP-XXXXXXXX" style="font-family:'DM Mono',monospace">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Anzahl Kisten zurück</label>
+            <input class="form-control" type="number" id="pfand-rueck-anzahl" min="1" placeholder="z.B. 5">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notiz (optional)</label>
+            <input class="form-control" type="text" id="pfand-rueck-notiz" placeholder="z.B. Übergabe am Hub">
+          </div>
+          <div id="pfand-rueck-result"></div>
+          <button class="btn btn-primary" id="btn-pfand-rueck-manual">Rückgabe buchen</button>
+        </div>
+
+        <!-- Pfandkisten pro Caterer -->
+        <div class="card">
+          <div class="card-title">🏢 Pfandstand pro Caterer</div>
+          <div id="pfand-caterer-list"><div class="spinner"></div></div>
+        </div>
+
       </div>
+
+      <!-- Bewegungshistorie -->
+      <div class="card" style="margin-top:1rem">
+        <div class="section-hdr">
+          <span class="section-title">📜 Pfandbewegungen</span>
+          <button class="btn btn-sm" id="btn-reload-pfand-hist">↻</button>
+        </div>
+        <div id="pfand-hist-list"><div class="spinner"></div></div>
+      </div>
+
     </div>
 
   </main>
@@ -2196,25 +2247,58 @@ document.getElementById('btn-change-pw')?.addEventListener('click', async () => 
 
 // ── PFAND ─────────────────────────────────────────────────────
 async function loadPfand() {
+  await Promise.all([
+    loadPfandStats(),
+    loadPfandListe(),
+    loadPfandCaterer(),
+    loadPfandHistorie(),
+  ]);
+}
+
+async function loadPfandStats() {
   try {
-    // Stats
     const stats = await fetch('/api/pfand/stats', {
       headers: {'Authorization': 'Bearer ' + Auth.getToken()}
     }).then(r => r.json());
 
-    setHTML('pfand-stats-wrap', `
-      <div class="metric"><div class="metric-label">Kisten draußen</div><div class="metric-val" style="color:var(--amber)">${stats.kisten_offen||0}</div></div>
-      <div class="metric"><div class="metric-label">Pfand offen (€)</div><div class="metric-val" style="color:var(--amber)">${parseFloat(stats.pfand_offen_gesamt||0).toFixed(2)}</div></div>
-      <div class="metric"><div class="metric-label">Kisten gesamt</div><div class="metric-val">${stats.kisten_gesamt||0}</div></div>
-      <div class="metric"><div class="metric-label">Kisten zurück</div><div class="metric-val green">${stats.kisten_zurueck||0}</div></div>
-    `);
+    const offen    = parseInt(stats.kisten_offen||0);
+    const gesamt   = parseInt(stats.kisten_gesamt||0);
+    const zurueck  = parseInt(stats.kisten_zurueck||0);
+    const quote    = gesamt > 0 ? Math.round(zurueck/gesamt*100) : 0;
+    const pfandEur = parseFloat(stats.pfand_offen_gesamt||0).toFixed(2);
 
-    // Liste offener Pfände
-    const { offene_pfande } = await fetch('/api/pfand/uebersicht', {
+    setHTML('pfand-stats-wrap', `
+      <div class="metric">
+        <div class="metric-label">Kisten draußen</div>
+        <div class="metric-val" style="color:${offen>0?'var(--amber)':'var(--green)'}">${offen}</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Pfand offen (€)</div>
+        <div class="metric-val" style="color:${offen>0?'var(--amber)':'var(--green)'}">${pfandEur}</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Rückgabequote</div>
+        <div class="metric-val" style="color:${quote>=80?'var(--green)':quote>=50?'var(--amber)':'var(--red)'}">${quote}%</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Gesamt geliefert</div>
+        <div class="metric-val">${gesamt} Kisten</div>
+      </div>
+    `);
+  } catch {}
+}
+
+async function loadPfandListe() {
+  const nurOffen = document.getElementById('pfand-filter')?.value !== 'alle';
+  try {
+    const endpoint = nurOffen ? '/api/pfand/uebersicht' : '/api/pfand/alle';
+    const { offene_pfande, alle_pfande } = await fetch(endpoint, {
       headers: {'Authorization': 'Bearer ' + Auth.getToken()}
     }).then(r => r.json());
 
-    if (!offene_pfande?.length) {
+    const liste = offene_pfande || alle_pfande || [];
+
+    if (!liste.length) {
       setHTML('pfand-list', '<p style="color:var(--text3);font-size:13px">✓ Keine offenen Pfände</p>');
       return;
     }
@@ -2222,39 +2306,112 @@ async function loadPfand() {
     setHTML('pfand-list', `
       <table class="tbl">
         <thead><tr>
-          <th>Lieferschein</th><th>Produkt</th><th>Erzeuger</th><th>Caterer</th>
-          <th>Geliefert</th><th>Zurück</th><th>Offen</th><th>Pfand (€)</th><th></th>
+          <th>Lieferschein</th><th>Produkt</th><th>Datum</th>
+          <th>Erzeuger</th><th>Caterer</th>
+          <th style="text-align:center">Geliefert</th>
+          <th style="text-align:center">Zurück</th>
+          <th style="text-align:center">Offen</th>
+          <th>Pfand offen</th><th></th>
         </tr></thead>
-        <tbody>${offene_pfande.map(p => `<tr>
-          <td style="font-family:'DM Mono',monospace;font-size:11px">${p.lieferschein_nr}</td>
-          <td style="font-weight:500">${p.produkt||'—'}</td>
-          <td class="pool-meta">${p.betrieb_name||'—'}</td>
-          <td class="pool-meta">${p.firma_name||'—'}</td>
-          <td style="font-weight:600;text-align:center">${p.pfand_kisten_geliefert}</td>
-          <td style="text-align:center;color:var(--green)">${p.pfand_kisten_zurueck||0}</td>
-          <td style="text-align:center;color:var(--red);font-weight:600">${p.pfand_kisten_geliefert-(p.pfand_kisten_zurueck||0)}</td>
-          <td style="font-family:'DM Mono',monospace;color:var(--amber)">${parseFloat(p.pfand_offen||0).toFixed(2)} €</td>
-          <td>
-            <button class="btn btn-sm btn-primary" onclick="pfandRueckgabe('${p.id}','${p.lieferschein_nr}',${p.pfand_kisten_geliefert-(p.pfand_kisten_zurueck||0)})">
-              Rückgabe buchen
-            </button>
-          </td>
+        <tbody>${liste.map(p => {
+          const offen  = p.pfand_kisten_geliefert - (p.pfand_kisten_zurueck||0);
+          const alles  = offen === 0;
+          return `<tr style="${alles?'opacity:.55':''}">
+            <td style="font-family:'DM Mono',monospace;font-size:11px">${p.lieferschein_nr}</td>
+            <td style="font-weight:500">${p.produkt||'—'}</td>
+            <td class="pool-meta">${p.lieferdatum ? new Date(p.lieferdatum).toLocaleDateString('de-DE') : '—'}</td>
+            <td class="pool-meta">${p.betrieb_name||'—'}</td>
+            <td class="pool-meta">${p.firma_name||'—'}</td>
+            <td style="text-align:center;font-weight:600">${p.pfand_kisten_geliefert}</td>
+            <td style="text-align:center;color:var(--green)">${p.pfand_kisten_zurueck||0}</td>
+            <td style="text-align:center;color:${offen>0?'var(--red)':'var(--green)'};font-weight:600">${offen}</td>
+            <td style="font-family:'DM Mono',monospace;color:${offen>0?'var(--amber)':'var(--text3)'}">
+              ${parseFloat(p.pfand_offen||0).toFixed(2)} €
+            </td>
+            <td>
+              ${offen > 0 ? `<button class="btn btn-sm btn-primary" onclick="pfandRueckgabe('${p.id}','${p.lieferschein_nr}',${offen})">Rückgabe</button>` : '<span style="color:var(--green);font-size:12px">✓ erledigt</span>'}
+            </td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>
+    `);
+  } catch(err) { setHTML('pfand-list', `<div class="alert alert-error">${err.message}</div>`); }
+}
+
+async function loadPfandCaterer() {
+  try {
+    const { offene_pfande } = await fetch('/api/pfand/uebersicht', {
+      headers: {'Authorization': 'Bearer ' + Auth.getToken()}
+    }).then(r => r.json());
+
+    if (!offene_pfande?.length) {
+      setHTML('pfand-caterer-list', '<p style="color:var(--text3);font-size:13px">✓ Alle beglichen</p>');
+      return;
+    }
+
+    // Gruppieren nach Caterer
+    const byCaterer = {};
+    offene_pfande.forEach(p => {
+      const key = p.firma_name || 'Unbekannt';
+      if (!byCaterer[key]) byCaterer[key] = { kisten:0, eur:0, anzahl:0 };
+      byCaterer[key].kisten += p.pfand_kisten_geliefert - (p.pfand_kisten_zurueck||0);
+      byCaterer[key].eur    += parseFloat(p.pfand_offen||0);
+      byCaterer[key].anzahl++;
+    });
+
+    setHTML('pfand-caterer-list', Object.entries(byCaterer)
+      .sort((a,b) => b[1].kisten - a[1].kisten)
+      .map(([name, d]) => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:.6rem 0;border-bottom:1px solid var(--border)">
+          <div>
+            <div style="font-weight:500;font-size:13px">${name}</div>
+            <div style="font-size:11px;color:var(--text3)">${d.anzahl} Lieferschein${d.anzahl>1?'e':''}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-weight:600;color:var(--amber)">${d.kisten} Kisten</div>
+            <div style="font-size:12px;color:var(--text3)">${d.eur.toFixed(2)} €</div>
+          </div>
+        </div>`).join('')
+    );
+  } catch {}
+}
+
+async function loadPfandHistorie() {
+  try {
+    const { bewegungen } = await fetch('/api/pfand/bewegungen', {
+      headers: {'Authorization': 'Bearer ' + Auth.getToken()}
+    }).then(r => r.json());
+
+    if (!bewegungen?.length) {
+      setHTML('pfand-hist-list', '<p style="color:var(--text3);font-size:13px">Noch keine Buchungen</p>');
+      return;
+    }
+
+    setHTML('pfand-hist-list', `
+      <table class="tbl" style="font-size:12px">
+        <thead><tr><th>Datum</th><th>Typ</th><th>Kisten</th><th>Betrag</th><th>Notiz</th></tr></thead>
+        <tbody>${bewegungen.map(b => `<tr>
+          <td class="pool-meta">${new Date(b.created_at).toLocaleDateString('de-DE')}</td>
+          <td><span class="badge badge-${b.bewegung_typ==='rueckgabe'?'green':'gray'}">${b.bewegung_typ}</span></td>
+          <td style="font-weight:600;text-align:center">${b.kisten_anzahl}</td>
+          <td style="font-family:'DM Mono',monospace">${parseFloat(b.pfand_betrag||0).toFixed(2)} €</td>
+          <td class="pool-meta">${b.notiz||'—'}</td>
         </tr>`).join('')}</tbody>
       </table>
     `);
-  } catch(err) { showAlert('alerts','error',err.message); }
+  } catch {}
 }
 
 async function pfandRueckgabe(lieferungId, nr, maxKisten) {
-  const kisten = prompt(`Lieferschein ${nr} — Wie viele Kisten werden zurückgegeben? (max. ${maxKisten})`);
+  const kisten = prompt(`Lieferschein ${nr} — Kisten zurück? (max. ${maxKisten})`);
   if (!kisten || isNaN(kisten) || parseInt(kisten) <= 0) return;
-  if (parseInt(kisten) > maxKisten) return showAlert('alerts','error',`Maximal ${maxKisten} Kisten möglich`);
-  const notiz = prompt('Notiz (optional):', '') ?? '';
+  if (parseInt(kisten) > maxKisten) return showAlert('alerts','error',`Max. ${maxKisten} Kisten`);
+  const notiz = prompt('Notiz (optional):') ?? '';
   try {
     const r = await fetch('/api/pfand/rueckgabe', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json','Authorization':'Bearer '+Auth.getToken()},
-      body: JSON.stringify({ lieferung_id: lieferungId, kisten_zurueck: parseInt(kisten), notiz })
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+Auth.getToken()},
+      body: JSON.stringify({ lieferung_id:lieferungId, kisten_zurueck:parseInt(kisten), notiz })
     }).then(r => r.json());
     if (r.error) throw new Error(r.error);
     toast(r.message);
@@ -2263,6 +2420,50 @@ async function pfandRueckgabe(lieferungId, nr, maxKisten) {
 }
 
 document.getElementById('btn-reload-pfand')?.addEventListener('click', loadPfand);
+document.getElementById('btn-reload-pfand-hist')?.addEventListener('click', loadPfandHistorie);
+document.getElementById('pfand-filter')?.addEventListener('change', loadPfandListe);
+
+document.getElementById('btn-pfand-csv')?.addEventListener('click', () => {
+  window.open('/api/pfand/export-csv?token=' + Auth.getToken(), '_blank');
+});
+
+// Manuelle Rückgabe per Lieferschein-Nr.
+document.getElementById('btn-pfand-rueck-manual')?.addEventListener('click', async () => {
+  const nr     = document.getElementById('pfand-lief-nr')?.value.trim().toUpperCase();
+  const kisten = parseInt(document.getElementById('pfand-rueck-anzahl')?.value);
+  const notiz  = document.getElementById('pfand-rueck-notiz')?.value || '';
+  const resEl  = document.getElementById('pfand-rueck-result');
+
+  if (!nr || !kisten || kisten < 1) {
+    setHTML('pfand-rueck-result','<div class="alert alert-error" style="margin:.5rem 0">Lieferschein-Nr. und Anzahl eingeben</div>');
+    return;
+  }
+
+  try {
+    // Erst Lieferung per Nr. finden
+    const { lieferungen } = await fetch(`/api/lieferungen?nr=${nr}`, {
+      headers:{'Authorization':'Bearer '+Auth.getToken()}
+    }).then(r=>r.json());
+
+    const lief = lieferungen?.find(l => l.lieferschein_nr === nr);
+    if (!lief) throw new Error(`Lieferschein ${nr} nicht gefunden`);
+
+    const r = await fetch('/api/pfand/rueckgabe', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+Auth.getToken()},
+      body: JSON.stringify({ lieferung_id:lief.id, kisten_zurueck:kisten, notiz })
+    }).then(r=>r.json());
+    if (r.error) throw new Error(r.error);
+
+    setHTML('pfand-rueck-result',`<div class="alert alert-success" style="margin:.5rem 0">✓ ${r.message}</div>`);
+    document.getElementById('pfand-lief-nr').value='';
+    document.getElementById('pfand-rueck-anzahl').value='';
+    document.getElementById('pfand-rueck-notiz').value='';
+    loadPfand();
+  } catch(err) {
+    setHTML('pfand-rueck-result',`<div class="alert alert-error" style="margin:.5rem 0">${err.message}</div>`);
+  }
+});
 
 // ── AUDIT LOG ─────────────────────────────────────────────────
 let auditPage = 1;
