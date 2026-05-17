@@ -229,3 +229,21 @@ router.get('/:id', auth, async (req, res) => {
 
 
 module.exports = router;
+
+// Helper: Push senden wenn Tour einem Fahrer zugewiesen wird
+async function sendTourPush(tourId, db) {
+  try {
+    const { rows:[tour] } = await db.query(
+      `SELECT t.name, t.datum, t.startzeit, t.fahrer_id
+       FROM touren t WHERE t.id=$1`, [tourId]
+    );
+    if (!tour?.fahrer_id) return;
+    const push = require('../services/push');
+    await push.sendToUser(tour.fahrer_id, {
+      title: '🚲 Neue Tour zugewiesen',
+      body:  `${tour.name||'Tour'} · ${tour.datum||''} · ${(tour.startzeit||'').slice(0,5)} Uhr`,
+      url:   '/fahrer',
+      tag:   'neue-tour',
+    });
+  } catch {}
+}
