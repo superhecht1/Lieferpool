@@ -6,7 +6,9 @@
   <meta name="theme-color" content="#0d1f15">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="/manifest-fahrer.json">
   <title>FrischKette · Fahrer-App</title>
+  <script>window.VAPID_PUBLIC_KEY = '[[VAPID_PUBLIC_KEY]]';</script>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230d1f15'/><text y='24' x='4' font-size='22' font-family='monospace' font-weight='bold' fill='%234a9e5c'>F</text></svg>">
   <style>
     :root {
@@ -332,11 +334,39 @@
         </div>
         <button class="btn-xl btn-outline" style="margin-bottom:.75rem" onclick="passwortAendern()">🔑 Passwort ändern</button>
         <div id="pw-result"></div>
+        <button class="btn-xl btn-outline" style="margin-bottom:.5rem" onclick="requestPushPermission()">🔔 Push-Benachrichtigungen aktivieren</button>
         <button class="btn-xl btn-danger" style="margin-top:.5rem" onclick="Auth.logout()">Abmelden</button>
       </div>
     </div>
 
   </main>
+
+  <!-- OFFLINE BANNER -->
+  <div id="offline-banner" style="display:none;background:#c62828;color:#fff;text-align:center;padding:.4rem;font-size:12px;position:sticky;top:56px;z-index:90">
+    ⚠ Offline — Änderungen werden synchronisiert sobald du wieder online bist
+  </div>
+
+  <!-- QR SCANNER MODAL -->
+  <div id="scanner-modal" style="display:none;position:fixed;inset:0;background:#000;z-index:300;flex-direction:column">
+    <div style="background:var(--forest);padding:.875rem 1.25rem;display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
+      <span style="color:#fff;font-weight:600;font-size:14px">📷 QR-Code scannen</span>
+      <button onclick="closeScanner()" style="background:none;border:none;color:rgba(255,255,255,.7);font-size:1.5rem;cursor:pointer">✕</button>
+    </div>
+    <div style="flex:1;position:relative;overflow:hidden">
+      <video id="scanner-video" style="width:100%;height:100%;object-fit:cover" playsinline autoplay muted></video>
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none">
+        <div style="width:220px;height:220px;border:3px solid var(--amber);border-radius:12px;box-shadow:0 0 0 2000px rgba(0,0,0,.6)"></div>
+      </div>
+      <canvas id="scanner-canvas" style="display:none"></canvas>
+    </div>
+    <div id="scanner-result" style="background:var(--forest);color:#fff;padding:1rem 1.25rem;text-align:center;font-size:13px;flex-shrink:0">
+      Kamera auf QR-Code richten...
+    </div>
+    <div style="background:var(--forest);padding:.75rem 1.25rem;display:flex;gap:.75rem;flex-shrink:0">
+      <input class="fld-input" type="text" id="scanner-manual" placeholder="Code manuell eingeben" style="flex:1">
+      <button onclick="manualScan()" style="background:var(--amber);color:#fff;border:none;border-radius:8px;padding:.6rem 1rem;font-size:13px;font-weight:600;cursor:pointer">OK</button>
+    </div>
+  </div>
 
   <!-- BOTTOM NAV -->
   <nav class="bottom-nav">
@@ -345,6 +375,9 @@
     </button>
     <button class="nav-tab" id="tab-tour" onclick="showScreen('tour')" style="display:none">
       <span class="icon">🚲</span>Aktive Tour
+    </button>
+    <button class="nav-tab" id="tab-scanner" onclick="openScanner()">
+      <span class="icon">📷</span>Scanner
     </button>
     <button class="nav-tab" id="tab-hist" onclick="showScreen('hist')">
       <span class="icon">📋</span>Verlauf
@@ -886,8 +919,199 @@ async function apiSafe(path) {
   try { return await api(path); } catch { return {}; }
 }
 
+/* ── SERVICE WORKER ────────────────────────────────────── */
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw-fahrer.js')
+    .then(reg => {
+      console.log('[SW] registered');
+      swRegistration = reg;
+      checkPushSubscription(reg);
+    })
+    .catch(err => console.warn('[SW] failed:', err));
+}
+let swRegistration = null;
+
+/* ── OFFLINE DETECTION ──────────────────────────────────── */
+function updateOnlineStatus() {
+  const banner = document.getElementById('offline-banner');
+  if (banner) banner.style.display = navigator.onLine ? 'none' : 'block';
+}
+window.addEventListener('online',  updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+updateOnlineStatus();
+
+/* ── PUSH NOTIFICATIONS ─────────────────────────────────── */
+const VAPID_PUBLIC = (window.VAPID_PUBLIC_KEY || '');
+
+async function checkPushSubscription(reg) {
+  if (!('PushManager' in window)) return;
+  try {
+    const sub = await reg.pushManager.getSubscription();
+    if (!sub) return; // Nicht abonniert — wird bei erstem Laden gefragt
+  } catch {}
+}
+
+async function requestPushPermission() {
+  if (!swRegistration || !('PushManager' in window)) {
+    toast('Push-Benachrichtigungen nicht unterstützt', false); return;
+  }
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { toast('Push-Berechtigung verweigert', false); return; }
+
+    const sub = await swRegistration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC),
+    });
+
+    await api('/push/subscribe', { method:'POST', body: sub.toJSON() });
+    toast('Push-Benachrichtigungen aktiviert ✓');
+  } catch(err) {
+    console.warn('[push]', err.message);
+    toast('Push konnte nicht aktiviert werden', false);
+  }
+}
+
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64  = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw     = atob(base64);
+  return new Uint8Array([...raw].map(c => c.charCodeAt(0)));
+}
+
+/* ── QR SCANNER ─────────────────────────────────────────── */
+let scannerStream   = null;
+let scannerInterval = null;
+let onScanCallback  = null;
+
+async function openScanner(callback) {
+  onScanCallback = callback || null;
+  const modal = document.getElementById('scanner-modal');
+  if (modal) modal.style.display = 'flex';
+
+  try {
+    scannerStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+    const video = document.getElementById('scanner-video');
+    video.srcObject = scannerStream;
+    await video.play();
+
+    // BarcodeDetector API (Chrome/Android)
+    if ('BarcodeDetector' in window) {
+      const detector = new BarcodeDetector({ formats: ['qr_code','code_128','ean_13'] });
+      scannerInterval = setInterval(async () => {
+        try {
+          const codes = await detector.detect(video);
+          if (codes.length > 0) {
+            handleScanResult(codes[0].rawValue);
+          }
+        } catch {}
+      }, 300);
+    } else {
+      // Fallback: jsQR via Canvas
+      await loadJsQR();
+      const canvas = document.getElementById('scanner-canvas');
+      const ctx    = canvas.getContext('2d');
+      scannerInterval = setInterval(() => {
+        if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
+        canvas.width  = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        if (window.jsQR) {
+          const code = window.jsQR(imageData.data, imageData.width, imageData.height);
+          if (code) handleScanResult(code.data);
+        }
+      }, 250);
+    }
+  } catch(err) {
+    const res = document.getElementById('scanner-result');
+    if (res) res.textContent = '⚠ Kamera nicht verfügbar — bitte manuell eingeben';
+    console.warn('[scanner]', err.message);
+  }
+}
+
+function closeScanner() {
+  if (scannerInterval) { clearInterval(scannerInterval); scannerInterval = null; }
+  if (scannerStream)   { scannerStream.getTracks().forEach(t => t.stop()); scannerStream = null; }
+  const modal = document.getElementById('scanner-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function handleScanResult(code) {
+  closeScanner();
+  const resultEl = document.getElementById('scanner-result');
+  if (resultEl) resultEl.textContent = '✓ Gescannt: ' + code;
+
+  // QR-Code enthält URL wie https://frischkette.de/caterer?qr=QR-XXXXX
+  let qrCode = code;
+  try {
+    const url = new URL(code);
+    qrCode = url.searchParams.get('qr') || code;
+  } catch {}
+
+  if (onScanCallback) {
+    onScanCallback(qrCode);
+  } else {
+    // Default: Stopp anhand QR bestätigen
+    handleQRStopp(qrCode);
+  }
+}
+
+function manualScan() {
+  const val = document.getElementById('scanner-manual')?.value.trim();
+  if (val) handleScanResult(val);
+}
+
+async function handleQRStopp(qrCode) {
+  // Finde Stopp in aktiver Tour der zu diesem QR-Code gehört
+  if (!aktiveTour || !alleStopps.length) {
+    toast('Keine aktive Tour — bitte erst Tour starten', false); return;
+  }
+  const stopp = alleStopps.find(s =>
+    s.qr_code === qrCode || s.lieferschein_nr === qrCode
+  );
+  if (!stopp) {
+    toast('QR-Code nicht in dieser Tour gefunden: ' + qrCode, false); return;
+  }
+  if (stopp.status === 'abgeschlossen') {
+    toast('Dieser Stopp ist bereits abgeschlossen'); return;
+  }
+  // Stopp direkt bestätigen
+  toast('Stopp gefunden: ' + (stopp.name || stopp.erzeuger_name || stopp.caterer_name));
+  currentStopp = stopp;
+  renderAktiveTour();
+  showScreen('tour');
+  setTimeout(() => {
+    document.getElementById('stopp-' + stopp.id)?.scrollIntoView({ behavior:'smooth', block:'center' });
+  }, 400);
+}
+
+async function loadJsQR() {
+  if (window.jsQR) return;
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';
+    s.onload  = res;
+    s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+
 /* ── INIT ──────────────────────────────────────────────── */
 loadTouren();
+
+// Push-Permission nach kurzem Delay anfragen (nicht sofort auf Seitenload)
+setTimeout(() => {
+  if (swRegistration && Notification.permission === 'default') {
+    const banner = document.createElement('div');
+    banner.style.cssText = 'position:fixed;bottom:70px;left:1rem;right:1rem;background:var(--forest);color:#fff;border-radius:10px;padding:.875rem 1rem;font-size:13px;z-index:200;display:flex;gap:.75rem;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,.3)';
+    banner.innerHTML = '<span style="flex:1">🔔 Push-Benachrichtigungen für neue Touren aktivieren?</span><button onclick="requestPushPermission();this.closest('div').remove()" style="background:var(--amber);color:#fff;border:none;border-radius:6px;padding:.4rem .875rem;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">Aktivieren</button><button onclick="this.closest('div').remove()" style="background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:1.1rem">✕</button>';
+    document.body.appendChild(banner);
+    setTimeout(() => banner.remove(), 10000);
+  }
+}, 3000);
 </script>
 </body>
 </html>
