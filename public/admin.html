@@ -230,6 +230,20 @@
               <label class="form-label">Lieferdatum (optional)</label>
               <input class="form-control" type="date" id="lief-datum">
             </div>
+            <div style="border-top:1px solid var(--border);margin:.75rem 0;padding-top:.75rem">
+              <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:.5rem">🧺 Pfandkisten</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Anzahl Pfandkisten</label>
+                  <input class="form-control" type="number" id="lief-pfand-kisten" placeholder="0" min="0" value="0">
+                </div>
+                <div class="form-group" style="margin:0">
+                  <label class="form-label">Pfand pro Kiste (€)</label>
+                  <input class="form-control" type="number" id="lief-pfand-preis" placeholder="3.00" min="0" step="0.50" value="3.00">
+                </div>
+              </div>
+              <div id="pfand-preview" style="font-size:12px;color:var(--text3);margin-top:.4rem"></div>
+            </div>
             <button class="btn btn-primary" id="btn-create-lief">Lieferschein erstellen</button>
           </div>
         </div>
@@ -641,6 +655,18 @@
       </div>
     </div>
 
+    <!-- PFAND -->
+    <div id="view-pfand" class="view" style="display:none">
+      <div class="card">
+        <div class="section-hdr">
+          <span class="section-title">🧺 Offene Pfandkisten</span>
+          <button class="btn btn-sm" id="btn-reload-pfand">↻ Aktualisieren</button>
+        </div>
+        <div id="pfand-stats-wrap" style="display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-bottom:1rem"></div>
+        <div id="pfand-list"><div class="spinner"></div></div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -665,6 +691,7 @@ const NAV = [
   { id: 'fahrer-mgmt',   label: 'Fahrer'       },
   { id: 'audit',          label: '🔍 Audit-Log'  },
   { id: 'settings',       label: '⚙ Einstellungen'},
+  { id: 'pfand',          label: '🧺 Pfand'},
 ];
 
 renderHeader('overview', NAV, (v) => { showView(v); loadView(v); });
@@ -686,6 +713,7 @@ async function loadView(v) {
   if (v === 'fahrer-mgmt')   loadFahrerMgmt();
   if (v === 'audit')          loadAuditLog();
   if (v === 'settings')       loadSettings();
+  if (v === 'pfand')          loadPfand();
 }
 
 // ── ÜBERSICHT ─────────────────────────────────────────────────
@@ -1262,6 +1290,18 @@ document.getElementById('lief-admin-list')?.addEventListener('click', async e =>
 });
 document.getElementById('lief-filter-status')?.addEventListener('change', loadLieferscheineListe);
 
+// Pfand-Vorschau aktualisieren
+function updatePfandPreview() {
+  const kisten = parseInt(document.getElementById('lief-pfand-kisten')?.value) || 0;
+  const preis  = parseFloat(document.getElementById('lief-pfand-preis')?.value) || 0;
+  const el     = document.getElementById('pfand-preview');
+  if (el) el.textContent = kisten > 0
+    ? `Pfandgesamt: ${(kisten * preis).toFixed(2)} € · wird auf dem Lieferschein ausgewiesen`
+    : '';
+}
+document.getElementById('lief-pfand-kisten')?.addEventListener('input', updatePfandPreview);
+document.getElementById('lief-pfand-preis')?.addEventListener('input', updatePfandPreview);
+
 // Pool-Status ändern
 document.getElementById('btn-pool-status-change')?.addEventListener('click', async () => {
   const poolId    = document.getElementById('lief-pool-status-change')?.value;
@@ -1303,7 +1343,9 @@ document.getElementById('btn-create-lief')?.addEventListener('click', async () =
   if(sel?.options[sel.selectedIndex]?.disabled) return showAlert('alerts','error','Für diesen Pool existiert bereits ein Lieferschein — zuerst den bestehenden stornieren oder einen anderen Pool wählen');
   btn.disabled=true; btn.innerHTML='<span class="spinner"></span>';
   try {
-    const {lieferung}=await api.createLieferung(pool_id,lieferdatum||null);
+    const pfand_kisten    = parseInt(document.getElementById('lief-pfand-kisten')?.value) || 0;
+    const pfand_pro_kiste = parseFloat(document.getElementById('lief-pfand-preis')?.value) || 3.00;
+    const {lieferung}=await api.createLieferung(pool_id, lieferdatum||null, pfand_kisten, pfand_pro_kiste);
     loadLieferscheineListe();
     setHTML('lief-create-result',`<div class="success-box">
       <div class="success-icon">✓</div>
@@ -2151,6 +2193,76 @@ document.getElementById('btn-change-pw')?.addEventListener('click', async () => 
     ['pw-current','pw-new','pw-repeat'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   } catch(e) { setHTML('pw-change-result','<div class="alert alert-error">'+e.message+'</div>'); }
 });
+
+// ── PFAND ─────────────────────────────────────────────────────
+async function loadPfand() {
+  try {
+    // Stats
+    const stats = await fetch('/api/pfand/stats', {
+      headers: {'Authorization': 'Bearer ' + Auth.getToken()}
+    }).then(r => r.json());
+
+    setHTML('pfand-stats-wrap', `
+      <div class="metric"><div class="metric-label">Kisten draußen</div><div class="metric-val" style="color:var(--amber)">${stats.kisten_offen||0}</div></div>
+      <div class="metric"><div class="metric-label">Pfand offen (€)</div><div class="metric-val" style="color:var(--amber)">${parseFloat(stats.pfand_offen_gesamt||0).toFixed(2)}</div></div>
+      <div class="metric"><div class="metric-label">Kisten gesamt</div><div class="metric-val">${stats.kisten_gesamt||0}</div></div>
+      <div class="metric"><div class="metric-label">Kisten zurück</div><div class="metric-val green">${stats.kisten_zurueck||0}</div></div>
+    `);
+
+    // Liste offener Pfände
+    const { offene_pfande } = await fetch('/api/pfand/uebersicht', {
+      headers: {'Authorization': 'Bearer ' + Auth.getToken()}
+    }).then(r => r.json());
+
+    if (!offene_pfande?.length) {
+      setHTML('pfand-list', '<p style="color:var(--text3);font-size:13px">✓ Keine offenen Pfände</p>');
+      return;
+    }
+
+    setHTML('pfand-list', `
+      <table class="tbl">
+        <thead><tr>
+          <th>Lieferschein</th><th>Produkt</th><th>Erzeuger</th><th>Caterer</th>
+          <th>Geliefert</th><th>Zurück</th><th>Offen</th><th>Pfand (€)</th><th></th>
+        </tr></thead>
+        <tbody>${offene_pfande.map(p => `<tr>
+          <td style="font-family:'DM Mono',monospace;font-size:11px">${p.lieferschein_nr}</td>
+          <td style="font-weight:500">${p.produkt||'—'}</td>
+          <td class="pool-meta">${p.betrieb_name||'—'}</td>
+          <td class="pool-meta">${p.firma_name||'—'}</td>
+          <td style="font-weight:600;text-align:center">${p.pfand_kisten_geliefert}</td>
+          <td style="text-align:center;color:var(--green)">${p.pfand_kisten_zurueck||0}</td>
+          <td style="text-align:center;color:var(--red);font-weight:600">${p.pfand_kisten_geliefert-(p.pfand_kisten_zurueck||0)}</td>
+          <td style="font-family:'DM Mono',monospace;color:var(--amber)">${parseFloat(p.pfand_offen||0).toFixed(2)} €</td>
+          <td>
+            <button class="btn btn-sm btn-primary" onclick="pfandRueckgabe('${p.id}','${p.lieferschein_nr}',${p.pfand_kisten_geliefert-(p.pfand_kisten_zurueck||0)})">
+              Rückgabe buchen
+            </button>
+          </td>
+        </tr>`).join('')}</tbody>
+      </table>
+    `);
+  } catch(err) { showAlert('alerts','error',err.message); }
+}
+
+async function pfandRueckgabe(lieferungId, nr, maxKisten) {
+  const kisten = prompt(`Lieferschein ${nr} — Wie viele Kisten werden zurückgegeben? (max. ${maxKisten})`);
+  if (!kisten || isNaN(kisten) || parseInt(kisten) <= 0) return;
+  if (parseInt(kisten) > maxKisten) return showAlert('alerts','error',`Maximal ${maxKisten} Kisten möglich`);
+  const notiz = prompt('Notiz (optional):', '') ?? '';
+  try {
+    const r = await fetch('/api/pfand/rueckgabe', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','Authorization':'Bearer '+Auth.getToken()},
+      body: JSON.stringify({ lieferung_id: lieferungId, kisten_zurueck: parseInt(kisten), notiz })
+    }).then(r => r.json());
+    if (r.error) throw new Error(r.error);
+    toast(r.message);
+    loadPfand();
+  } catch(err) { showAlert('alerts','error',err.message); }
+}
+
+document.getElementById('btn-reload-pfand')?.addEventListener('click', loadPfand);
 
 // ── AUDIT LOG ─────────────────────────────────────────────────
 let auditPage = 1;

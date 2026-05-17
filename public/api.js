@@ -159,7 +159,7 @@ const api = {
   setZertifikatStatus:   (id, status) => put('/erzeuger/zertifikate/' + id + '/status', { status }),
 
   // LIEFERUNGEN
-  createLieferung:     (pool_id, lieferdatum)                     => post('/lieferungen', { pool_id, lieferdatum }),
+  createLieferung:     (pool_id, lieferdatum, pfand_kisten, pfand_pro_kiste) => post('/lieferungen', { pool_id, lieferdatum, pfand_kisten, pfand_pro_kiste }),
   scanQR:              (qr)                                        => get('/lieferungen/scan/' + qr),
   confirmWareneingang: (id, menge_geliefert, qualitaet, notiz)    => post('/lieferungen/' + id + '/wareneingang', { menge_geliefert, qualitaet, notiz }),
 
