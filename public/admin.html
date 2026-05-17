@@ -1425,6 +1425,9 @@ async function loadFahrerMgmt() {
         <td class="pool-meta">${f.touren_gesamt}</td>
         <td class="pool-meta">${f.touren_heute||0}</td>
         <td>${f.aktiv?'<span class="badge badge-green">Aktiv</span>':'<span class="badge badge-red">Inaktiv</span>'}</td>
+        <td>
+          <button class="btn btn-sm" onclick="fahrerBearbeiten('${f.id}','${f.name}','${f.email}','${f.lizenzklasse}',${f.aktiv})">✏ Bearbeiten</button>
+        </td>
       </tr>`).join('')}</tbody></table>
     ` : '<p style="color:var(--text3);font-size:13px">Noch keine Fahrer</p>');
 
@@ -1450,6 +1453,62 @@ document.getElementById('btn-fahrer-create')?.addEventListener('click', async()=
     document.getElementById('fc-name').value='';document.getElementById('fc-email').value='';document.getElementById('fc-pw').value='';
     btn.textContent='Fahrer anlegen';btn.disabled=false;loadFahrerMgmt();
   }catch(err){btn.textContent='Fahrer anlegen';btn.disabled=false;showAlert('alerts','error',err.message);}
+});
+
+// ── FAHRER BEARBEITEN ─────────────────────────────────────────
+function fahrerBearbeiten(id, name, email, lizenz, aktiv) {
+  document.getElementById('fe-id').value    = id;
+  document.getElementById('fe-name').value  = name;
+  document.getElementById('fe-email').value = email;
+  document.getElementById('fe-lizenz').value= lizenz || 'B';
+  document.getElementById('fe-aktiv').value = aktiv ? 'true' : 'false';
+  document.getElementById('fe-pw').value    = '';
+  document.getElementById('fahrer-edit-result').innerHTML = '';
+  const m = document.getElementById('fahrer-edit-modal');
+  m.style.display = 'flex';
+}
+
+document.getElementById('btn-fe-save')?.addEventListener('click', async () => {
+  const id     = document.getElementById('fe-id').value;
+  const name   = document.getElementById('fe-name').value.trim();
+  const email  = document.getElementById('fe-email').value.trim();
+  const pw     = document.getElementById('fe-pw').value;
+  const lizenz = document.getElementById('fe-lizenz').value;
+  const aktiv  = document.getElementById('fe-aktiv').value === 'true';
+
+  if (!name || !email) return setHTML('fahrer-edit-result', '<div class="alert alert-error">Name und E-Mail erforderlich</div>');
+
+  try {
+    await fetch(`/api/auth/fahrer/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + Auth.getToken() },
+      body: JSON.stringify({ name, email, password: pw || undefined, lizenzklasse: lizenz, aktiv }),
+    }).then(async r => { const d = await r.json(); if (!r.ok) throw new Error(d.error); return d; });
+
+    document.getElementById('fahrer-edit-modal').style.display = 'none';
+    toast('Fahrer aktualisiert');
+    loadFahrerMgmt();
+  } catch (err) {
+    setHTML('fahrer-edit-result', `<div class="alert alert-error">${err.message}</div>`);
+  }
+});
+
+document.getElementById('btn-fe-delete')?.addEventListener('click', async () => {
+  const id   = document.getElementById('fe-id').value;
+  const name = document.getElementById('fe-name').value;
+  if (!confirm(`Fahrer "${name}" wirklich löschen? Alle zugewiesenen Touren werden auf "kein Fahrer" gesetzt.`)) return;
+  try {
+    await fetch(`/api/auth/fahrer/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + Auth.getToken() },
+    }).then(async r => { const d = await r.json(); if (!r.ok) throw new Error(d.error); return d; });
+
+    document.getElementById('fahrer-edit-modal').style.display = 'none';
+    toast('Fahrer gelöscht');
+    loadFahrerMgmt();
+  } catch (err) {
+    setHTML('fahrer-edit-result', `<div class="alert alert-error">${err.message}</div>`);
+  }
 });
 
 // ── LOGISTIK ──────────────────────────────────────────────────
@@ -2100,5 +2159,50 @@ loadOverview();
   <button class="mobile-nav-btn" onclick="switchView('logistik')"><span class="mnav-icon">🚲</span>Logistik</button>
   <button class="mobile-nav-btn" onclick="switchView('auszahlungen')"><span class="mnav-icon">💶</span>Zahlung</button>
 </nav>
+
+<!-- FAHRER BEARBEITEN MODAL -->
+<div id="fahrer-edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;align-items:center;justify-content:center">
+  <div style="background:var(--bg2);border-radius:var(--radius-lg);padding:1.75rem;max-width:440px;width:90%;box-shadow:0 24px 64px rgba(0,0,0,.2)">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem">
+      <h3 style="font-size:1rem;font-weight:600">Fahrer bearbeiten</h3>
+      <button onclick="document.getElementById('fahrer-edit-modal').style.display='none'" style="background:none;border:none;font-size:1.25rem;cursor:pointer;color:var(--text3)">✕</button>
+    </div>
+    <div id="fahrer-edit-result"></div>
+    <input type="hidden" id="fe-id">
+    <div class="form-group">
+      <label class="form-label">Name</label>
+      <input class="form-control" type="text" id="fe-name" placeholder="Name">
+    </div>
+    <div class="form-group">
+      <label class="form-label">E-Mail</label>
+      <input class="form-control" type="email" id="fe-email" placeholder="E-Mail">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Neues Passwort (leer lassen = unverändert)</label>
+      <input class="form-control" type="password" id="fe-pw" placeholder="Leer lassen für keine Änderung">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Lizenzklasse</label>
+      <select class="form-control" id="fe-lizenz">
+        <option value="B">B – PKW</option>
+        <option value="BE">BE – PKW mit Anhänger</option>
+        <option value="C1">C1 – leichter LKW</option>
+        <option value="C">C – LKW</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Status</label>
+      <select class="form-control" id="fe-aktiv">
+        <option value="true">Aktiv</option>
+        <option value="false">Inaktiv</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:.75rem;margin-top:1.25rem">
+      <button class="btn btn-primary" id="btn-fe-save" style="flex:1">Speichern</button>
+      <button class="btn btn-danger" id="btn-fe-delete">Löschen</button>
+      <button class="btn" onclick="document.getElementById('fahrer-edit-modal').style.display='none'">Abbrechen</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
