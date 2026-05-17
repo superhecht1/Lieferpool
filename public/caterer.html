@@ -351,8 +351,13 @@
 <script src="api.js"></script>
 <script src="app.js"></script>
 <script>
-const user = requireAuth('caterer');
-if (!user) throw 'not auth';
+let user;
+try {
+  user = requireAuth('caterer');
+  if (!user) throw new Error('not auth');
+} catch(e) {
+  if (!window.location.href.includes('/login')) window.location.href = '/login';
+}
 
 const NAV = [
   { id: 'overview',     label: 'Übersicht'      },
@@ -381,9 +386,9 @@ async function loadView(v) {
 // ── ÜBERSICHT ─────────────────────────────────────────────────
 async function loadOverview() {
   try {
-    const { pools } = await api.getPools();
+    const { pools = [] } = await api.getPools();
 
-    const meinePools  = pools;
+    const meinePools  = Array.isArray(pools) ? pools : [];
     const offen       = meinePools.filter(p => p.status === 'offen').length;
     const geschlossen = meinePools.filter(p => p.status === 'geschlossen').length;
     const geliefert   = meinePools.filter(p => p.status === 'geliefert').length;
@@ -439,7 +444,12 @@ async function loadOverview() {
       `).join('') : '<p style="color:var(--text3);font-size:13px">Noch keine Lieferungen</p>');
     } catch(e) { setHTML('cat-recent-lief', '<p style="color:var(--text3);font-size:13px">—</p>'); }
 
-  } catch (err) { showAlert('alerts', 'error', err.message); }
+  } catch (err) {
+    console.error('[loadOverview]', err);
+    setHTML('cat-metrics',
+      '<div style="color:var(--text3);font-size:13px;padding:.5rem">Übersicht konnte nicht geladen werden: '+err.message+'</div>'
+    );
+  }
 }
 
 // ── POOL ERSTELLEN ─────────────────────────────────────────────
@@ -713,7 +723,8 @@ document.getElementById('btn-reload-bedarf')?.addEventListener('click', loadBeda
 async function loadVertraege() {
   try {
     const status = document.getElementById('filter-pool-status')?.value;
-    const { pools } = await api.getPools(status ? { status } : {});
+    const params = { mine: 1, ...(status ? { status } : {}) };
+    const { pools = [] } = await api.getPools(params);
 
     setHTML('vertraege-list', pools.length ? `
       <table class="tbl">
