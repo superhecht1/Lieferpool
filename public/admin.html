@@ -718,6 +718,70 @@
 
     </div>
 
+    <!-- RECHNUNGEN -->
+    <div id="view-rechnungen" class="view" style="display:none">
+      <div class="card">
+        <div class="section-hdr">
+          <span class="section-title">🧾 Abrechnungen / Rechnungen</span>
+          <button class="btn btn-sm" id="btn-reload-rech">↻</button>
+        </div>
+        <div id="rech-list"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- EINLADUNGEN -->
+    <div id="view-einladungen" class="view" style="display:none">
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">✉ Neue Einladung senden</div>
+          <div id="einladung-result"></div>
+          <div class="form-group"><label class="form-label">E-Mail</label><input class="form-control" type="email" id="inv-email" placeholder="name@betrieb.de"></div>
+          <div class="form-group"><label class="form-label">Name (optional)</label><input class="form-control" type="text" id="inv-name" placeholder="Max Mustermann"></div>
+          <div class="form-group"><label class="form-label">Rolle</label>
+            <select class="form-control" id="inv-rolle">
+              <option value="erzeuger">🌱 Erzeuger:in</option>
+              <option value="caterer">🍽 Caterer</option>
+              <option value="fahrer">🚲 Fahrer:in</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" id="btn-einladung-senden">Einladung senden</button>
+        </div>
+        <div class="card">
+          <div class="card-title">📋 Gesendete Einladungen</div>
+          <div id="einladungen-list"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- POOL-VORLAGEN -->
+    <div id="view-vorlagen" class="view" style="display:none">
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">🔄 Neue Vorlage erstellen</div>
+          <div id="vorlage-result"></div>
+          <div class="form-group"><label class="form-label">Produkt</label><input class="form-control" id="vl-produkt" placeholder="z.B. Karotten"></div>
+          <div class="form-group"><label class="form-label">Wochentag Lieferung</label>
+            <select class="form-control" id="vl-wochentag">
+              <option value="1">Montag</option><option value="2">Dienstag</option>
+              <option value="3">Mittwoch</option><option value="4">Donnerstag</option>
+              <option value="5">Freitag</option>
+            </select>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+            <div class="form-group"><label class="form-label">Menge Ziel (kg)</label><input class="form-control" type="number" id="vl-menge" placeholder="200"></div>
+            <div class="form-group"><label class="form-label">Preis/kg (€)</label><input class="form-control" type="number" id="vl-preis" placeholder="2.50" step="0.10"></div>
+          </div>
+          <div class="form-group"><label class="form-label">Caterer</label><select class="form-control" id="vl-caterer"></select></div>
+          <div class="form-group"><label class="form-label">Deadline (Tage vor Lieferung)</label><input class="form-control" type="number" id="vl-deadline" value="3" min="1" max="14"></div>
+          <button class="btn btn-primary" id="btn-vorlage-erstellen">Vorlage erstellen</button>
+        </div>
+        <div class="card">
+          <div class="card-title">📋 Aktive Vorlagen</div>
+          <div id="vorlagen-list"><div class="spinner"></div></div>
+        </div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -743,9 +807,25 @@ const NAV = [
   { id: 'audit',          label: '🔍 Audit-Log'  },
   { id: 'settings',       label: '⚙ Einstellungen'},
   { id: 'pfand',          label: '🧺 Pfand'},
+  { id: 'rechnungen',     label: '🧾 Rechnungen'},
+  { id: 'einladungen',    label: '✉ Einladungen'},
+  { id: 'vorlagen',       label: '🔄 Vorlagen'},
 ];
 
 renderHeader('overview', NAV, (v) => { showView(v); loadView(v); });
+
+// Globale Suche in Header einfügen
+const headerEl = document.querySelector('.admin-header') || document.querySelector('header');
+if (headerEl) {
+  const searchWrap = document.createElement('div');
+  searchWrap.style.cssText = 'position:relative;max-width:280px;flex:1';
+  searchWrap.innerHTML = `
+    <input type="search" id="global-search" placeholder="🔍 Suche…" autocomplete="off"
+      style="width:100%;padding:.45rem .875rem .45rem 2rem;border:1px solid rgba(255,255,255,.15);border-radius:20px;background:rgba(255,255,255,.1);color:#fff;font-size:13px;outline:none">
+    <div id="search-results" style="display:none;position:absolute;top:calc(100%+6px);left:0;right:0;background:var(--bg2);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.15);z-index:200;max-height:320px;overflow-y:auto"></div>
+  `;
+  headerEl.appendChild(searchWrap);
+}
 
 function setHTML(id, html) { const el = document.getElementById(id); if (el) el.innerHTML = html; }
 
@@ -765,6 +845,9 @@ async function loadView(v) {
   if (v === 'audit')          loadAuditLog();
   if (v === 'settings')       loadSettings();
   if (v === 'pfand')          loadPfand();
+  if (v === 'rechnungen')     loadRechnungen();
+  if (v === 'einladungen')    loadEinladungen();
+  if (v === 'vorlagen')       loadVorlagen();
 }
 
 // ── ÜBERSICHT ─────────────────────────────────────────────────
@@ -2464,6 +2547,214 @@ document.getElementById('btn-pfand-rueck-manual')?.addEventListener('click', asy
     setHTML('pfand-rueck-result',`<div class="alert alert-error" style="margin:.5rem 0">${err.message}</div>`);
   }
 });
+
+// ── GLOBALE SUCHE ─────────────────────────────────────────────
+let searchTimer = null;
+document.addEventListener('input', async (e) => {
+  if (e.target.id !== 'global-search') return;
+  clearTimeout(searchTimer);
+  const q = e.target.value.trim();
+  const resEl = document.getElementById('search-results');
+  if (!resEl) return;
+  if (q.length < 2) { resEl.style.display='none'; return; }
+
+  searchTimer = setTimeout(async () => {
+    try {
+      const { results } = await fetch(`/api/suche?q=${encodeURIComponent(q)}`, {
+        headers: {'Authorization': 'Bearer ' + Auth.getToken()}
+      }).then(r => r.json());
+
+      if (!results?.length) {
+        resEl.innerHTML = '<div style="padding:.75rem 1rem;font-size:13px;color:var(--text3)">Keine Ergebnisse</div>';
+      } else {
+        const icons = { erzeuger:'🌱', caterer:'🍽', pool:'🌊', lieferschein:'📋', tour:'🚲' };
+        resEl.innerHTML = results.map(r => `
+          <div style="padding:.6rem 1rem;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px;display:flex;gap:.5rem;align-items:center"
+               onclick="switchView('${r.typ==='pool'?'pools-alle':r.typ==='lieferschein'?'lieferung-neu':r.typ==='erzeuger'?'erzeuger':r.typ==='caterer'?'caterer-mgmt':'logistik'}');document.getElementById('search-results').style.display='none'">
+            <span>${icons[r.typ]||'•'}</span>
+            <div>
+              <div style="font-weight:500">${r.titel}</div>
+              <div style="font-size:11px;color:var(--text3)">${r.typ} · ${r.sub||''}</div>
+            </div>
+          </div>`).join('');
+      }
+      resEl.style.display = 'block';
+    } catch {}
+  }, 300);
+});
+document.addEventListener('click', e => {
+  if (!e.target.closest('#global-search') && !e.target.closest('#search-results')) {
+    const r = document.getElementById('search-results');
+    if (r) r.style.display = 'none';
+  }
+});
+
+// ── RECHNUNGEN ─────────────────────────────────────────────────
+async function loadRechnungen() {
+  try {
+    const { rechnungen } = await fetch('/api/rechnungen', {
+      headers: {'Authorization': 'Bearer ' + Auth.getToken()}
+    }).then(r => r.json());
+
+    setHTML('rech-list', rechnungen?.length ? `
+      <table class="tbl">
+        <thead><tr>
+          <th>Rechnungs-Nr.</th><th>Erzeuger</th><th>Datum</th>
+          <th>Netto</th><th>MwSt.</th><th>Brutto</th><th>Status</th><th></th>
+        </tr></thead>
+        <tbody>${rechnungen.map(r => `<tr>
+          <td style="font-family:'DM Mono',monospace;font-size:11px">${r.rechnungs_nr}</td>
+          <td style="font-weight:500">${r.betrieb_name||'—'}</td>
+          <td class="pool-meta">${new Date(r.rechnungsdatum).toLocaleDateString('de-DE')}</td>
+          <td style="font-family:'DM Mono',monospace">${parseFloat(r.netto).toFixed(2)} €</td>
+          <td class="pool-meta">${parseFloat(r.mwst).toFixed(2)} €</td>
+          <td style="font-family:'DM Mono',monospace;font-weight:600">${parseFloat(r.brutto).toFixed(2)} €</td>
+          <td>${statusBadge(r.status)}</td>
+          <td style="display:flex;gap:.35rem">
+            <button class="btn btn-sm" onclick="window.open('/api/rechnungen/${r.id}/pdf','_blank')">🖨</button>
+            ${r.status!=='storniert'?`<button class="btn btn-sm btn-danger" onclick="rechStornieren('${r.id}','${r.rechnungs_nr}')">✕</button>`:''}
+          </td>
+        </tr>`).join('')}</tbody>
+      </table>
+    ` : '<p style="color:var(--text3);font-size:13px">Noch keine Rechnungen</p>');
+  } catch(err) { showAlert('alerts','error',err.message); }
+}
+
+document.getElementById('btn-reload-rech')?.addEventListener('click', loadRechnungen);
+
+async function rechStornieren(id, nr) {
+  if (!confirm(`Rechnung ${nr} stornieren?`)) return;
+  try {
+    const r = await fetch(`/api/rechnungen/${id}/stornieren`, {
+      method:'POST', headers:{'Authorization':'Bearer '+Auth.getToken()}
+    }).then(r=>r.json());
+    if(r.error) throw new Error(r.error);
+    toast('Rechnung storniert'); loadRechnungen();
+  } catch(err) { showAlert('alerts','error',err.message); }
+}
+
+// ── EINLADUNGEN ────────────────────────────────────────────────
+async function loadEinladungen() {
+  try {
+    const { einladungen } = await fetch('/api/einladungen', {
+      headers: {'Authorization': 'Bearer ' + Auth.getToken()}
+    }).then(r => r.json());
+
+    setHTML('einladungen-list', einladungen?.length ? `
+      <table class="tbl" style="font-size:12px">
+        <thead><tr><th>E-Mail</th><th>Rolle</th><th>Status</th><th>Läuft ab</th><th></th></tr></thead>
+        <tbody>${einladungen.map(i => {
+          const abgelaufen = new Date(i.expires_at) < new Date();
+          return `<tr style="${abgelaufen||i.used?'opacity:.6':''}">
+            <td style="font-weight:500">${i.email}</td>
+            <td>${i.rolle}</td>
+            <td>${i.used?'<span class="badge badge-green">Verwendet</span>':abgelaufen?'<span class="badge badge-red">Abgelaufen</span>':'<span class="badge badge-gray">Offen</span>'}</td>
+            <td class="pool-meta">${new Date(i.expires_at).toLocaleDateString('de-DE')}</td>
+            <td>
+              ${!i.used&&!abgelaufen?`<button class="btn btn-sm btn-danger" onclick="einladungLoeschen('${i.id}')">✕</button>`:''}
+            </td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>
+    ` : '<p style="color:var(--text3);font-size:13px">Noch keine Einladungen</p>');
+  } catch {}
+}
+
+document.getElementById('btn-einladung-senden')?.addEventListener('click', async () => {
+  const email = document.getElementById('inv-email')?.value.trim();
+  const name  = document.getElementById('inv-name')?.value.trim();
+  const rolle = document.getElementById('inv-rolle')?.value;
+  if (!email) return setHTML('einladung-result','<div class="alert alert-error">E-Mail eingeben</div>');
+  try {
+    const r = await fetch('/api/einladungen',{method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+Auth.getToken()},
+      body:JSON.stringify({email,name,rolle})}).then(r=>r.json());
+    if(r.error) throw new Error(r.error);
+    setHTML('einladung-result',`<div class="alert alert-success">✓ Einladung an ${email} gesendet</div>`);
+    document.getElementById('inv-email').value='';
+    document.getElementById('inv-name').value='';
+    loadEinladungen();
+  } catch(err) { setHTML('einladung-result',`<div class="alert alert-error">${err.message}</div>`); }
+});
+
+async function einladungLoeschen(id) {
+  if(!confirm('Einladung widerrufen?')) return;
+  try {
+    await fetch(`/api/einladungen/${id}`,{method:'DELETE',headers:{'Authorization':'Bearer '+Auth.getToken()}});
+    toast('Einladung widerrufen'); loadEinladungen();
+  } catch {}
+}
+
+// ── POOL VORLAGEN ──────────────────────────────────────────────
+async function loadVorlagen() {
+  // Caterer-Dropdown befüllen
+  try {
+    const {caterer} = await api.getAllCaterer?.() || {};
+    const sel = document.getElementById('vl-caterer');
+    if (sel && caterer) sel.innerHTML = caterer.map(c=>`<option value="${c.id}">${c.firma_name}</option>`).join('');
+  } catch {}
+
+  try {
+    const { vorlagen } = await fetch('/api/pool-vorlagen',{
+      headers:{'Authorization':'Bearer '+Auth.getToken()}
+    }).then(r=>r.json());
+
+    const TAGE = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+    setHTML('vorlagen-list', vorlagen?.length ? `
+      <table class="tbl" style="font-size:12px">
+        <thead><tr><th>Produkt</th><th>Tag</th><th>Caterer</th><th>Menge</th><th>Preis</th><th>Status</th><th></th></tr></thead>
+        <tbody>${vorlagen.map(v => `<tr>
+          <td style="font-weight:500">${v.produkt}</td>
+          <td>${TAGE[v.wochentag]||'—'}</td>
+          <td class="pool-meta">${v.firma_name||'—'}</td>
+          <td class="pool-meta">${v.menge_ziel||'—'} kg</td>
+          <td class="pool-meta">${v.preis_pro_einheit||'—'} €</td>
+          <td>${v.aktiv?'<span class="badge badge-green">Aktiv</span>':'<span class="badge badge-red">Inaktiv</span>'}</td>
+          <td style="display:flex;gap:.35rem">
+            <button class="btn btn-sm btn-primary" onclick="poolAusVorlage('${v.id}')">▶ Pool erstellen</button>
+            <button class="btn btn-sm btn-danger" onclick="vorlageLoeschen('${v.id}')">✕</button>
+          </td>
+        </tr>`).join('')}</tbody>
+      </table>
+    ` : '<p style="color:var(--text3);font-size:13px">Noch keine Vorlagen</p>');
+  } catch(err) { showAlert('alerts','error',err.message); }
+}
+
+document.getElementById('btn-vorlage-erstellen')?.addEventListener('click', async () => {
+  const body = {
+    produkt:          document.getElementById('vl-produkt')?.value.trim(),
+    wochentag:        parseInt(document.getElementById('vl-wochentag')?.value),
+    menge_ziel:       parseFloat(document.getElementById('vl-menge')?.value)||null,
+    preis_pro_einheit:parseFloat(document.getElementById('vl-preis')?.value)||null,
+    caterer_id:       document.getElementById('vl-caterer')?.value,
+    deadline_tage:    parseInt(document.getElementById('vl-deadline')?.value)||3,
+  };
+  if (!body.produkt) return showAlert('alerts','error','Produkt eingeben');
+  try {
+    const r = await fetch('/api/pool-vorlagen',{method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+Auth.getToken()},
+      body:JSON.stringify(body)}).then(r=>r.json());
+    if(r.error) throw new Error(r.error);
+    toast(r.message); loadVorlagen();
+  } catch(err) { showAlert('alerts','error',err.message); }
+});
+
+async function poolAusVorlage(id) {
+  try {
+    const r = await fetch(`/api/pool-vorlagen/${id}/erstellen`,{method:'POST',
+      headers:{'Authorization':'Bearer '+Auth.getToken()}}).then(r=>r.json());
+    if(r.error) throw new Error(r.error);
+    toast(r.message); switchView('pools-alle');
+  } catch(err) { showAlert('alerts','error',err.message); }
+}
+
+async function vorlageLoeschen(id) {
+  if(!confirm('Vorlage löschen?')) return;
+  try {
+    await fetch(`/api/pool-vorlagen/${id}`,{method:'DELETE',headers:{'Authorization':'Bearer '+Auth.getToken()}});
+    toast('Vorlage gelöscht'); loadVorlagen();
+  } catch {}
+}
 
 // ── AUDIT LOG ─────────────────────────────────────────────────
 let auditPage = 1;

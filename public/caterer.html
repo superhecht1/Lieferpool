@@ -135,14 +135,21 @@
               <label class="form-label">Tatsächliche Menge (kg)</label>
               <input class="form-control" type="number" id="wi-menge" step="0.1" min="0">
             </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Warenqualität</label>
+                <select class="form-control" id="wi-qualitaet">
+                  <option value="A">🟢 A — Einwandfrei</option>
+                  <option value="B">🟡 B — Leichte Mängel, akzeptiert</option>
+                  <option value="C">🟠 C — Mängel, Preisnachlass nötig</option>
+                  <option value="abgelehnt">🔴 Abgelehnt — Ware nicht angenommen</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Qualitäts-Notiz (optional)</label>
+                <input class="form-control" type="text" id="wi-qualitaet-notiz" placeholder="z.B. 3 Kisten mit Schimmel">
             <div class="form-group">
               <label class="form-label">Qualität</label>
-              <select class="form-control" id="wi-qualitaet">
-                <option value="A">A – Einwandfrei</option>
-                <option value="B">B – Gut</option>
-                <option value="C">C – Ausreichend</option>
-                <option value="abgelehnt">Abgelehnt</option>
-              </select>
             </div>
           </div>
           <div class="form-group">
@@ -538,13 +545,14 @@ async function scanQR() {
 document.getElementById('btn-wareneingang')?.addEventListener('click', async () => {
   if (!aktiveLieferungId) return;
   const menge    = parseFloat(document.getElementById('wi-menge').value);
-  const qualitaet= document.getElementById('wi-qualitaet').value;
+  const qualitaet= document.getElementById('wi-qualitaet')?.value || 'A';
+  const qualNotiz= document.getElementById('wi-qualitaet-notiz')?.value || '';
   const notiz    = document.getElementById('wi-notiz')?.value.trim() || null;
   const btn      = document.getElementById('btn-wareneingang');
   if (!menge) return showAlert('alerts', 'error', 'Menge eingeben');
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
   try {
-    await api.confirmWareneingang(aktiveLieferungId, menge, qualitaet, notiz);
+    await api.confirmWareneingang(aktiveLieferungId, menge, qualitaet, qualNotiz, notiz);
     setHTML('wareneingang-result', `
       <div class="success-box">
         <div class="success-icon">✓</div>
