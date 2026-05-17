@@ -295,6 +295,7 @@ const NAV = [
   { id: 'pools',      label: 'Pools' },
   { id: 'zusagen',    label: 'Menge zusagen' },
   { id: 'auszahlung', label: 'Auszahlungen' },
+  { id: 'lieferscheine', label: '📄 Lieferscheine' },
   { id: 'profil',     label: 'Profil & Zertifikate' },
 ];
 
@@ -313,6 +314,7 @@ async function loadView(v) {
   if (v === 'zusagen')    loadZusagen();
   if (v === 'auszahlung') loadAuszahlungen();
   if (v === 'profil')     loadProfil();
+  if (v === 'lieferscheine') loadMeineLieferscheine();
 }
 
 // ── POOLS ─────────────────────────────────────────────────────
