@@ -221,10 +221,39 @@
           </div>
           <div id="lief-create-result"></div>
           <div id="lief-create-form">
-            <div class="form-group"><label class="form-label">Pool (geschlossen)</label><select class="form-control" id="lief-pool-sel"></select></div>
-            <div class="form-group"><label class="form-label">Lieferdatum (optional)</label><input class="form-control" type="date" id="lief-datum"></div>
+            <div class="form-group">
+              <label class="form-label">Pool (geschlossen)</label>
+              <select class="form-control" id="lief-pool-sel"></select>
+              <div style="font-size:11px;color:var(--text3);margin-top:.3rem">✓ = Lieferschein bereits vorhanden (deaktiviert)</div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Lieferdatum (optional)</label>
+              <input class="form-control" type="date" id="lief-datum">
+            </div>
             <button class="btn btn-primary" id="btn-create-lief">Lieferschein erstellen</button>
           </div>
+        </div>
+
+        <!-- Pool Status ändern -->
+        <div class="card" style="border-color:var(--amber)">
+          <div class="card-title" style="color:var(--amber)">⚠ Pool-Status ändern</div>
+          <p style="font-size:13px;color:var(--text2);margin-bottom:.75rem">
+            Falls eine Lieferung nicht zustande kommt, kannst du den Pool hier stornieren oder wieder öffnen.
+          </p>
+          <div class="form-group">
+            <label class="form-label">Pool auswählen</label>
+            <select class="form-control" id="lief-pool-status-change"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Neuer Status</label>
+            <select class="form-control" id="lief-new-status">
+              <option value="storniert">Stornieren (Lieferung fällt aus)</option>
+              <option value="offen">Wieder öffnen (neue Zusagen möglich)</option>
+              <option value="geschlossen">Schließen (bereit für Lieferschein)</option>
+            </select>
+          </div>
+          <div id="pool-status-result"></div>
+          <button class="btn btn-warning" id="btn-pool-status-change" style="background:var(--amber);color:#fff;border:none">Status setzen</button>
         </div>
       </div>
     </div>
@@ -1141,13 +1170,37 @@ document.getElementById('btn-reload-fahrer')?.addEventListener('click', loadFahr
 // ── LIEFERSCHEINE ─────────────────────────────────────────────
 async function loadLieferungNeu() {
   loadLieferscheineListe();
-  // Pool-Dropdown befüllen
   try {
-    const { pools } = await api.getPools({ status: 'geschlossen' });
+    const { pools } = await api.getPools({ status: 'geschlossen', limit: 100 });
+    const { lieferungen } = await fetch('/api/lieferungen?limit=500', {
+      headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
+    }).then(r => r.json()).catch(() => ({ lieferungen: [] }));
+
+    const poolMitLief = new Set((lieferungen||[])
+      .filter(l => l.status !== 'storniert')
+      .map(l => l.pool_id));
+
     const sel = document.getElementById('lief-pool-sel');
-    if (sel) sel.innerHTML = pools.length
-      ? pools.map(p => `<option value="${p.id}">${p.produkt} – ${p.lieferwoche} (${Math.round(p.menge_committed)} kg)</option>`).join('')
-      : '<option>Keine geschlossenen Pools</option>';
+    if (!sel) return;
+    if (!pools.length) {
+      sel.innerHTML = '<option value="">Keine geschlossenen Pools</option>';
+    } else {
+      sel.innerHTML = pools.map(p => {
+        const hat  = poolMitLief.has(p.id);
+        const lbl  = `${p.produkt} – KW ${p.lieferwoche} (${Math.round(p.menge_committed||0)} kg)`;
+        return `<option value="${p.id}" ${hat?'disabled style="color:#aaa"':''}>
+          ${hat?'✓ ':''} ${lbl}${hat?' [Lieferschein bereits vorhanden]':''}
+        </option>`;
+      }).join('');
+    }
+
+    // Pool-Status-Änderung
+    const statusSel = document.getElementById('lief-pool-status-change');
+    if (statusSel) {
+      statusSel.innerHTML = pools.map(p =>
+        `<option value="${p.id}">${p.produkt} – KW ${p.lieferwoche} (${p.status})</option>`
+      ).join('');
+    }
   } catch (err) {}
 }
 
@@ -1208,6 +1261,31 @@ document.getElementById('lief-admin-list')?.addEventListener('click', async e =>
   } catch (err) { showAlert('alerts','error',err.message); }
 });
 document.getElementById('lief-filter-status')?.addEventListener('change', loadLieferscheineListe);
+
+// Pool-Status ändern
+document.getElementById('btn-pool-status-change')?.addEventListener('click', async () => {
+  const poolId    = document.getElementById('lief-pool-status-change')?.value;
+  const newStatus = document.getElementById('lief-new-status')?.value;
+  const resEl     = document.getElementById('pool-status-result');
+  if (!poolId) return;
+
+  const labels = { storniert:'storniert', offen:'wieder geöffnet', geschlossen:'geschlossen' };
+  if (!confirm(`Pool wirklich auf "${labels[newStatus]}" setzen?`)) return;
+
+  try {
+    const r = await fetch(`/api/pools/${poolId}/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type':'application/json','Authorization':'Bearer '+Auth.getToken() },
+      body: JSON.stringify({ status: newStatus }),
+    }).then(r => r.json());
+    if (r.error) throw new Error(r.error);
+    setHTML('pool-status-result', `<div class="alert alert-success" style="margin:.5rem 0">✓ Pool ${labels[newStatus]}</div>`);
+    toast('Pool-Status aktualisiert');
+    loadLieferungNeu(); // Dropdown neu laden
+  } catch (err) {
+    setHTML('pool-status-result', `<div class="alert alert-error" style="margin:.5rem 0">${err.message}</div>`);
+  }
+});
 document.getElementById('btn-reload-lieferscheine')?.addEventListener('click', loadLieferscheineListe);
 document.getElementById('btn-show-lief-form')?.addEventListener('click', () => {
   const c = document.getElementById('lief-create-card');
@@ -1220,7 +1298,9 @@ document.getElementById('btn-create-lief')?.addEventListener('click', async () =
   const pool_id=document.getElementById('lief-pool-sel').value;
   const lieferdatum=document.getElementById('lief-datum').value;
   const btn=document.getElementById('btn-create-lief');
-  if (!pool_id) return showAlert('alerts','error','Pool auswählen');
+  if (!pool_id) return showAlert('alerts','error','Bitte Pool auswählen');
+  const sel=document.getElementById('lief-pool-sel');
+  if(sel?.options[sel.selectedIndex]?.disabled) return showAlert('alerts','error','Für diesen Pool existiert bereits ein Lieferschein — zuerst den bestehenden stornieren oder einen anderen Pool wählen');
   btn.disabled=true; btn.innerHTML='<span class="spinner"></span>';
   try {
     const {lieferung}=await api.createLieferung(pool_id,lieferdatum||null);
