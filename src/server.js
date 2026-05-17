@@ -10,6 +10,10 @@ const app = express();
 app.set('trust proxy', 1);
 
 // ── X-Request-ID ───────────────────────────────────────────────
+// ── Logger ───────────────────────────────────────────────
+const logger = require('./services/logger');
+app.use(logger.middleware());
+
 // ── CSRF + Origin Check ─────────────────────────
 const { originCheck, csrfTokenCheck } = require('./middleware/csrf');
 app.use(originCheck);
@@ -125,6 +129,14 @@ app.use('/api/contact',      require('./routes/contact'));
 app.use('/api/admin/2fa',    require('./routes/admin-2fa'));
 app.use('/api/dsgvo',        require('./routes/dsgvo'));
 app.use('/api/pfand',        require('./routes/pfand'));
+app.use('/api/rechnungen',   require('./routes/rechnungen'));
+app.use('/api/einladungen',  require('./routes/einladungen'));
+app.use('/api/pool-vorlagen',require('./routes/pool-vorlagen'));
+app.use('/api/suche',        require('./routes/suche'));
+app.use('/api/storno',       require('./routes/storno'));
+const monitoring = require('./routes/monitoring');
+app.use('/api/monitoring',   monitoring.router);
+app.use('/health',           monitoring.router);
 
 // Chain Status
 app.get('/api/chain/status', async (req, res) => {
