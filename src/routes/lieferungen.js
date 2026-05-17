@@ -104,7 +104,6 @@ router.post('/', auth, role('admin', 'caterer'), async (req, res) => {
     const qr  = 'QR-' + Math.random().toString(36).slice(2,10).toUpperCase();
     const dat = lieferdatum || new Date().toISOString().split('T')[0];
 
-    const { rows: [lief] } = await db.query(`
     const kistenAnzahl = parseInt(pfand_kisten) || 0;
     const pfandPreis   = parseFloat(pfand_pro_kiste) || 3.00;
 
