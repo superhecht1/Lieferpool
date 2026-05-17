@@ -78,7 +78,7 @@ router.get('/scan/:qr', auth, role('caterer', 'fahrer', 'admin'), async (req, re
 
 // POST /api/lieferungen – Lieferschein erstellen (Admin)
 router.post('/', auth, role('admin', 'caterer'), async (req, res) => {
-  const { pool_id, lieferdatum } = req.body;
+  const { pool_id, lieferdatum, pfand_kisten, pfand_pro_kiste } = req.body;
   if (!pool_id) return res.status(400).json({ error: 'pool_id erforderlich' });
 
   try {
@@ -105,44 +105,17 @@ router.post('/', auth, role('admin', 'caterer'), async (req, res) => {
     const dat = lieferdatum || new Date().toISOString().split('T')[0];
 
     const { rows: [lief] } = await db.query(`
-      INSERT INTO lieferungen (pool_id, lieferschein_nr, qr_code, lieferdatum, menge_bestellt, status)
-      VALUES ($1, $2, $3, $4, $5, 'erstellt')
-      RETURNING *
-    `, [pool_id, nr, qr, dat, pool.menge_committed]);
+    const kistenAnzahl = parseInt(pfand_kisten) || 0;
+    const pfandPreis   = parseFloat(pfand_pro_kiste) || 3.00;
 
-    // E-Mail an Caterer
-    try {
-      const { rows:[cat] } = await db.query(
-        `SELECT c.firma_name, u.email FROM caterer c JOIN users u ON u.id=c.user_id WHERE c.id=$1`,
-        [pool.caterer_id]
-      );
-      if (cat?.email) {
-        require('../services/email').sendLieferscheinErstellt({
-          catererEmail: cat.email, catererName: cat.firma_name,
-          produkt: pool.produkt, lieferwoche: pool.lieferwoche,
-          lieferscheinNr: lief.lieferschein_nr, qrCode: lief.qr_code,
-        }).catch(()=>{});
-      }
-    } catch {}
-    res.status(201).json({ lieferung: { ...lief, produkt: pool.produkt, lieferwoche: pool.lieferwoche } });
-  } catch (err) {
-    console.error('[lieferungen POST]', err.message);
-    res.status(500).json({ error: 'Lieferschein konnte nicht erstellt werden: ' + err.message });
-  }
-});
-
-// POST /api/lieferungen/:id/wareneingang
-router.post('/:id/wareneingang', auth, role('caterer', 'admin'), async (req, res) => {
-  const { menge_geliefert, qualitaet = 'A', notiz } = req.body;
-  if (!menge_geliefert) return res.status(400).json({ error: 'menge_geliefert erforderlich' });
-
-  try {
     const { rows: [lief] } = await db.query(`
-      UPDATE lieferungen
-      SET menge_geliefert = $1, qualitaet = $2, notiz = $3,
-          status = 'eingegangen', wareneingang_at = NOW()
-      WHERE id = $4 RETURNING *
-    `, [menge_geliefert, qualitaet, notiz, req.params.id]);
+      INSERT INTO lieferungen (
+        pool_id, lieferschein_nr, qr_code, lieferdatum, menge_bestellt, status,
+        pfand_kisten_geliefert, pfand_pro_kiste
+      )
+      VALUES ($1, $2, $3, $4, $5, 'erstellt', $6, $7)
+      RETURNING *
+    `, [pool_id, nr, qr, dat, pool.menge_committed, kistenAnzahl, pfandPreis]);
 
     if (!lief) return res.status(404).json({ error: 'Lieferung nicht gefunden' });
 

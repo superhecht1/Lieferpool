@@ -152,6 +152,35 @@ ${lief.menge_geliefert ? `
   ${lief.notiz ? `<div style="font-size:11px;color:#4a5244;margin-top:2px">Notiz: ${lief.notiz}</div>` : ''}
 </div>` : ''}
 
+${parseFloat(lief.pfand_kisten_geliefert||0) > 0 ? `
+<div style="margin-bottom:18px;border:2px solid #c8912a;border-radius:6px;padding:14px 16px;background:#fff8f0">
+  <div style="font-weight:700;color:#c8912a;margin-bottom:10px;font-size:13px">🧺 PFANDKISTEN</div>
+  <table style="width:100%;font-size:12px;border-collapse:collapse">
+    <tr>
+      <td style="padding:4px 0;color:#8a9a84;width:40%">Gelieferte Kisten</td>
+      <td style="font-weight:700">\${lief.pfand_kisten_geliefert} Stück</td>
+      <td style="color:#8a9a84;width:40%">Pfand pro Kiste</td>
+      <td style="font-weight:700">\${parseFloat(lief.pfand_pro_kiste||3).toFixed(2)} €</td>
+    </tr>
+    <tr>
+      <td style="padding:4px 0;color:#8a9a84">Bereits zurück</td>
+      <td style="font-weight:700">\${lief.pfand_kisten_zurueck||0} Stück</td>
+      <td style="color:#8a9a84">Pfand gesamt</td>
+      <td style="font-weight:700;color:#c8912a">\${parseFloat(lief.pfand_gesamt||0).toFixed(2)} €</td>
+    </tr>
+    <tr style="background:#fff0e0">
+      <td style="padding:6px 0;font-weight:700">Noch offen</td>
+      <td style="font-weight:700;color:#c62828">\${(lief.pfand_kisten_geliefert-(lief.pfand_kisten_zurueck||0))} Kisten</td>
+      <td style="font-weight:700">Offenes Pfand</td>
+      <td style="font-weight:700;color:#c62828">\${parseFloat(lief.pfand_offen||0).toFixed(2)} €</td>
+    </tr>
+  </table>
+  <div style="margin-top:8px;font-size:10px;color:#5d4037;border-top:1px solid #ffd9aa;padding-top:6px">
+    Bitte bestätigen Sie die Kistenanzahl beim Wareneingang und geben Sie die Kisten baldmöglichst zurück.
+  </div>
+</div>
+` : ''}
+
 <div class="sign-box">
   <div class="sign-line">Unterschrift Fahrer:in</div>
   <div class="sign-line">Unterschrift Caterer (Wareneingang)</div>
