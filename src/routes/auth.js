@@ -342,4 +342,54 @@ router.post('/2fa-complete', async (req, res) => {
   }
 });
 
+
+// PUT /api/auth/fahrer/:id – Fahrer bearbeiten (Admin)
+router.put('/fahrer/:id', auth, role('admin'), async (req, res) => {
+  const { name, email, password, lizenzklasse, aktiv } = req.body;
+  try {
+    // User updaten
+    const updates = [];
+    const vals    = [];
+    if (name)  { updates.push(`name=$${vals.push(name)}`); }
+    if (email) { updates.push(`email=$${vals.push(email.toLowerCase())}`); }
+    if (password && password.length >= 8) {
+      const hash = await bcrypt.hash(password, 10);
+      updates.push(`password=$${vals.push(hash)}`);
+    }
+    if (updates.length) {
+      vals.push(req.params.id);
+      await db.query(`UPDATE users SET ${updates.join(',')} WHERE id=$${vals.length} AND role='fahrer'`, vals);
+    }
+
+    // Profil updaten
+    await db.query(`
+      INSERT INTO fahrer_profile (user_id, lizenzklasse, aktiv)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (user_id) DO UPDATE SET
+        lizenzklasse = EXCLUDED.lizenzklasse,
+        aktiv        = EXCLUDED.aktiv
+    `, [req.params.id, lizenzklasse || 'B', aktiv !== false]);
+
+    res.json({ message: 'Fahrer aktualisiert' });
+  } catch (err) {
+    console.error('[fahrer PUT]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/auth/fahrer/:id – Fahrer löschen (Admin)
+router.delete('/fahrer/:id', auth, role('admin'), async (req, res) => {
+  try {
+    // Touren-Zuweisung aufheben
+    await db.query(`UPDATE touren SET fahrer_id=NULL WHERE fahrer_id=$1`, [req.params.id]);
+    // Profil + User löschen
+    await db.query(`DELETE FROM fahrer_profile WHERE user_id=$1`, [req.params.id]);
+    await db.query(`DELETE FROM users WHERE id=$1 AND role='fahrer'`, [req.params.id]);
+    res.json({ message: 'Fahrer gelöscht' });
+  } catch (err) {
+    console.error('[fahrer DELETE]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
