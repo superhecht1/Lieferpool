@@ -167,8 +167,7 @@ router.get('/export-csv', async (req, res) => {
         r.pfand_kisten_geliefert,r.pfand_kisten_zurueck,r.pfand_pro_kiste,
         r.pfand_gesamt,r.pfand_offen,r.betrieb_name||'',r.firma_name||'',r.status
       ].map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(';'))
-    ].join('
-');
+    ].join('\n');
 
     res.setHeader('Content-Type','text/csv; charset=utf-8');
     res.setHeader('Content-Disposition',`attachment; filename="pfand-${new Date().toISOString().slice(0,10)}.csv"`);
