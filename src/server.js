@@ -102,6 +102,7 @@ app.use('/api/audit',        require('./middleware/audit').router);
 app.use('/api/contact',      require('./routes/contact'));
 app.use('/api/admin/2fa',    require('./routes/admin-2fa'));
 app.use('/api/dsgvo',        require('./routes/dsgvo'));
+app.use('/api/pfand',        require('./routes/pfand'));
 
 // Chain Status
 app.get('/api/chain/status', async (req, res) => {
