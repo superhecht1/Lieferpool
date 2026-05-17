@@ -1106,8 +1106,20 @@ loadTouren();
 setTimeout(() => {
   if (swRegistration && Notification.permission === 'default') {
     const banner = document.createElement('div');
+    banner.id = 'push-ask-banner';
     banner.style.cssText = 'position:fixed;bottom:70px;left:1rem;right:1rem;background:var(--forest);color:#fff;border-radius:10px;padding:.875rem 1rem;font-size:13px;z-index:200;display:flex;gap:.75rem;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,.3)';
-    banner.innerHTML = '<span style="flex:1">🔔 Push-Benachrichtigungen für neue Touren aktivieren?</span><button onclick="requestPushPermission();this.closest('div').remove()" style="background:var(--amber);color:#fff;border:none;border-radius:6px;padding:.4rem .875rem;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap">Aktivieren</button><button onclick="this.closest('div').remove()" style="background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:1.1rem">✕</button>';
+    const txt = document.createElement('span');
+    txt.style.flex = '1';
+    txt.textContent = '🔔 Push-Benachrichtigungen für neue Touren aktivieren?';
+    const btnYes = document.createElement('button');
+    btnYes.textContent = 'Aktivieren';
+    btnYes.style.cssText = 'background:var(--amber);color:#fff;border:none;border-radius:6px;padding:.4rem .875rem;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap';
+    btnYes.onclick = () => { requestPushPermission(); banner.remove(); };
+    const btnNo = document.createElement('button');
+    btnNo.textContent = '✕';
+    btnNo.style.cssText = 'background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:1.1rem';
+    btnNo.onclick = () => banner.remove();
+    banner.append(txt, btnYes, btnNo);
     document.body.appendChild(banner);
     setTimeout(() => banner.remove(), 10000);
   }
