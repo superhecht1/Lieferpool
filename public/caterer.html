@@ -360,6 +360,7 @@ const NAV = [
   { id: 'wareneingang', label: 'Wareneingang'    },
   { id: 'bedarf',       label: 'Bedarfsplanung'  },
   { id: 'vertraege',    label: 'Verträge'        },
+  { id: 'vorlagen',     label: '🔄 Vorlagen'     },
   { id: 'profil',       label: 'Profil'          },
 ];
 
@@ -374,6 +375,7 @@ async function loadView(v) {
   if (v === 'bedarf')       loadBedarf();
   if (v === 'vertraege')    loadVertraege();
   if (v === 'profil')       loadCatProfil();
+  if (v === 'vorlagen')       loadCatererVorlagen();
 }
 
 // ── ÜBERSICHT ─────────────────────────────────────────────────
@@ -889,45 +891,69 @@ document.getElementById('btn-dsgvo-delete-confirm')?.addEventListener('click', a
 });
 // ── CATERER VORLAGEN ──────────────────────────────────────────
 async function loadCatererVorlagen() {
-  try {
-    const { vorlagen } = await fetch('/api/pool-vorlagen', {
-      headers: {'Authorization': 'Bearer ' + Auth.getToken()}
-    }).then(r => r.json());
+  const wrap = document.getElementById('vorlagen-cat-list');
+  if (!wrap) return;
+  wrap.innerHTML = '<div class="spinner"></div>';
 
-    const TAGE = ['So','Mo','Di','Mi','Do','Fr','Sa'];
-    setHTML('vorlagen-cat-list', vorlagen?.length ? `
-      <div style="display:flex;flex-direction:column;gap:.75rem">
-        ${vorlagen.map(v => `
-          <div style="border:1px solid var(--border);border-radius:var(--radius);padding:1rem;background:var(--bg2)">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem">
-              <div>
-                <div style="font-weight:600;font-size:.9rem">${v.produkt}</div>
-                <div style="font-size:12px;color:var(--text3);margin-top:.2rem">
-                  jeden ${TAGE[v.wochentag]||'?'} · ${v.menge_ziel||'?'} kg · ${v.preis_pro_einheit||'?'} €/kg
-                </div>
-              </div>
-              <div style="display:flex;gap:.5rem;align-items:center">
-                ${v.aktiv
-                  ? '<span class="badge badge-green" style="font-size:10px">Aktiv</span>'
-                  : '<span class="badge badge-red" style="font-size:10px">Inaktiv</span>'}
-              </div>
-            </div>
-            <div style="display:flex;gap:.5rem;flex-wrap:wrap">
-              <button class="btn btn-sm btn-primary" onclick="poolAusVorlageCat('${v.id}')">
-                ▶ Pool für nächste KW erstellen
-              </button>
-              <button class="btn btn-sm btn-danger" onclick="vorlageLoeschenCat('${v.id}')">Löschen</button>
-            </div>
-          </div>`).join('')}
-      </div>
-    ` : `
-      <div style="text-align:center;padding:2rem;color:var(--text3)">
-        <div style="font-size:2rem;margin-bottom:.5rem">🔄</div>
-        <div style="font-weight:500;margin-bottom:.25rem">Noch keine Vorlagen</div>
-        <div style="font-size:13px">Erstelle links deine erste Vorlage für wiederkehrende Pools</div>
-      </div>
-    `);
-  } catch(err) { showAlert('alerts','error',err.message); }
+  const TAGE = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+
+  try {
+    const res = await fetch('/api/pool-vorlagen', {
+      headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
+    });
+    const data = await res.json();
+    const vorlagen = data.vorlagen || [];
+
+    if (!vorlagen.length) {
+      wrap.innerHTML =
+        '<div style="text-align:center;padding:2rem;color:var(--text3)">' +
+        '<div style="font-size:2rem;margin-bottom:.5rem">🔄</div>' +
+        '<div style="font-weight:500;margin-bottom:.25rem">Noch keine Vorlagen</div>' +
+        '<div style="font-size:13px">Erstelle links deine erste Vorlage</div>' +
+        '</div>';
+      return;
+    }
+
+    const cards = vorlagen.map(function(v) {
+      const tag   = TAGE[v.wochentag] || '?';
+      const menge = v.menge_ziel || '?';
+      const preis = v.preis_pro_einheit || '?';
+      const badge = v.aktiv
+        ? '<span class="badge badge-green" style="font-size:10px">Aktiv</span>'
+        : '<span class="badge badge-red"   style="font-size:10px">Inaktiv</span>';
+
+      const card = document.createElement('div');
+      card.style.cssText = 'border:1px solid var(--border);border-radius:var(--radius);padding:1rem;background:var(--bg2);margin-bottom:.75rem';
+      card.innerHTML =
+        '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.625rem">' +
+          '<div>' +
+            '<div style="font-weight:600;font-size:.9rem">' + v.produkt + '</div>' +
+            '<div style="font-size:12px;color:var(--text3);margin-top:.2rem">jeden ' + tag + ' &middot; ' + menge + ' kg &middot; ' + preis + ' &euro;/kg</div>' +
+          '</div>' + badge +
+        '</div>' +
+        '<div style="display:flex;gap:.5rem;flex-wrap:wrap">' +
+          '<button class="btn btn-sm btn-primary" data-id="' + v.id + '" data-action="erstellen">&#9654; Pool für nächste KW</button>' +
+          '<button class="btn btn-sm btn-danger"  data-id="' + v.id + '" data-action="loeschen">Löschen</button>' +
+        '</div>';
+      return card;
+    });
+
+    wrap.innerHTML = '';
+    cards.forEach(function(c) { wrap.appendChild(c); });
+
+    // Event-Delegation statt onclick-Attribute
+    wrap.onclick = function(e) {
+      const btn = e.target.closest('button[data-action]');
+      if (!btn) return;
+      const id  = btn.dataset.id;
+      const act = btn.dataset.action;
+      if (act === 'erstellen') poolAusVorlageCat(id);
+      if (act === 'loeschen')  vorlageLoeschenCat(id);
+    };
+
+  } catch(err) {
+    wrap.innerHTML = '<div class="alert alert-error">' + (err.message || 'Fehler') + '</div>';
+  }
 }
 
 document.getElementById('btn-vorlage-cat-erstellen')?.addEventListener('click', async () => {
