@@ -119,15 +119,8 @@ router.post('/', auth, role('admin', 'caterer'), async (req, res) => {
 
     if (!lief) return res.status(404).json({ error: 'Lieferung nicht gefunden' });
 
-    // Auszahlungen berechnen
-    let payoutResult = null;
-    try {
-      payoutResult = await payout.calculateAndCreatePayouts(lief.id);
-    } catch (payErr) {
-      console.warn('[wareneingang payout]', payErr.message);
-    }
-
     // Erzeuger per E-Mail benachrichtigen
+    // HINWEIS: Auszahlungen werden erst beim Wareneingang berechnet (POST /:id/wareneingang)
     try {
       const { rows: erzeuger } = await db.query(`
         SELECT DISTINCT u.email, e.betrieb_name, $2 AS produkt

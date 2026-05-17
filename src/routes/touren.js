@@ -111,23 +111,23 @@ router.get('/', auth, async (req, res) => {
 });
 
 // GET /api/touren/:id
+// BUG FIX #1: Vorher wurde fp.id (fahrer_profile) statt user.id verwendet
+// touren.fahrer_id referenziert users.id – nicht fahrer_profile.id
 router.get('/meine', auth, role('fahrer'), async (req, res) => {
   try {
     const datum = req.query.datum || new Date().toISOString().slice(0,10);
-    const { rows:[fp] } = await db.query(`SELECT id FROM fahrer_profile WHERE user_id=$1`, [req.user.id]);
-    if (!fp) return res.json({ touren: [] });
 
     const { rows } = await db.query(`
       SELECT t.*, f.bezeichnung AS fahrzeug_bezeichnung,
-        COUNT(ts.id)::int                                                 AS stopps_total,
+        COUNT(ts.id)::int AS stopps_total,
         COUNT(ts.id) FILTER (WHERE ts.status IN ('abgeschlossen','uebersprungen'))::int AS stopps_erledigt
       FROM touren t
       LEFT JOIN fahrzeuge f ON f.id = t.fahrzeug_id
       LEFT JOIN tour_stopps ts ON ts.tour_id = t.id
-      WHERE t.fahrer_id=$1 AND t.datum=$2
+      WHERE t.fahrer_id = $1 AND t.datum = $2
       GROUP BY t.id, f.bezeichnung
       ORDER BY t.startzeit
-    `, [fp.id, datum]);
+    `, [req.user.id, datum]);
 
     res.json({ touren: rows });
   } catch (err) { console.error(err); res.json({ touren: [] }); }
@@ -147,11 +147,11 @@ router.get('/meine/alle', auth, role('fahrer'), async (req, res) => {
       FROM touren t
       LEFT JOIN fahrzeuge f ON f.id = t.fahrzeug_id
       LEFT JOIN tour_stopps ts ON ts.tour_id = t.id
-      WHERE t.fahrer_id=$1
+      WHERE t.fahrer_id = $1
       GROUP BY t.id, f.bezeichnung
       ORDER BY t.datum DESC, t.startzeit DESC
       LIMIT $2
-    `, [fp.id, limit]);
+    `, [req.user.id, limit]); // FIX: req.user.id
 
     res.json({ touren: rows });
   } catch (err) { console.error(err); res.json({ touren: [] }); }

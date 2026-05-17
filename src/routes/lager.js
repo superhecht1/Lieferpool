@@ -225,37 +225,47 @@ router.put('/:id/mindestbestand', auth, role('admin'), async (req, res) => {
 // ----------------------------------------------------------------
 // POST /api/lager/korrektur – Bestandskorrektur (z.B. nach Inventur)
 // ----------------------------------------------------------------
+// BUG FIX #4: admin.html sendet 'menge' (Differenz), nicht 'bestand_soll' (Absolut)
+// Korrektur bucht jetzt eine Differenz-Menge (+ oder -)
 router.post('/korrektur', auth, role('admin'), async (req, res) => {
-  const { produkt, region = 'NRW', bestand_soll, notiz } = req.body;
-  if (!produkt || bestand_soll == null) {
-    return res.status(400).json({ error: 'produkt und bestand_soll erforderlich' });
+  const { produkt, region = 'NRW', menge, notiz } = req.body;
+  if (!produkt || menge == null || isNaN(parseFloat(menge))) {
+    return res.status(400).json({ error: 'produkt und menge (Differenz) erforderlich' });
   }
 
   const client = await db.pool.connect();
   try {
     await client.query('BEGIN');
 
-    const { rows: [lager] } = await client.query(`
-      SELECT * FROM lager_positionen WHERE produkt = $1 AND region = $2 FOR UPDATE
+    // Lager-Position holen oder anlegen
+    const { rows: [lp] } = await client.query(`
+      INSERT INTO lager_positionen (produkt, region)
+      VALUES ($1, $2)
+      ON CONFLICT (produkt, region) DO UPDATE SET updated_at = NOW()
+      RETURNING *
     `, [produkt, region]);
 
-    if (!lager) return res.status(404).json({ error: 'Produkt nicht gefunden' });
-
-    const differenz = parseFloat(bestand_soll) - parseFloat(lager.bestand);
+    const neuerBestand = parseFloat(lp.bestand) + parseFloat(menge);
 
     await client.query(`
       UPDATE lager_positionen SET bestand = $1 WHERE id = $2
-    `, [bestand_soll, lager.id]);
+    `, [neuerBestand, lp.id]);
 
     await client.query(`
       INSERT INTO lager_bewegungen
         (lager_id, typ, menge, bestand_nach, notiz, erstellt_von)
       VALUES ($1, 'korrektur', $2, $3, $4, $5)
-    `, [lager.id, differenz, bestand_soll,
-        notiz || `Inventurkorrektur (${differenz >= 0 ? '+' : ''}${differenz})`, req.user.id]);
+    `, [lp.id, parseFloat(menge), neuerBestand,
+        notiz || `Korrektur (${parseFloat(menge) >= 0 ? '+' : ''}${parseFloat(menge)} kg)`,
+        req.user.id]);
 
     await client.query('COMMIT');
-    res.json({ produkt, alter_bestand: lager.bestand, neuer_bestand: bestand_soll, differenz });
+    res.json({
+      produkt,
+      alter_bestand:  lp.bestand,
+      neuer_bestand:  neuerBestand,
+      differenz:      parseFloat(menge),
+    });
   } catch (err) {
     await client.query('ROLLBACK');
     res.status(500).json({ error: 'Korrektur fehlgeschlagen' });
