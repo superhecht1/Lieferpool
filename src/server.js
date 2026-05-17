@@ -99,6 +99,28 @@ app.use('/api/sepa',         require('./routes/sepa'));
 app.use('/api/print',        require('./routes/print'));
 app.use('/api/tracking',     require('./routes/tracking'));
 app.use('/api/audit',        require('./middleware/audit').router);
+// Service Worker + Manifest für Fahrer-PWA
+app.get('/sw-fahrer.js', (req, res) => {
+  res.setHeader('Content-Type', 'application/javascript');
+  res.setHeader('Service-Worker-Allowed', '/');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.sendFile(require('path').join(__dirname, '../public/sw-fahrer.js'));
+});
+app.get('/manifest-fahrer.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/manifest+json');
+  res.sendFile(require('path').join(__dirname, '../public/manifest-fahrer.json'));
+});
+
+// Fahrer.html mit VAPID-Key befüllen
+app.get('/fahrer', (req, res) => {
+  const fs   = require('fs');
+  const path = require('path');
+  let html   = fs.readFileSync(path.join(__dirname, '../public/fahrer.html'), 'utf8');
+  html = html.replace("'[[VAPID_PUBLIC_KEY]]'", JSON.stringify(process.env.VAPID_PUBLIC_KEY||''));
+  res.setHeader('Content-Type', 'text/html');
+  res.send(html);
+});
+
 app.use('/api/contact',      require('./routes/contact'));
 app.use('/api/admin/2fa',    require('./routes/admin-2fa'));
 app.use('/api/dsgvo',        require('./routes/dsgvo'));
