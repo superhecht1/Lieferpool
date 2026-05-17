@@ -1000,7 +1000,7 @@ async function poolAusVorlageCat(id) {
     toast(r.message);
     loadCatererVorlagen();
     // Tab zu Pools wechseln
-    setTimeout(() => switchView('pools-erstellen'), 500);
+    setTimeout(() => showView('pool-neu'), 500);
   } catch(err) { showAlert('alerts','error',err.message); }
 }
 
