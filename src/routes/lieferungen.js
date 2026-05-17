@@ -87,6 +87,19 @@ router.post('/', auth, role('admin', 'caterer'), async (req, res) => {
     );
     if (!pool) return res.status(404).json({ error: 'Pool nicht gefunden' });
 
+    // Duplikat-Check: existiert bereits ein Lieferschein für diesen Pool?
+    const { rows: [existing] } = await db.query(
+      `SELECT id, lieferschein_nr, status FROM lieferungen WHERE pool_id=$1 AND status != 'storniert' LIMIT 1`,
+      [pool_id]
+    );
+    if (existing) {
+      return res.status(409).json({
+        error: `Für diesen Pool existiert bereits Lieferschein ${existing.lieferschein_nr} (${existing.status}). Bitte erst stornieren.`,
+        existing_id: existing.id,
+        existing_nr: existing.lieferschein_nr,
+      });
+    }
+
     const nr  = 'LP-' + Date.now().toString(36).toUpperCase().slice(-8);
     const qr  = 'QR-' + Math.random().toString(36).slice(2,10).toUpperCase();
     const dat = lieferdatum || new Date().toISOString().split('T')[0];
