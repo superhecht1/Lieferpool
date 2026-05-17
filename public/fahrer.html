@@ -2,541 +2,858 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230d1f15'/><text y='24' x='4' font-size='22' font-family='monospace' font-weight='bold' fill='%237ab648'>L</text></svg>">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-  <title>LieferPool – Fahrer</title>
-  <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="theme-color" content="#0d1f15">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>FrischKette · Fahrer-App</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230d1f15'/><text y='24' x='4' font-size='22' font-family='monospace' font-weight='bold' fill='%234a9e5c'>F</text></svg>">
   <style>
-    /* Fahrer-spezifische Mobile-Styles */
-    .fahrer-app { display:flex; flex-direction:column; min-height:100vh; }
-    .fahrer-header {
-      background:#0d1f15; color:#fff; padding:1rem 1.25rem;
-      display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100;
+    :root {
+      --green:   #2e7d3e;
+      --green-l: #4a9e5c;
+      --amber:   #c8912a;
+      --forest:  #0d1f15;
+      --bg:      #faf7f0;
+      --bg2:     #ffffff;
+      --border:  #dde0d8;
+      --text:    #171d13;
+      --text2:   #4a5244;
+      --text3:   #8a9a84;
+      --red:     #c62828;
+      --radius:  10px;
     }
-    .fahrer-logo { font-family:'DM Mono',monospace; font-size:14px; font-weight:500; }
-    .fahrer-logo span { color:#7ab648; }
-    .fahrer-user { font-size:12px; color:rgba(255,255,255,.6); }
-    .fahrer-main { flex:1; padding:1rem; max-width:480px; margin:0 auto; width:100%; }
 
+    * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+    html, body { height:100%; background:var(--bg); color:var(--text); font-family:'Figtree',Arial,sans-serif; font-size:16px; }
+
+    /* ── APP SHELL ── */
+    .app { display:flex; flex-direction:column; height:100vh; max-width:480px; margin:0 auto; position:relative; background:var(--bg2); box-shadow:0 0 40px rgba(0,0,0,.08); }
+
+    /* ── HEADER ── */
+    .header {
+      background:var(--forest); color:#fff;
+      padding:1rem 1.25rem .875rem;
+      display:flex; align-items:center; justify-content:space-between;
+      flex-shrink:0;
+    }
+    .header-logo { font-size:15px; font-weight:700; letter-spacing:-.01em; }
+    .header-logo span { color:var(--amber); }
+    .header-right { display:flex; align-items:center; gap:.75rem; }
+    .track-badge {
+      font-size:11px; padding:3px 8px; border-radius:20px;
+      background:rgba(74,158,92,.2); color:#4a9e5c; border:1px solid rgba(74,158,92,.3);
+      display:flex; align-items:center; gap:.35rem;
+    }
+    .track-badge.active { background:rgba(74,158,92,.3); color:#6fcf8c; animation:pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
+    .track-dot { width:7px; height:7px; border-radius:50%; background:currentColor; }
+
+    /* ── MAIN SCROLL AREA ── */
+    .main { flex:1; overflow-y:auto; overflow-x:hidden; padding-bottom:80px; -webkit-overflow-scrolling:touch; }
+
+    /* ── BOTTOM NAV ── */
+    .bottom-nav {
+      position:sticky; bottom:0;
+      background:var(--forest);
+      display:flex; border-top:1px solid rgba(255,255,255,.08);
+      padding-bottom:env(safe-area-inset-bottom);
+      flex-shrink:0;
+    }
+    .nav-tab {
+      flex:1; display:flex; flex-direction:column; align-items:center;
+      gap:.2rem; padding:.6rem .25rem; cursor:pointer;
+      font-size:10px; color:rgba(255,255,255,.4); border:none; background:none;
+      transition:color .2s; min-height:52px; justify-content:center;
+    }
+    .nav-tab.active { color:var(--amber); }
+    .nav-tab .icon { font-size:20px; }
+
+    /* ── SCREENS ── */
+    .screen { padding:1.25rem; display:none; }
+    .screen.active { display:block; }
+
+    /* ── TODAY CARD ── */
+    .today-card {
+      background:linear-gradient(135deg, var(--forest) 0%, #1a3a25 100%);
+      border-radius:var(--radius); padding:1.25rem; margin-bottom:1rem;
+      color:#fff;
+    }
+    .today-label { font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:rgba(255,255,255,.45); margin-bottom:.3rem; }
+    .today-date  { font-size:1.4rem; font-weight:600; margin-bottom:.75rem; }
+    .today-stats { display:flex; gap:1.25rem; }
+    .today-stat  { text-align:center; }
+    .today-stat-val { font-size:1.6rem; font-weight:700; color:#fff; line-height:1; }
+    .today-stat-lbl { font-size:10px; color:rgba(255,255,255,.45); text-transform:uppercase; letter-spacing:.06em; margin-top:.2rem; }
+
+    /* ── TOUR CARD ── */
     .tour-card {
-      background:#fff; border:1px solid var(--border); border-radius:10px;
-      padding:1.25rem; margin-bottom:1rem; box-shadow:var(--shadow);
+      border:1px solid var(--border); border-radius:var(--radius);
+      margin-bottom:.875rem; overflow:hidden; background:var(--bg2);
     }
-    .tour-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:.75rem; }
-    .tour-typ { font-size:13px; font-weight:600; color:var(--text); }
-    .tour-meta { font-size:12px; color:var(--text3); font-family:'DM Mono',monospace; }
-
-    .stopp-card {
-      background:#fff; border:2px solid var(--border); border-radius:10px;
-      padding:1.25rem; margin-bottom:.75rem; transition:border-color .15s;
+    .tour-card-head {
+      padding:1rem 1.1rem .875rem; display:flex;
+      justify-content:space-between; align-items:flex-start;
     }
-    .stopp-card.current  { border-color:var(--green); box-shadow:0 0 0 3px rgba(46,125,62,.1); }
-    .stopp-card.done     { opacity:.55; border-color:#dde0d8; }
-    .stopp-card.skipped  { opacity:.4; border-color:#dde0d8; }
-
-    .stopp-nr {
-      width:28px; height:28px; border-radius:50%; font-family:'DM Mono',monospace;
-      font-size:12px; font-weight:600; display:flex; align-items:center; justify-content:center;
-      background:var(--bg3); color:var(--text2); flex-shrink:0;
+    .tour-type-badge {
+      font-size:11px; font-weight:600; text-transform:uppercase;
+      letter-spacing:.06em; padding:3px 8px; border-radius:4px;
     }
-    .stopp-nr.current { background:var(--green); color:#fff; }
-    .stopp-nr.done    { background:#eaf4ec; color:var(--green); }
-
-    .stopp-row { display:flex; align-items:flex-start; gap:.75rem; }
-    .stopp-body { flex:1; }
-    .stopp-name { font-size:14px; font-weight:600; color:var(--text); margin-bottom:2px; }
-    .stopp-addr { font-size:12px; color:var(--text2); line-height:1.5; }
-    .stopp-ware { font-size:12px; color:var(--text3); font-family:'DM Mono',monospace; margin-top:4px; }
-
-    .stopp-actions { display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.875rem; }
-    .stopp-actions .btn { min-height:44px; padding:10px 18px; font-size:14px; }
-
-    .confirm-form {
-      margin-top:.875rem; padding:.875rem; background:var(--bg); border-radius:6px;
-      border:1px solid var(--border);
+    .badge-abholung    { background:#e8f5e9; color:#2e7d3e; }
+    .badge-auslieferung{ background:#e3f2fd; color:#1565c0; }
+    .badge-gemischt    { background:#fff3e0; color:#e65100; }
+    .tour-name  { font-size:1rem; font-weight:600; margin:.35rem 0 .2rem; }
+    .tour-meta  { font-size:12px; color:var(--text3); display:flex; flex-wrap:wrap; gap:.5rem; }
+    .tour-meta-item { display:flex; align-items:center; gap:.25rem; }
+    .progress-bar-wrap { height:5px; background:var(--border); }
+    .progress-bar-fill { height:100%; background:var(--green-l); transition:width .5s; }
+    .tour-card-footer {
+      padding:.75rem 1.1rem; border-top:1px solid var(--border);
+      display:flex; align-items:center; justify-content:space-between;
     }
+    .stopp-count { font-size:13px; color:var(--text2); }
 
-    .fab {
-      position:fixed; bottom:1.5rem; right:1.5rem;
-      width:56px; height:56px; border-radius:50%;
-      background:var(--green); color:#fff; border:none;
-      font-size:24px; cursor:pointer; box-shadow:0 4px 16px rgba(46,125,62,.4);
+    /* ── BIG BUTTONS ── */
+    .btn-xl {
+      width:100%; padding:1rem; border:none; border-radius:var(--radius);
+      font-size:15px; font-weight:600; cursor:pointer; transition:all .15s;
+      display:flex; align-items:center; justify-content:center; gap:.5rem;
+      min-height:56px;
+    }
+    .btn-start  { background:var(--green); color:#fff; }
+    .btn-start:hover { background:#1b5e20; }
+    .btn-primary{ background:var(--amber); color:#fff; }
+    .btn-primary:hover { background:#b87d1a; }
+    .btn-outline { background:none; border:1.5px solid var(--border); color:var(--text2); }
+    .btn-outline:hover { border-color:var(--text3); }
+    .btn-danger { background:#ffebee; color:var(--red); border:1.5px solid #ffcdd2; }
+
+    /* ── ACTIVE TOUR SCREEN ── */
+    .progress-header {
+      background:var(--forest); color:#fff; padding:1rem 1.25rem;
+      display:flex; align-items:center; gap:.875rem;
+    }
+    .progress-circle {
+      width:52px; height:52px; border-radius:50%;
+      background:rgba(255,255,255,.1); border:3px solid var(--amber);
       display:flex; align-items:center; justify-content:center;
-      transition:all .2s;
+      font-size:15px; font-weight:700; flex-shrink:0;
     }
-    .fab:hover { background:var(--green-dim); transform:scale(1.05); }
+    .progress-info-title { font-size:14px; font-weight:600; margin-bottom:.15rem; }
+    .progress-info-sub   { font-size:12px; color:rgba(255,255,255,.55); }
 
-    .empty-state { text-align:center; padding:3rem 1rem; color:var(--text3); }
-    .empty-icon  { font-size:3rem; margin-bottom:.75rem; }
+    /* ── STOPP CARD ── */
+    .stopp-card {
+      border:1px solid var(--border); border-radius:var(--radius);
+      margin:0 1.25rem 1rem; overflow:hidden; background:var(--bg2);
+    }
+    .stopp-card.current { border-color:var(--amber); box-shadow:0 0 0 3px rgba(200,145,42,.12); }
+    .stopp-card.done    { opacity:.65; }
+    .stopp-head {
+      padding:.875rem 1rem .75rem; display:flex;
+      align-items:flex-start; gap:.875rem; cursor:pointer;
+    }
+    .stopp-num {
+      width:30px; height:30px; border-radius:50%; flex-shrink:0;
+      display:flex; align-items:center; justify-content:center;
+      font-size:13px; font-weight:700;
+      background:var(--border); color:var(--text2);
+    }
+    .stopp-num.current { background:var(--amber); color:#fff; }
+    .stopp-num.done    { background:var(--green); color:#fff; }
+    .stopp-num.skipped { background:var(--text3); color:#fff; }
+    .stopp-name  { font-size:.9rem; font-weight:600; margin-bottom:.2rem; }
+    .stopp-addr  { font-size:12px; color:var(--text3); line-height:1.4; }
+    .stopp-tags  { display:flex; flex-wrap:wrap; gap:.35rem; margin-top:.4rem; }
+    .stopp-tag   { font-size:10px; padding:2px 7px; border-radius:3px; background:var(--bg); border:1px solid var(--border); color:var(--text2); }
 
-    .progress-ring {
+    /* ── ACTION BUTTONS ── */
+    .stopp-actions {
+      padding:.75rem 1rem 1rem; border-top:1px solid var(--border);
+      display:grid; gap:.5rem;
+    }
+    .stopp-actions-row { display:flex; gap:.5rem; }
+
+    /* ── FOTO UPLOAD ── */
+    .foto-area {
+      background:var(--bg); border:2px dashed var(--border);
+      border-radius:8px; padding:1rem; text-align:center;
+      cursor:pointer; transition:border-color .2s; margin-bottom:.5rem;
+    }
+    .foto-area:hover { border-color:var(--green-l); }
+    .foto-area.has-foto { border-style:solid; border-color:var(--green); }
+    .foto-preview { width:100%; max-height:200px; object-fit:cover; border-radius:6px; display:none; }
+
+    /* ── STOPP LIST (in tour overview) ── */
+    .stopp-list-item {
       display:flex; align-items:center; gap:.75rem;
-      padding:.75rem 1rem; background:var(--green-bg);
-      border:1px solid #b8dfc0; border-radius:6px; margin-bottom:1rem;
+      padding:.75rem 1.25rem; border-bottom:1px solid var(--border);
     }
-    .ring-val { font-size:20px; font-weight:300; color:var(--green); font-family:'DM Mono',monospace; }
-    .ring-lbl { font-size:11px; color:var(--text2); }
+    .stopp-list-item:last-child { border-bottom:none; }
+    .sli-num { font-size:12px; font-weight:700; width:24px; text-align:center; color:var(--text3); flex-shrink:0; }
+    .sli-info { flex:1; min-width:0; }
+    .sli-name { font-size:13px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .sli-addr { font-size:11px; color:var(--text3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .sli-status { font-size:11px; }
+
+    /* ── MAPS BUTTON ── */
+    .maps-btn {
+      background:#e8f5e9; color:var(--green); border:1px solid #c8e6c9;
+      border-radius:8px; padding:.6rem 1rem; font-size:13px; font-weight:600;
+      cursor:pointer; display:flex; align-items:center; gap:.4rem; text-decoration:none;
+      justify-content:center;
+    }
+    .maps-btn:hover { background:#c8e6c9; }
+
+    /* ── STATUS BADGE ── */
+    .sbadge { display:inline-flex; align-items:center; gap:.3rem; font-size:11px; font-weight:600; padding:3px 8px; border-radius:4px; }
+    .sbadge-offen   { background:#f3f4f6; color:#6b7280; }
+    .sbadge-aktiv   { background:#d1fae5; color:#065f46; }
+    .sbadge-pause   { background:#fef3c7; color:#92400e; }
+    .sbadge-done    { background:#d1fae5; color:#065f46; }
+    .sbadge-skip    { background:#fee2e2; color:#991b1b; }
+
+    /* ── HISTORY ── */
+    .hist-card {
+      border:1px solid var(--border); border-radius:var(--radius);
+      padding:1rem 1.1rem; margin-bottom:.75rem; background:var(--bg2);
+    }
+    .hist-head { display:flex; justify-content:space-between; margin-bottom:.5rem; }
+    .hist-name { font-size:.9rem; font-weight:600; }
+    .hist-date { font-size:12px; color:var(--text3); }
+    .hist-stats{ display:flex; gap:1rem; flex-wrap:wrap; }
+    .hist-stat { font-size:12px; color:var(--text2); display:flex; align-items:center; gap:.3rem; }
+
+    /* ── EMPTY / LOADING ── */
+    .empty { text-align:center; padding:3rem 1.5rem; color:var(--text3); }
+    .empty-icon { font-size:2.5rem; margin-bottom:.75rem; opacity:.5; }
+    .empty-title { font-size:1rem; font-weight:600; color:var(--text2); margin-bottom:.35rem; }
+    .empty-sub   { font-size:13px; line-height:1.6; }
+    .spinner2 { width:32px; height:32px; border:3px solid var(--border); border-top-color:var(--green); border-radius:50%; animation:spin .8s linear infinite; margin:2rem auto; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* ── TOAST ── */
+    #toast {
+      position:fixed; bottom:80px; left:50%; transform:translateX(-50%) translateY(20px);
+      background:var(--forest); color:#fff; padding:.625rem 1.25rem; border-radius:20px;
+      font-size:13px; opacity:0; transition:all .3s; z-index:999; white-space:nowrap;
+      pointer-events:none;
+    }
+    #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+    /* ── ALERT ── */
+    .alert { border-radius:8px; padding:.75rem 1rem; font-size:13px; margin-bottom:.75rem; }
+    .alert-err { background:#ffebee; color:var(--red); border:1px solid #ffcdd2; }
+    .alert-ok  { background:#e8f5e9; color:var(--green); border:1px solid #c8e6c9; }
+
+    /* ── SECTION HEADER ── */
+    .sec-hdr { font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--text3); padding:.875rem 1.25rem .4rem; font-weight:600; }
+
+    /* ── FORM ── */
+    .fld-label { font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--text3); margin-bottom:.3rem; display:block; }
+    .fld-input { width:100%; border:1.5px solid var(--border); border-radius:8px; padding:.65rem .875rem; font-size:14px; outline:none; background:var(--bg2); transition:border-color .2s; }
+    .fld-input:focus { border-color:var(--amber); }
   </style>
 </head>
 <body>
-<div class="fahrer-app">
-  <header class="fahrer-header">
-    <div class="fahrer-logo">Liefer<span>Pool</span> <span style="font-size:11px;opacity:.6">Fahrer</span></div>
-    <div style="display:flex;align-items:center;gap:.75rem">
-      <span class="fahrer-user" id="fahrer-name"></span>
-      <button style="background:none;border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.7);padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px" id="btn-logout">Abmelden</button>
+<div class="app">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-logo">Frisch<span>Kette</span> · Fahrer</div>
+    <div class="header-right">
+      <div class="track-badge" id="track-badge">
+        <div class="track-dot"></div>
+        <span id="track-label">GPS aus</span>
+      </div>
+      <button onclick="Auth.logout()" style="background:none;border:none;color:rgba(255,255,255,.45);font-size:12px;cursor:pointer;padding:4px 6px;">Abmelden</button>
     </div>
   </header>
 
-  <div class="fahrer-main">
-    <div id="app-push-banner"></div>
-    <div id="alerts"></div>
+  <!-- MAIN -->
+  <main class="main" id="main-content">
 
-    <!-- TOUR AUSWÄHLEN -->
-    <div id="view-tours">
-      <div style="margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center">
-        <span></span>
-        <button class="btn btn-sm" id="btn-show-hist" style="font-size:12px">📋 Meine Touren</button>
+    <!-- SCREEN: HEUTE (Startseite) -->
+    <div class="screen active" id="screen-heute">
+      <div style="padding:1.25rem">
+        <div id="today-card-wrap"></div>
+        <div id="alert-wrap"></div>
+        <div class="sec-hdr">Meine Touren heute</div>
       </div>
-      <div style="margin-bottom:1rem">
-        <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:.5rem">Meine Tour heute</div>
-        <div id="tour-datum" style="font-size:22px;font-weight:300;color:var(--text)"></div>
-      </div>
-      <div id="tours-list"><div class="spinner"></div></div>
+      <div id="touren-list-wrap"><div class="spinner2"></div></div>
     </div>
 
-    <!-- AKTIVE TOUR -->
-    <div id="view-active-tour" style="display:none">
-      <div id="tour-progress-bar"></div>
-      <div id="tour-info-card" class="tour-card"></div>
-      <div id="stopps-container"></div>
-    </div>
-
-    <!-- TOUR ABGESCHLOSSEN -->
-    <div id="view-done" style="display:none">
-      <div class="success-box" style="margin-top:1rem">
-        <div class="success-icon">🎉</div>
-        <div class="success-title">Tour abgeschlossen!</div>
-        <div class="success-sub">Alle Stopps erledigt</div>
-        <button class="btn btn-sm" style="margin-top:1rem" id="btn-back-tours">Zurück zur Übersicht</button>
+    <!-- SCREEN: AKTIVE TOUR -->
+    <div class="screen" id="screen-tour">
+      <div id="tour-progress-header"></div>
+      <div id="tour-notiz-wrap"></div>
+      <div id="tour-stopps-wrap"></div>
+      <div style="padding:0 1.25rem 1rem">
+        <button class="btn-xl btn-danger" id="btn-tour-beenden" onclick="tourBeenden()">⏹ Tour beenden</button>
       </div>
     </div>
 
-    <!-- TOURHISTORIE -->
-    <div id="view-historie" style="display:none;padding:1rem">
-      <div style="margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center">
-        <strong style="font-size:1rem">Meine Touren</strong>
-        <button class="btn btn-sm" id="btn-back-from-hist">← Zurück</button>
+    <!-- SCREEN: TOURHISTORIE -->
+    <div class="screen" id="screen-hist">
+      <div style="padding:1.25rem">
+        <div style="font-weight:600;font-size:1rem;margin-bottom:1rem">Meine Touren</div>
+        <div id="hist-wrap"><div class="spinner2"></div></div>
       </div>
-      <div id="tour-hist-list"><div class="spinner"></div></div>
     </div>
 
-  </div>
+    <!-- SCREEN: PROFIL -->
+    <div class="screen" id="screen-profil">
+      <div style="padding:1.25rem">
+        <div style="text-align:center;padding:1.5rem 0 1.25rem">
+          <div style="width:64px;height:64px;border-radius:50%;background:var(--forest);color:#fff;font-size:1.5rem;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto .75rem" id="profil-avatar">?</div>
+          <div style="font-size:1.1rem;font-weight:600" id="profil-name">—</div>
+          <div style="font-size:12px;color:var(--text3)" id="profil-email">—</div>
+        </div>
+
+        <div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:1rem">
+          <div style="padding:.875rem 1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:13px;font-weight:500">GPS-Tracking</span>
+            <span id="profil-gps-status" style="font-size:12px;color:var(--text3)">—</span>
+          </div>
+          <div style="padding:.875rem 1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:13px;font-weight:500">Touren heute</span>
+            <span id="profil-touren-heute" style="font-size:12px;color:var(--text3)">—</span>
+          </div>
+          <div style="padding:.875rem 1rem;display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:13px;font-weight:500">App-Version</span>
+            <span style="font-size:12px;color:var(--text3)">1.0.0</span>
+          </div>
+        </div>
+
+        <div style="margin-bottom:.75rem">
+          <label class="fld-label">Neues Passwort</label>
+          <input class="fld-input" type="password" id="pw-neu" placeholder="Neues Passwort" style="margin-bottom:.5rem">
+          <input class="fld-input" type="password" id="pw-wdh" placeholder="Wiederholen">
+        </div>
+        <button class="btn-xl btn-outline" style="margin-bottom:.75rem" onclick="passwortAendern()">🔑 Passwort ändern</button>
+        <div id="pw-result"></div>
+        <button class="btn-xl btn-danger" style="margin-top:.5rem" onclick="Auth.logout()">Abmelden</button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <button class="nav-tab active" id="tab-heute" onclick="showScreen('heute')">
+      <span class="icon">🏠</span>Heute
+    </button>
+    <button class="nav-tab" id="tab-tour" onclick="showScreen('tour')" style="display:none" id="tab-tour">
+      <span class="icon">🚲</span>Aktive Tour
+    </button>
+    <button class="nav-tab" id="tab-hist" onclick="showScreen('hist')">
+      <span class="icon">📋</span>Verlauf
+    </button>
+    <button class="nav-tab" id="tab-profil" onclick="showScreen('profil')">
+      <span class="icon">👤</span>Profil
+    </button>
+  </nav>
+
 </div>
 
-<script src="api.js"></script>
-<script src="app.js"></script>
+<!-- TOAST -->
+<div id="toast"></div>
+
 <script>
-const user = requireAuth('fahrer');
-if (!user) throw 'not auth';
+/* ── AUTH ──────────────────────────────────────────────── */
+const Auth = {
+  getToken:    () => localStorage.getItem('fk_token') || '',
+  getUser:     () => { try { return JSON.parse(atob(Auth.getToken().split('.')[1]||'')); } catch { return null; } },
+  logout() { localStorage.removeItem('fk_token'); localStorage.removeItem('fk_refresh'); window.location.href = '/login'; },
+};
 
-document.getElementById('fahrer-name').textContent = user.name;
-document.getElementById('btn-logout').addEventListener('click', () => {
-  Auth.clear(); window.location.href = '/login';
+if (!Auth.getToken()) Auth.logout();
+const me = Auth.getUser();
+if (!me || me.role !== 'fahrer') Auth.logout();
+
+/* ── API ───────────────────────────────────────────────── */
+async function api(path, opts = {}) {
+  const res = await fetch('/api' + path, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + Auth.getToken(),
+      ...(opts.headers || {}),
+    },
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Fehler');
+  return data;
+}
+
+/* ── TOAST ─────────────────────────────────────────────── */
+function toast(msg, ok = true) {
+  const el = document.getElementById('toast');
+  el.textContent = (ok ? '✓ ' : '⚠ ') + msg;
+  el.className = 'show';
+  setTimeout(() => el.className = '', 2500);
+}
+
+/* ── NAV ───────────────────────────────────────────────── */
+let currentScreen = 'heute';
+
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  const tab = document.getElementById('tab-' + name);
+  if (tab) tab.classList.add('active');
+  currentScreen = name;
+
+  if (name === 'hist')   loadHistorie();
+  if (name === 'profil') loadProfil();
+}
+
+/* ── STATUS BADGE ──────────────────────────────────────── */
+function badge(status) {
+  const map = {
+    offen:          ['sbadge-offen',  '○ Offen'],
+    aktiv:          ['sbadge-aktiv',  '● Aktiv'],
+    ausstehend:     ['sbadge-offen',  '○ Ausstehend'],
+    abgeschlossen:  ['sbadge-done',   '✓ Erledigt'],
+    uebersprungen:  ['sbadge-skip',   '⤷ Übersprungen'],
+    unterwegs:      ['sbadge-aktiv',  '▶ Unterwegs'],
+    abgebrochen:    ['sbadge-skip',   '✕ Abgebrochen'],
+  };
+  const [cls, lbl] = map[status] || ['sbadge-offen', status];
+  return `<span class="sbadge ${cls}">${lbl}</span>`;
+}
+
+/* ── GPS TRACKING ──────────────────────────────────────── */
+let trackingInterval = null;
+let aktiveTourId     = null;
+
+function startTracking(tourId) {
+  aktiveTourId = tourId;
+  if (!navigator.geolocation) return;
+  sendPos();
+  trackingInterval = setInterval(sendPos, 30000);
+  updateTrackBadge(true);
+}
+function stopTracking() {
+  if (trackingInterval) clearInterval(trackingInterval);
+  trackingInterval = null;
+  aktiveTourId     = null;
+  updateTrackBadge(false);
+}
+async function sendPos() {
+  if (!aktiveTourId) return;
+  navigator.geolocation.getCurrentPosition(async pos => {
+    try {
+      await api('/tracking/position', { method:'POST', body:{
+        tour_id: aktiveTourId,
+        lat:     pos.coords.latitude,
+        lon:     pos.coords.longitude,
+        speed:   pos.coords.speed,
+      }});
+    } catch {}
+  }, ()=>{}, { enableHighAccuracy:true, timeout:10000 });
+}
+function updateTrackBadge(on) {
+  const b = document.getElementById('track-badge');
+  const l = document.getElementById('track-label');
+  if (!b || !l) return;
+  b.className = 'track-badge' + (on ? ' active' : '');
+  l.textContent = on ? 'GPS aktiv' : 'GPS aus';
+}
+
+// Send position on visibility change (Beacon API)
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden' && aktiveTourId) sendPos();
 });
 
-let aktiveTour  = null;
-let alleStopps  = [];
+/* ── TODAY CARD ────────────────────────────────────────── */
+function renderTodayCard(touren) {
+  const done  = touren.filter(t => t.status === 'abgeschlossen').length;
+  const total = touren.length;
+  const stoppsTotal = touren.reduce((a,t) => a + (parseInt(t.stopps_total)||0), 0);
+  const stoppsDone  = touren.reduce((a,t) => a + (parseInt(t.stopps_erledigt)||0), 0);
+  const now   = new Date();
+  const datum = now.toLocaleDateString('de-DE', { weekday:'long', day:'numeric', month:'long' });
 
-// Datum anzeigen
-const heute = new Date();
-document.getElementById('tour-datum').textContent =
-  heute.toLocaleDateString('de-DE', { weekday:'long', day:'numeric', month:'long' });
+  document.getElementById('today-card-wrap').innerHTML = `
+    <div class="today-card">
+      <div class="today-label">Heute</div>
+      <div class="today-date">${datum}</div>
+      <div class="today-stats">
+        <div class="today-stat">
+          <div class="today-stat-val">${total}</div>
+          <div class="today-stat-lbl">Touren</div>
+        </div>
+        <div class="today-stat">
+          <div class="today-stat-val">${stoppsTotal}</div>
+          <div class="today-stat-lbl">Stopps</div>
+        </div>
+        <div class="today-stat">
+          <div class="today-stat-val">${stoppsDone}</div>
+          <div class="today-stat-lbl">Erledigt</div>
+        </div>
+        <div class="today-stat">
+          <div class="today-stat-val">${done}</div>
+          <div class="today-stat-lbl">Abgeschl.</div>
+        </div>
+      </div>
+    </div>`;
+}
 
-document.getElementById('btn-back-tours').addEventListener('click', () => {
-  document.getElementById('view-done').style.display         = 'none';
-  document.getElementById('view-tours').style.display        = 'block';
-  document.getElementById('view-active-tour').style.display  = 'none';
-  loadTouren();
-});
+/* ── TOUREN LISTE ──────────────────────────────────────── */
+let allTouren = [];
 
-// ── TOUREN LADEN ──────────────────────────────────────────────
 async function loadTouren() {
   try {
-    // Nur Touren für diesen Fahrer heute
-    const heute = new Date().toISOString().split('T')[0];
-    const res = await fetch(`/api/touren?datum=${heute}`, {
-      headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
-    });
-    const data = await res.json();
-    const touren = data.touren || [];
+    const { touren } = await api('/touren/meine?datum=' + new Date().toISOString().slice(0,10));
+    allTouren = touren || [];
+    renderTodayCard(allTouren);
 
-    const myTours = touren.filter(t => t.fahrer_id || true); // alle sehen für jetzt
-
-    const container = document.getElementById('tours-list');
-    if (!myTours.length) {
-      container.innerHTML = `
-        <div class="empty-state">
-          <div class="empty-icon">📋</div>
-          <div style="font-size:14px;font-weight:500">Keine Touren heute</div>
-          <div style="font-size:13px;margin-top:.25rem">Schau später nochmal vorbei</div>
+    if (!allTouren.length) {
+      document.getElementById('touren-list-wrap').innerHTML = `
+        <div class="empty">
+          <div class="empty-icon">🚲</div>
+          <div class="empty-title">Keine Touren heute</div>
+          <div class="empty-sub">Der Admin hat noch keine Tour für dich angelegt.</div>
         </div>`;
       return;
     }
 
-    container.innerHTML = myTours.map(t => `
-      <div class="tour-card" style="cursor:pointer" data-tour-id="${t.id}">
-        <div class="tour-header">
-          <div>
-            <div class="tour-typ">${t.typ === 'abholung' ? '🌾 Abholung' : t.typ === 'auslieferung' ? '🚚 Auslieferung' : '🔄 Gemischt'}</div>
-            <div class="tour-meta">${t.startzeit ? t.startzeit.slice(0,5) + ' Uhr' : 'Flexibel'} · ${t.stopp_anzahl || 0} Stopps</div>
-          </div>
-          ${statusBadge(t.status)}
-        </div>
-        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
-          ${t.fahrzeug_bezeichnung ? `<span class="badge badge-gray">🚗 ${t.fahrzeug_bezeichnung}</span>` : ''}
-          <span class="badge badge-gray">${t.stopps_done || 0}/${t.stopp_anzahl || 0} erledigt</span>
-        </div>
-        <button class="btn btn-primary" style="width:100%;margin-top:.875rem" data-action="start-tour" data-id="${t.id}">
-          ${t.status === 'gestartet' ? '▶ Weiter' : '▶ Tour starten'}
-        </button>
-      </div>
-    `).join('');
+    document.getElementById('touren-list-wrap').innerHTML =
+      allTouren.map(t => tourCard(t)).join('');
 
-    container.addEventListener('click', e => {
-      const btn = e.target.closest('[data-action="start-tour"]');
-      if (btn) openTour(btn.dataset.id);
-    });
-  } catch (err) {
-    showAlert('alerts', 'error', err.message);
-  }
-}
-
-// ── TOUR ÖFFNEN ───────────────────────────────────────────────
-async function openTour(tourId) {
-  try {
-    const res = await fetch(`/api/touren/${tourId}`, {
-      headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
-    });
-    const data = await res.json();
-    aktiveTour = data.tour || data;
-    alleStopps = data.stopps || [];
-
-    // Tour starten falls noch nicht
-    if (aktiveTour.status === 'geplant') {
-      await fetch(`/api/touren/${tourId}/starten`, {
-        method:  'POST',
-        headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
-      });
-      aktiveTour.status = 'gestartet';
+    // Auto-open active tour
+    const aktiv = allTouren.find(t => t.status === 'aktiv' || t.status === 'unterwegs');
+    if (aktiv) {
+      document.getElementById('tab-tour').style.display = 'flex';
     }
-
-    document.getElementById('view-tours').style.display       = 'none';
-    document.getElementById('view-active-tour').style.display = 'block';
-
-    renderTour();
   } catch (err) {
-    showAlert('alerts', 'error', err.message);
+    document.getElementById('touren-list-wrap').innerHTML =
+      `<div class="empty"><div class="empty-icon">⚠</div><div class="empty-title">${err.message}</div></div>`;
   }
 }
 
-// ── TOUR RENDERN ──────────────────────────────────────────────
-function renderTour() {
-  const done    = alleStopps.filter(s => s.status === 'abgeschlossen' || s.status === 'uebersprungen').length;
-  const gesamt  = alleStopps.length;
-  const current = alleStopps.find(s => s.status === 'ausstehend');
+function tourCard(t) {
+  const done  = parseInt(t.stopps_erledigt) || 0;
+  const total = parseInt(t.stopps_total) || 0;
+  const pct   = total > 0 ? Math.round(done/total*100) : 0;
+  const typCls = t.typ === 'abholung' ? 'badge-abholung' : t.typ === 'auslieferung' ? 'badge-auslieferung' : 'badge-gemischt';
+  const typLbl = t.typ === 'abholung' ? '🌾 Abholung' : t.typ === 'auslieferung' ? '🚚 Auslieferung' : '🔄 Gemischt';
 
-  // Progress
-  document.getElementById('tour-progress-bar').innerHTML = `
-    <div class="progress-ring">
-      <div><div class="ring-val">${done}/${gesamt}</div><div class="ring-lbl">Stopps erledigt</div></div>
+  const isAktiv = t.status === 'aktiv' || t.status === 'unterwegs';
+  const isOffen = t.status === 'offen';
+  const isDone  = t.status === 'abgeschlossen';
+
+  return `
+    <div class="tour-card" id="tcard-${t.id}">
+      <div class="tour-card-head">
+        <div>
+          <span class="tour-type-badge ${typCls}">${typLbl}</span>
+          <div class="tour-name">${t.name || 'Tour ' + t.id.slice(0,6)}</div>
+          <div class="tour-meta">
+            <span class="tour-meta-item">🕐 ${t.startzeit ? t.startzeit.slice(0,5)+' Uhr' : 'Keine Zeit'}</span>
+            <span class="tour-meta-item">📍 ${total} Stopps</span>
+            ${t.fahrzeug_bezeichnung ? `<span class="tour-meta-item">🚲 ${t.fahrzeug_bezeichnung}</span>` : ''}
+          </div>
+        </div>
+        ${badge(t.status)}
+      </div>
+      ${total > 0 ? `
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" style="width:${pct}%"></div>
+      </div>` : ''}
+      <div class="tour-card-footer">
+        <span class="stopp-count">${done} von ${total} Stopps erledigt</span>
+        ${isOffen ? `<button class="btn-xl btn-start" style="width:auto;padding:.6rem 1.25rem;font-size:13px" onclick="tourStarten('${t.id}')">▶ Tour starten</button>` : ''}
+        ${isAktiv ? `<button class="btn-xl btn-primary" style="width:auto;padding:.6rem 1.25rem;font-size:13px" onclick="tourOeffnen('${t.id}')">▶ Weiter</button>` : ''}
+        ${isDone  ? `<span style="font-size:12px;color:var(--green)">✓ Abgeschlossen</span>` : ''}
+      </div>
+    </div>`;
+}
+
+/* ── TOUR STARTEN ──────────────────────────────────────── */
+async function tourStarten(id) {
+  try {
+    await api('/touren/' + id + '/status', { method:'PUT', body:{ status:'aktiv' } });
+    toast('Tour gestartet');
+    await tourOeffnen(id);
+  } catch (err) { toast(err.message, false); }
+}
+
+/* ── TOUR ÖFFNEN ───────────────────────────────────────── */
+let aktiveTour  = null;
+let alleStopps  = [];
+let currentStopp = null;
+
+async function tourOeffnen(id) {
+  try {
+    const { tour, stopps } = await api('/touren/' + id + '?stopps=true');
+    aktiveTour  = tour;
+    alleStopps  = stopps || [];
+    currentStopp = alleStopps.find(s => s.status === 'ausstehend') || null;
+
+    document.getElementById('tab-tour').style.display = 'flex';
+    renderAktiveTour();
+    showScreen('tour');
+    startTracking(id);
+  } catch (err) { toast(err.message, false); }
+}
+
+/* ── AKTIVE TOUR RENDERN ───────────────────────────────── */
+function renderAktiveTour() {
+  const done  = alleStopps.filter(s => ['abgeschlossen','uebersprungen'].includes(s.status)).length;
+  const total = alleStopps.length;
+  const pct   = total > 0 ? Math.round(done/total*100) : 0;
+
+  // Progress Header
+  document.getElementById('tour-progress-header').innerHTML = `
+    <div class="progress-header">
+      <div class="progress-circle">${done}/${total}</div>
       <div style="flex:1">
-        <div class="progress-wrap" style="height:8px">
-          <div class="progress-bar" style="width:${gesamt > 0 ? Math.round(done/gesamt*100) : 0}%"></div>
+        <div class="progress-info-title">${aktiveTour.name || 'Aktive Tour'}</div>
+        <div class="progress-info-sub">${pct}% abgeschlossen · ${aktiveTour.startzeit?.slice(0,5)||''} Uhr</div>
+        <div style="height:4px;background:rgba(255,255,255,.15);border-radius:2px;margin-top:.5rem">
+          <div style="height:4px;background:var(--amber);border-radius:2px;width:${pct}%;transition:width .5s"></div>
         </div>
       </div>
-      <div style="font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:var(--green)">
-        ${gesamt > 0 ? Math.round(done/gesamt*100) : 0}%
-      </div>
-    </div>
-  `;
+    </div>`;
 
-  // Tour-Info
-  document.getElementById('tour-info-card').innerHTML = `
-    <div class="tour-header">
-      <div>
-        <div class="tour-typ">${aktiveTour.typ === 'abholung' ? '🌾' : aktiveTour.typ === 'auslieferung' ? '🚚' : '🔄'} ${aktiveTour.typ}</div>
-        <div class="tour-meta">${aktiveTour.fahrzeug_bezeichnung || 'Kein Fahrzeug'} · ${aktiveTour.startzeit?.slice(0,5) || '—'} Uhr</div>
-      </div>
-      ${statusBadge(aktiveTour.status)}
-    </div>
-    ${aktiveTour.notiz ? `<div style="font-size:13px;color:var(--text2);padding:.5rem .75rem;background:var(--bg);border-radius:4px">${aktiveTour.notiz}</div>` : ''}
-  `;
+  // Notiz
+  document.getElementById('tour-notiz-wrap').innerHTML = aktiveTour.notiz
+    ? `<div style="margin:1rem 1.25rem 0;padding:.75rem 1rem;background:#fff8e1;border-radius:8px;border:1px solid #ffe082;font-size:13px;color:#5d4037">📝 ${aktiveTour.notiz}</div>`
+    : '';
 
   // Stopps
-  const container = document.getElementById('stopps-container');
-  if (!alleStopps.length) {
-    container.innerHTML = '<div class="empty-state"><div class="empty-icon">📍</div><div>Keine Stopps</div></div>';
-    return;
-  }
+  document.getElementById('tour-stopps-wrap').innerHTML =
+    '<div class="sec-hdr">Stopps</div>' +
+    alleStopps.map((s, i) => stoppCard(s, i)).join('');
+}
 
-  container.innerHTML = alleStopps.map((s, idx) => {
-    const isCurrent = s === current;
-    const isDone    = s.status === 'abgeschlossen';
-    const isSkipped = s.status === 'uebersprungen';
-    const cls = isCurrent ? 'current' : isDone ? 'done' : isSkipped ? 'skipped' : '';
+/* ── STOPP CARD ────────────────────────────────────────── */
+function stoppCard(s, i) {
+  const isCurrent = s.status === 'ausstehend' && s.id === currentStopp?.id;
+  const isDone    = s.status === 'abgeschlossen';
+  const isSkip    = s.status === 'uebersprungen';
 
-    const mapsUrl = s.adresse
-      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.adresse)}`
-      : null;
+  const numCls = isDone ? 'done' : isSkip ? 'skipped' : isCurrent ? 'current' : '';
+  const numTxt = isDone ? '✓' : isSkip ? '⤷' : (i+1);
 
-    return `
-      <div class="stopp-card ${cls}" id="stopp-${s.id}">
-        <div class="stopp-row">
-          <div class="stopp-nr ${cls}">${isDone ? '✓' : isSkipped ? '–' : s.reihenfolge}</div>
-          <div class="stopp-body">
-            <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
-              <span class="stopp-name">${s.name}</span>
-              <span class="badge ${s.typ === 'abholung' ? 'badge-amber' : 'badge-green'}">${s.typ}</span>
-            </div>
-            ${s.adresse ? `<div class="stopp-addr">${s.adresse}</div>` : ''}
-            ${s.produkt ? `<div class="stopp-ware">${s.produkt}${s.menge_geplant_kg ? ' · ' + s.menge_geplant_kg + ' kg geplant' : ''}</div>` : ''}
-            ${isDone && s.menge_geladen_kg ? `<div style="color:var(--green);font-size:12px;font-family:'DM Mono',monospace;margin-top:2px">✓ ${s.menge_geladen_kg} kg ${s.typ === 'abholung' ? 'abgeholt' : 'geliefert'}</div>` : ''}
-            ${isSkipped && s.notiz_abschluss ? `<div style="color:var(--text3);font-size:12px;margin-top:2px">Übersprungen: ${s.notiz_abschluss}</div>` : ''}
+  const mapsUrl = s.adresse
+    ? `https://maps.google.com/?q=${encodeURIComponent(s.adresse + ', ' + (s.ort||''))}`
+    : null;
 
-            ${isCurrent ? `
-              <div class="stopp-actions">
-                ${mapsUrl ? `<a href="${mapsUrl}" target="_blank" rel="noopener" class="btn btn-sm">🗺 Maps</a>` : ''}
-                <button class="btn btn-sm btn-primary" data-action="arrive" data-tour="${aktiveTour.id}" data-stopp="${s.id}">
-                  📍 Angekommen
-                </button>
-              </div>
-            ` : ''}
-
-            ${isCurrent && s.status_lokal === 'angekommen' ? renderConfirmForm(s) : ''}
+  return `
+    <div class="stopp-card ${isCurrent?'current':''} ${isDone?'done':''}" id="stopp-${s.id}">
+      <div class="stopp-head">
+        <div class="stopp-num ${numCls}">${numTxt}</div>
+        <div style="flex:1;min-width:0">
+          <div class="stopp-name">${s.name || s.erzeuger_name || s.caterer_name || 'Stopp ' + (i+1)}</div>
+          <div class="stopp-addr">${[s.adresse, s.ort].filter(Boolean).join(', ') || '— Keine Adresse'}</div>
+          <div class="stopp-tags">
+            ${s.typ ? `<span class="stopp-tag">${s.typ === 'abholung' ? '🌾 Abholung' : '🚚 Lieferung'}</span>` : ''}
+            ${s.menge ? `<span class="stopp-tag">${s.menge} kg</span>` : ''}
+            ${s.produkt ? `<span class="stopp-tag">${s.produkt}</span>` : ''}
+            ${s.lieferschein_nr ? `<span class="stopp-tag">📋 ${s.lieferschein_nr}</span>` : ''}
           </div>
         </div>
-      </div>`;
-  }).join('');
-
-  // Alle fertig?
-  if (done === gesamt && gesamt > 0) {
-    setTimeout(() => {
-      document.getElementById('view-active-tour').style.display = 'none';
-      document.getElementById('view-done').style.display        = 'block';
-    }, 800);
-    return;
-  }
-
-  // Event-Delegation
-  container.addEventListener('click', async e => {
-    const btn = e.target.closest('[data-action]');
-    if (!btn) return;
-    const { action, tour, stopp } = btn.dataset;
-
-    if (action === 'arrive') {
-      await doAnkommen(tour, stopp);
-    } else if (action === 'confirm') {
-      await doAbschliessen(tour, stopp);
-    } else if (action === 'skip') {
-      const notiz = prompt('Grund fürs Überspringen (optional):') || '';
-      await doUeberspringen(tour, stopp, notiz);
-    }
-  });
-}
-
-function renderConfirmForm(s) {
-  return `
-    <div class="confirm-form">
-      <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:.75rem">
-        Stopp abschließen
+        ${badge(s.status)}
       </div>
-      <div style="display:flex;gap:.5rem;margin-bottom:.75rem">
-        <div style="flex:1">
-          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px">${s.typ === 'abholung' ? 'Abgeholt' : 'Geliefert'} (kg)</label>
-          <input class="form-control" type="number" id="menge-${s.id}" min="0" step="0.1"
-            placeholder="${s.menge_geplant_kg || '0'}" style="padding:6px 10px">
+
+      ${isCurrent ? `
+      <div class="stopp-actions">
+
+        ${mapsUrl ? `<a href="${mapsUrl}" target="_blank" class="maps-btn">🗺 Navigation starten</a>` : ''}
+
+        ${s.notiz ? `<div style="background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:.6rem .875rem;font-size:12px;color:#5d4037">📝 ${s.notiz}</div>` : ''}
+
+        <div>
+          <label class="fld-label">Menge geliefert / abgeholt (kg)</label>
+          <input class="fld-input" type="number" id="menge-${s.id}" placeholder="0" value="${s.menge||''}" inputmode="decimal" min="0" step="0.1">
         </div>
-      </div>
-      <div style="margin-bottom:.75rem">
-        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px">Notiz (optional)</label>
-        <input class="form-control" id="notiz-${s.id}" placeholder="Bemerkung" style="padding:6px 10px">
-      </div>
-      <div style="margin-bottom:.75rem">
-        <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px">Foto (optional)</label>
-        <input type="file" id="foto-${s.id}" accept="image/*" capture="environment"
-          style="font-size:12px;width:100%" onchange="previewFoto('${s.id}',this)">
-        <div id="foto-preview-${s.id}" style="margin-top:.5rem"></div>
-      </div>
-      <div style="display:flex;gap:.5rem">
-        <button class="btn btn-primary" style="flex:1;min-height:48px;font-size:15px" data-action="confirm" data-tour="${aktiveTour.id}" data-stopp="${s.id}">
-          ✓ Bestätigen
-        </button>
-        <button class="btn" style="min-height:48px" data-action="skip" data-tour="${aktiveTour.id}" data-stopp="${s.id}">
-          Überspringen
-        </button>
-      </div>
-    </div>
-  `;
+
+        <div>
+          <label class="fld-label">Foto als Nachweis</label>
+          <div class="foto-area" id="foto-area-${s.id}" onclick="document.getElementById('foto-inp-${s.id}').click()">
+            <input type="file" accept="image/*" capture="environment" id="foto-inp-${s.id}" style="display:none" onchange="fotoPreview(this, '${s.id}')">
+            <img id="foto-prev-${s.id}" class="foto-preview">
+            <div id="foto-hint-${s.id}" style="color:var(--text3);font-size:13px">
+              📷 Foto aufnehmen oder hochladen
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label class="fld-label">Notiz (optional)</label>
+          <input class="fld-input" type="text" id="notiz-${s.id}" placeholder="z.B. Schaden, Fehlmenge, Sonstiges">
+        </div>
+
+        <div class="stopp-actions-row">
+          <button class="btn-xl btn-start" style="flex:2" onclick="stoppBestaetigen('${s.id}')">✓ Stopp bestätigen</button>
+          <button class="btn-xl btn-danger" style="flex:1;font-size:13px" onclick="stoppUeberspringen('${s.id}')">⤷ Überspringen</button>
+        </div>
+      </div>` : ''}
+
+      ${isDone && s.foto_base64 ? `
+      <div style="padding:0 1rem .875rem">
+        <img src="${s.foto_base64}" style="width:100%;max-height:150px;object-fit:cover;border-radius:6px;border:1px solid var(--border)">
+      </div>` : ''}
+    </div>`;
 }
 
-// ── AKTIONEN ──────────────────────────────────────────────────
-function previewFoto(stoppId, input) {
-  const preview = document.getElementById('foto-preview-' + stoppId);
-  if (!preview || !input.files[0]) return;
+/* ── FOTO PREVIEW ──────────────────────────────────────── */
+function fotoPreview(input, stoppId) {
+  const file = input.files[0];
+  if (!file) return;
   const reader = new FileReader();
   reader.onload = e => {
-    // Bild komprimieren
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const MAX = 800;
-      let w = img.width, h = img.height;
-      if (w > MAX) { h = Math.round(h*MAX/w); w = MAX; }
-      if (h > MAX) { w = Math.round(w*MAX/h); h = MAX; }
-      canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      const compressed = canvas.toDataURL('image/jpeg', 0.7);
-      preview.innerHTML = `<img src="${compressed}" style="width:100%;max-height:160px;object-fit:cover;border-radius:4px;border:1px solid var(--border)">`;
-      input.dataset.base64 = compressed;
-    };
+    const img  = document.getElementById('foto-prev-' + stoppId);
+    const hint = document.getElementById('foto-hint-' + stoppId);
+    const area = document.getElementById('foto-area-' + stoppId);
     img.src = e.target.result;
+    img.style.display = 'block';
+    hint.style.display = 'none';
+    area.classList.add('has-foto');
   };
-  reader.readAsDataURL(input.files[0]);
-}
-window.previewFoto = previewFoto;
-
-async function doAnkommen(tourId, stoppId) {
-  try {
-    await fetch(`/api/touren/${tourId}/stopps/${stoppId}/ankommen`, {
-      method:  'POST',
-      headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
-    });
-    // Lokalen Status setzen für Formular-Rendering
-    const s = alleStopps.find(x => x.id === stoppId);
-    if (s) s.status_lokal = 'angekommen';
-    renderTour();
-  } catch (err) {
-    showAlert('alerts', 'error', err.message);
-  }
+  reader.readAsDataURL(file);
 }
 
-async function doAbschliessen(tourId, stoppId) {
-  const menge = parseFloat(document.getElementById('menge-' + stoppId)?.value || 0);
+/* ── STOPP BESTÄTIGEN ──────────────────────────────────── */
+async function stoppBestaetigen(stoppId) {
+  const menge = document.getElementById('menge-' + stoppId)?.value;
   const notiz = document.getElementById('notiz-' + stoppId)?.value || '';
-  const fotoInput = document.getElementById('foto-' + stoppId);
-  const foto_base64 = fotoInput?.dataset.base64 || null;
+  const foto  = document.getElementById('foto-prev-' + stoppId)?.src || '';
+
   try {
-    await fetch(`/api/touren/${tourId}/stopps/${stoppId}/abschliessen`, {
-      method:  'POST',
-      headers: { 'Authorization': 'Bearer ' + Auth.getToken(), 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ menge_geladen_kg: menge || null, notiz, foto_base64 }),
+    await api('/touren/' + aktiveTour.id + '/stopps/' + stoppId + '/bestaetigen', {
+      method: 'POST',
+      body: { menge_geliefert: menge ? parseFloat(menge) : null, notiz, foto: foto.startsWith('data:') ? foto : null },
     });
-    // Tour neu laden
-    const s = alleStopps.find(x => x.id === stoppId);
-    if (s) { s.status = 'abgeschlossen'; s.menge_geladen_kg = menge; s.status_lokal = null; }
-    renderTour();
-  } catch (err) {
-    showAlert('alerts', 'error', err.message);
-  }
+    toast('Stopp bestätigt ✓');
+
+    // Nächsten Stopp finden
+    const { tour, stopps } = await api('/touren/' + aktiveTour.id + '?stopps=true');
+    aktiveTour  = tour;
+    alleStopps  = stopps;
+    currentStopp = stopps.find(s => s.status === 'ausstehend') || null;
+
+    if (!currentStopp) {
+      // Alle Stopps erledigt
+      renderAktiveTour();
+      document.getElementById('screen-tour').scrollTo({ top: 0, behavior: 'smooth' });
+      setTimeout(() => {
+        if (confirm('Alle Stopps erledigt! Tour jetzt abschließen?')) tourBeenden();
+      }, 500);
+    } else {
+      renderAktiveTour();
+      // Scroll zum nächsten Stopp
+      setTimeout(() => {
+        document.getElementById('stopp-' + currentStopp.id)?.scrollIntoView({ behavior:'smooth', block:'center' });
+      }, 300);
+    }
+  } catch (err) { toast(err.message, false); }
 }
 
-async function doUeberspringen(tourId, stoppId, notiz) {
+/* ── STOPP ÜBERSPRINGEN ────────────────────────────────── */
+async function stoppUeberspringen(stoppId) {
+  const grund = prompt('Grund für Überspringen (optional):') ?? '';
   try {
-    await fetch(`/api/touren/${tourId}/stopps/${stoppId}/ueberspringen`, {
-      method:  'POST',
-      headers: { 'Authorization': 'Bearer ' + Auth.getToken(), 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ notiz }),
+    await api('/touren/' + aktiveTour.id + '/stopps/' + stoppId + '/ueberspringen', {
+      method: 'POST', body: { grund },
     });
-    const s = alleStopps.find(x => x.id === stoppId);
-    if (s) { s.status = 'uebersprungen'; s.notiz_abschluss = notiz; s.status_lokal = null; }
-    renderTour();
+    toast('Stopp übersprungen');
+    const { tour, stopps } = await api('/touren/' + aktiveTour.id + '?stopps=true');
+    aktiveTour  = tour;
+    alleStopps  = stopps;
+    currentStopp = stopps.find(s => s.status === 'ausstehend') || null;
+    renderAktiveTour();
+  } catch (err) { toast(err.message, false); }
+}
+
+/* ── TOUR BEENDEN ──────────────────────────────────────── */
+async function tourBeenden() {
+  if (!confirm('Tour wirklich beenden?')) return;
+  try {
+    await api('/touren/' + aktiveTour.id + '/status', { method:'PUT', body:{ status:'abgeschlossen' } });
+    stopTracking();
+    toast('Tour abgeschlossen 🎉');
+    document.getElementById('tab-tour').style.display = 'none';
+    await loadTouren();
+    showScreen('heute');
+  } catch (err) { toast(err.message, false); }
+}
+
+/* ── TOURHISTORIE ──────────────────────────────────────── */
+async function loadHistorie() {
+  const wrap = document.getElementById('hist-wrap');
+  wrap.innerHTML = '<div class="spinner2"></div>';
+  try {
+    const { touren } = await api('/touren/meine/alle?limit=30');
+    if (!touren?.length) {
+      wrap.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">Noch keine Touren</div></div>`;
+      return;
+    }
+    wrap.innerHTML = touren.map(t => {
+      const done  = parseInt(t.stopps_erledigt) || 0;
+      const total = parseInt(t.stopps_total) || 0;
+      return `
+        <div class="hist-card">
+          <div class="hist-head">
+            <div class="hist-name">${t.name || 'Tour'}</div>
+            <div class="hist-date">${t.datum ? new Date(t.datum).toLocaleDateString('de-DE') : '—'}</div>
+          </div>
+          <div class="hist-stats">
+            <span class="hist-stat">${badge(t.status)}</span>
+            <span class="hist-stat">📍 ${done}/${total} Stopps</span>
+            ${t.fahrzeug_bezeichnung ? `<span class="hist-stat">🚲 ${t.fahrzeug_bezeichnung}</span>` : ''}
+            <span class="hist-stat">🕐 ${t.startzeit?.slice(0,5)||'—'}</span>
+          </div>
+        </div>`;
+    }).join('');
   } catch (err) {
-    showAlert('alerts', 'error', err.message);
+    wrap.innerHTML = `<div class="empty"><div class="empty-icon">⚠</div><div class="empty-title">${err.message}</div></div>`;
   }
 }
 
-// ── GPS LIVE TRACKING ────────────────────────────────────────
-let trackingInterval  = null;
-let trackingActive    = false;
-let lastTourId        = null;
+/* ── PROFIL ────────────────────────────────────────────── */
+function loadProfil() {
+  const user = Auth.getUser();
+  if (!user) return;
+  const initials = (user.name || user.email || '?').charAt(0).toUpperCase();
+  document.getElementById('profil-avatar').textContent  = initials;
+  document.getElementById('profil-name').textContent    = user.name || '—';
+  document.getElementById('profil-email').textContent   = user.email || '—';
+  document.getElementById('profil-gps-status').textContent  = trackingInterval ? '● Aktiv' : '○ Aus';
+  document.getElementById('profil-touren-heute').textContent = allTouren.length + ' Touren';
+}
 
-function startTracking(tourId) {
-  if (trackingActive) return;
-  if (!navigator.geolocation) {
-    console.warn('[tracking] Geolocation nicht verfügbar');
-    return;
+async function passwortAendern() {
+  const pw1 = document.getElementById('pw-neu')?.value;
+  const pw2 = document.getElementById('pw-wdh')?.value;
+  const res = document.getElementById('pw-result');
+  if (!pw1 || pw1 !== pw2) {
+    res.innerHTML = '<div class="alert alert-err">Passwörter stimmen nicht überein</div>'; return;
   }
-  trackingActive = true;
-  lastTourId     = tourId || null;
-  updateTrackingBadge(true);
-
-  // Sofort einmal senden, dann alle 30s
-  sendPosition();
-  trackingInterval = setInterval(sendPosition, 30000);
-  console.log('[tracking] gestartet');
-
-  // Offline melden beim Verlassen
-  window.addEventListener('beforeunload', stopTracking);
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) sendPosition(); // letzte Position beim Tab-Wechsel
-  });
-}
-
-function stopTracking() {
-  if (!trackingActive) return;
-  trackingActive = false;
-  if (trackingInterval) { clearInterval(trackingInterval); trackingInterval = null; }
-  updateTrackingBadge(false);
-  // Offline melden
-  navigator.sendBeacon('/api/tracking/offline',
-    new Blob([JSON.stringify({})], { type: 'application/json' })
-  );
-  fetch('/api/tracking/offline', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + Auth.getToken() },
-  }).catch(() => {});
-  console.log('[tracking] gestoppt');
-}
-
-async function sendPosition() {
-  if (!trackingActive) return;
-  navigator.geolocation.getCurrentPosition(async pos => {
-    try {
-      await fetch('/api/tracking/position', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + Auth.getToken() },
-        body: JSON.stringify({
-          lat:        pos.coords.latitude,
-          lon:        pos.coords.longitude,
-          speed_kmh:  pos.coords.speed ? Math.round(pos.coords.speed * 3.6) : null,
-          heading:    pos.coords.heading || null,
-          accuracy_m: pos.coords.accuracy || null,
-          tour_id:    lastTourId,
-        }),
-      });
-    } catch (err) { console.warn('[tracking]', err.message); }
-  }, err => console.warn('[tracking] GPS Fehler:', err.message), {
-    enableHighAccuracy: true, timeout: 10000, maximumAge: 20000,
-  });
-}
-
-function updateTrackingBadge(active) {
-  const badge = document.getElementById('tracking-badge');
-  if (badge) {
-    badge.textContent  = active ? '📡 Tracking aktiv' : '📡 Tracking inaktiv';
-    badge.style.background = active ? 'var(--green)' : 'var(--text3)';
+  if (pw1.length < 8) {
+    res.innerHTML = '<div class="alert alert-err">Mindestens 8 Zeichen</div>'; return;
+  }
+  try {
+    await api('/auth/change-password', { method:'POST', body:{ newPassword: pw1 } });
+    res.innerHTML = '<div class="alert alert-ok">✓ Passwort geändert</div>';
+    document.getElementById('pw-neu').value = '';
+    document.getElementById('pw-wdh').value = '';
+  } catch (err) {
+    res.innerHTML = `<div class="alert alert-err">${err.message}</div>`;
   }
 }
 
-// Tracking starten wenn Tour aktiv
-function checkStartTracking() {
-  if (aktiveTourId && !trackingActive) {
-    startTracking(aktiveTourId);
-  }
+/* ── BACKEND ROUTE: /touren/meine ──────────────────────── */
+// Falls die Route noch nicht existiert, gracefully leeren
+async function apiSafe(path) {
+  try { return await api(path); } catch { return {}; }
 }
 
-// ── INIT ──────────────────────────────────────────────────────
+/* ── INIT ──────────────────────────────────────────────── */
 loadTouren();
 </script>
 </body>
