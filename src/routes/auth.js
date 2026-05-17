@@ -208,34 +208,57 @@ router.post('/admin/create-fahrer', auth, role('admin'), async (req, res) => {
 // GET /api/auth/fahrer-list (Admin)
 router.get('/fahrer-list', auth, role('admin'), async (req, res) => {
   try {
-    // fahrer_profile Tabelle existiert erst nach migrate_fix.js
-    const tableCheck = await db.query(
-      `SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name='fahrer_profile') AS exists`
-    );
-    if (!tableCheck.rows[0].exists) {
-      return res.json({ fahrer: [], hint: 'migrate_fix.js noch nicht ausgeführt' });
-    }
     const heute = new Date().toISOString().slice(0,10);
-    const { rows } = await db.query(`
-      SELECT
-        u.id, u.name, u.email,
-        COALESCE(fp.lizenzklasse, '—')          AS lizenzklasse,
-        COALESCE(fp.aktiv, true)                AS aktiv,
-        COUNT(DISTINCT t.id)::int               AS touren_gesamt,
-        COUNT(DISTINCT t.id) FILTER (
-          WHERE t.datum::date = $1::date
-        )::int                                   AS touren_heute
+
+    // Erst einfach alle Fahrer-User laden (immer verfügbar)
+    const { rows: users } = await db.query(`
+      SELECT u.id, u.name, u.email, u.created_at
       FROM users u
-      LEFT JOIN fahrer_profile fp ON fp.user_id = u.id
-      LEFT JOIN touren t ON t.fahrer_id = fp.id
       WHERE u.role = 'fahrer'
-      GROUP BY u.id, u.name, u.email, fp.lizenzklasse, fp.aktiv
       ORDER BY u.name
-    `, [heute]);
-    res.json({ fahrer: rows });
+    `);
+
+    if (!users.length) return res.json({ fahrer: [] });
+
+    // Versuche Profil + Touren dazuzuladen (optional)
+    let profileMap = {};
+    let tourenMap  = {};
+
+    try {
+      const { rows: profiles } = await db.query(
+        `SELECT user_id,
+           COALESCE(lizenzklasse, 'B') AS lizenzklasse,
+           COALESCE(aktiv, true) AS aktiv
+         FROM fahrer_profile WHERE user_id = ANY($1)`,
+        [users.map(u => u.id)]
+      );
+      profiles.forEach(p => profileMap[p.user_id] = p);
+    } catch {}
+
+    try {
+      const { rows: touren } = await db.query(`
+        SELECT fahrer_id,
+          COUNT(*)::int AS touren_gesamt,
+          COUNT(*) FILTER (WHERE datum::date = $1::date)::int AS touren_heute
+        FROM touren
+        WHERE fahrer_id = ANY($2)
+        GROUP BY fahrer_id
+      `, [heute, users.map(u => u.id)]);
+      touren.forEach(t => tourenMap[t.fahrer_id] = t);
+    } catch {}
+
+    const fahrer = users.map(u => ({
+      ...u,
+      lizenzklasse:  profileMap[u.id]?.lizenzklasse || 'B',
+      aktiv:         profileMap[u.id]?.aktiv ?? true,
+      touren_gesamt: tourenMap[u.id]?.touren_gesamt || 0,
+      touren_heute:  tourenMap[u.id]?.touren_heute  || 0,
+    }));
+
+    res.json({ fahrer });
   } catch (err) {
     console.error('[fahrer-list]', err.message);
-    res.json({ fahrer: [] });
+    res.status(500).json({ error: err.message, fahrer: [] });
   }
 });
 
