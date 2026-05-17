@@ -253,4 +253,34 @@ router.get('/meine', auth, role('erzeuger'), async (req, res) => {
   }
 });
 
+
+// POST /api/lieferungen/:id/wareneingang – Wareneingang bestätigen (Caterer)
+router.post('/:id/wareneingang', auth, role('caterer', 'admin'), async (req, res) => {
+  const { menge_geliefert, qualitaet, qualitaet_notiz, notiz } = req.body;
+  try {
+    const { rows:[lief] } = await db.query(`SELECT * FROM lieferungen WHERE id=$1`, [req.params.id]);
+    if (!lief) return res.status(404).json({ error: 'Lieferung nicht gefunden' });
+
+    await db.query(`
+      UPDATE lieferungen SET
+        menge_geliefert     = COALESCE($1, menge_geliefert),
+        status              = 'eingegangen',
+        wareneingang_at     = NOW(),
+        qualitaet_caterer   = COALESCE($2, qualitaet_caterer),
+        qualitaet_notiz     = COALESCE($3, qualitaet_notiz),
+        notiz               = COALESCE($4, notiz)
+      WHERE id=$5
+    `, [menge_geliefert||null, qualitaet||null, qualitaet_notiz||null, notiz||null, req.params.id]);
+
+    // Auszahlungen berechnen falls noch nicht geschehen
+    const payout = require('../services/payout');
+    await payout.calculateAndCreatePayouts(req.params.id).catch(()=>{});
+
+    res.json({ message: 'Wareneingang bestätigt', qualitaet: qualitaet || lief.qualitaet });
+  } catch(err) {
+    console.error('[wareneingang]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

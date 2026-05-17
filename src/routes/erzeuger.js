@@ -269,4 +269,34 @@ router.get('/export/csv', auth, role('admin'), async (req, res) => {
   }
 });
 
+
+// GET /api/erzeuger/:id/zertifikat/:zertId – Zertifikat herunterladen
+router.get('/:id/zertifikat/:zertId', auth, async (req, res) => {
+  try {
+    const { rows:[cert] } = await db.query(`
+      SELECT z.*, e.user_id FROM zertifikate z
+      JOIN erzeuger e ON e.id=z.erzeuger_id
+      WHERE z.id=$1 AND e.id=$2
+    `, [req.params.zertId, req.params.id]);
+
+    if (!cert) return res.status(404).json({ error: 'Zertifikat nicht gefunden' });
+
+    // Zugangsprüfung
+    if (req.user.role === 'erzeuger' && cert.user_id !== req.user.id) {
+      return res.status(403).json({ error: 'Kein Zugriff' });
+    }
+
+    if (cert.datei_base64) {
+      const buf  = Buffer.from(cert.datei_base64, 'base64');
+      const mime = cert.datei_typ || 'application/octet-stream';
+      const ext  = mime.includes('pdf') ? '.pdf' : mime.includes('png') ? '.png' : '.jpg';
+      res.setHeader('Content-Type', mime);
+      res.setHeader('Content-Disposition', `attachment; filename="zertifikat-${cert.typ}${ext}"`);
+      return res.send(buf);
+    }
+
+    res.status(404).json({ error: 'Keine Datei gespeichert' });
+  } catch(err) { res.status(500).json({ error: err.message }); }
+});
+
 module.exports = router;
