@@ -215,16 +215,23 @@ router.get('/fahrer-list', auth, role('admin'), async (req, res) => {
     if (!tableCheck.rows[0].exists) {
       return res.json({ fahrer: [], hint: 'migrate_fix.js noch nicht ausgeführt' });
     }
+    const heute = new Date().toISOString().slice(0,10);
     const { rows } = await db.query(`
-      SELECT u.id, u.name, u.email, fp.lizenzklasse, fp.aktiv,
-        COUNT(DISTINCT t.id)::int AS touren_gesamt
+      SELECT
+        u.id, u.name, u.email,
+        COALESCE(fp.lizenzklasse, '—')          AS lizenzklasse,
+        COALESCE(fp.aktiv, true)                AS aktiv,
+        COUNT(DISTINCT t.id)::int               AS touren_gesamt,
+        COUNT(DISTINCT t.id) FILTER (
+          WHERE t.datum::date = $1::date
+        )::int                                   AS touren_heute
       FROM users u
-      JOIN fahrer_profile fp ON fp.user_id = u.id
-      LEFT JOIN touren t ON t.fahrer_id = u.id
+      LEFT JOIN fahrer_profile fp ON fp.user_id = u.id
+      LEFT JOIN touren t ON t.fahrer_id = fp.id
       WHERE u.role = 'fahrer'
       GROUP BY u.id, u.name, u.email, fp.lizenzklasse, fp.aktiv
       ORDER BY u.name
-    `);
+    `, [heute]);
     res.json({ fahrer: rows });
   } catch (err) {
     console.error('[fahrer-list]', err.message);
