@@ -372,4 +372,24 @@ router.get('/dashboard', auth, role('admin'), async (req, res) => {
   }
 });
 
+
+// GET /api/reports/weekly-stats – Auszahlungen pro Woche (für Admin-Chart)
+router.get('/weekly-stats', auth, role('admin'), async (req, res) => {
+  try {
+    const { rows } = await db.query(`
+      SELECT
+        TO_CHAR(DATE_TRUNC('week', created_at), 'IYYY-IW') AS woche,
+        COUNT(*)::int                                        AS anzahl,
+        COALESCE(SUM(netto), 0)::numeric(10,2)              AS summe
+      FROM auszahlungen
+      WHERE created_at >= NOW() - INTERVAL '8 weeks'
+      GROUP BY DATE_TRUNC('week', created_at)
+      ORDER BY DATE_TRUNC('week', created_at)
+    `);
+    res.json({ weeks: rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message, weeks: [] });
+  }
+});
+
 module.exports = router;

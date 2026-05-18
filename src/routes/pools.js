@@ -397,4 +397,30 @@ router.put('/:id/commit', auth, role('erzeuger'), async (req, res) => {
   }
 });
 
+
+// PUT /api/pools/:id/edit – Admin bearbeitet Pool (Produkt, Preis, Menge, Deadline)
+router.put('/:id/edit', auth, role('admin'), async (req, res) => {
+  const { produkt, preis_pro_einheit, menge_ziel, deadline, lieferwoche } = req.body;
+  if (!produkt && !preis_pro_einheit && !menge_ziel && !deadline && !lieferwoche) {
+    return res.status(400).json({ error: 'Mindestens ein Feld erforderlich' });
+  }
+  try {
+    const { rows:[pool] } = await db.query(`
+      UPDATE pools SET
+        produkt           = COALESCE($1, produkt),
+        preis_pro_einheit = COALESCE($2, preis_pro_einheit),
+        menge_ziel        = COALESCE($3, menge_ziel),
+        deadline          = COALESCE($4, deadline),
+        lieferwoche       = COALESCE($5, lieferwoche),
+        updated_at        = NOW()
+      WHERE id = $6
+      RETURNING *
+    `, [produkt||null, preis_pro_einheit||null, menge_ziel||null, deadline||null, lieferwoche||null, req.params.id]);
+    if (!pool) return res.status(404).json({ error: 'Pool nicht gefunden' });
+    res.json({ pool, message: 'Pool aktualisiert' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
