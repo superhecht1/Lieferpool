@@ -89,13 +89,75 @@ function getKW(d) {
   return Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
 }
 
+async function collectStripeFees() {
+  try {
+    const { rows } = await db.query(
+      `SELECT COUNT(*) FROM auszahlungen WHERE stripe_fee_collected=FALSE AND status IN ('veranlasst','ausgezahlt')`
+    );
+    if (parseInt(rows[0].count) === 0) return;
+    const stripeKey = process.env.STRIPE_SECRET_KEY;
+    if (!stripeKey) return;
+    // Trigger über internen API-Call
+    const appUrl = process.env.APP_URL;
+    if (appUrl) {
+      await fetch(`${appUrl}/api/stripe/collect-fees`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _getAdminToken() },
+        body: '{}',
+        signal: AbortSignal.timeout(15000),
+      }).catch(e => console.warn('[cron stripe]', e.message));
+    }
+  } catch (err) { console.error('[cron] Stripe-Collect:', err.message); }
+}
+
+function _getAdminToken() {
+  // Internes Token für Cron-Jobs
+  const jwt = require('jsonwebtoken');
+  return jwt.sign({ id: 'cron', role: 'admin', name: 'Cron' }, process.env.JWT_SECRET || 'dev', { expiresIn: '1m' });
+}
+
 function start() {
   if (cronInterval) return;
+
+  // Sofort beim Start
   checkExpiredPools(); checkFaelligeAuszahlungen(); cleanupTokens();
-  cronInterval = setInterval(() => { checkExpiredPools(); checkFaelligeAuszahlungen(); }, 30*60*1000);
-  setInterval(cleanupTokens, 24*60*60*1000);
+
+  // Alle 30 Min: Pools + Auszahlungen
+  cronInterval = setInterval(() => {
+    checkExpiredPools();
+    checkFaelligeAuszahlungen();
+  }, 30 * 60 * 1000);
+
+  // Alle 24h: Token cleanup
+  setInterval(cleanupTokens, 24 * 60 * 60 * 1000);
+
+  // Täglich 06:00: Tagescheck + Monitoring
+  const { dailyCheck } = require('../routes/monitoring');
+  setInterval(() => {
+    const now = new Date();
+    if (now.getHours() === 6 && now.getMinutes() < 31) {
+      dailyCheck().catch(e => console.warn('[cron daily]', e.message));
+    }
+  }, 30 * 60 * 1000); // alle 30min prüfen, ob 06:00-06:30
+
+  // Montags 07:00: Wochenbericht
+  setInterval(() => {
+    const now = new Date();
+    if (now.getDay() === 1 && now.getHours() === 7 && now.getMinutes() < 31) {
+      sendWochenberichtEmail().catch(e => console.warn('[cron woche]', e.message));
+    }
+  }, 30 * 60 * 1000);
+
+  // Täglich 08:00: Stripe-Gebühren einsammeln
+  setInterval(() => {
+    const now = new Date();
+    if (now.getHours() === 8 && now.getMinutes() < 31) {
+      collectStripeFees().catch(e => console.warn('[cron stripe]', e.message));
+    }
+  }, 30 * 60 * 1000);
+
   startSelfPing();
-  console.log('[cron] Alle Jobs gestartet');
+  console.log('[cron] Alle Jobs gestartet (Pool-Check 30min, Daily 06h, Wochenbericht Mo 07h, Stripe 08h)');
 }
 function stop() {
   if (cronInterval) { clearInterval(cronInterval); cronInterval = null; }
