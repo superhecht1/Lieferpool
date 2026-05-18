@@ -729,7 +729,7 @@ async function loadMeineLieferscheine() {
       <table class="tbl">
         <thead><tr>
           <th>Nr.</th><th>Produkt</th><th>KW</th><th>Lieferdatum</th>
-          <th>Meine Menge</th><th>Mein Anteil</th><th>Status</th><th>QR</th><th></th>
+          <th>Meine Menge</th><th>Mein Anteil</th><th>Status</th><th>Qualität</th><th>QR</th><th></th>
         </tr></thead>
         <tbody>${lieferungen.map(l => `
           <tr>
@@ -745,6 +745,9 @@ async function loadMeineLieferscheine() {
               ${statusBadge(l.status)}
               ${l.status==='eingegangen'?'<span style="font-size:10px;color:var(--green);display:block;margin-top:2px">✓ Wareneingang bestätigt</span>':''}
               ${l.wareneingang_at?'<span style="font-size:10px;color:var(--text3);display:block">'+new Date(l.wareneingang_at).toLocaleDateString('de-DE')+'</span>':''}
+            </td>
+            <td>
+              ${l.qualitaet_caterer ? `<span class="badge ${l.qualitaet_caterer==='A'?'badge-green':l.qualitaet_caterer==='B'?'badge-amber':l.qualitaet_caterer==='C'?'badge-red':'badge-red'}">${l.qualitaet_caterer}</span>${l.qualitaet_notiz?'<div style="font-size:10px;color:var(--text3);margin-top:2px">'+l.qualitaet_notiz+'</div>':''}` : '<span style="color:var(--text3);font-size:12px">—</span>'}
             </td>
             <td>
               <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent((window.location.origin||'') + '/caterer?qr=' + l.qr_code)}&color=0d1f15&bgcolor=ffffff&margin=2"

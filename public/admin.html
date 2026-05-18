@@ -782,6 +782,66 @@
       </div>
     </div>
 
+
+    <!-- POOL ERSTELLEN (Admin) -->
+    <div id="view-pool-erstellen" class="view" style="display:none">
+      <div class="card" style="max-width:620px">
+        <div class="card-title">➕ Neuen Pool erstellen</div>
+        <div id="admin-pool-create-result"></div>
+        <div id="admin-pool-create-form">
+          <div class="grid2">
+            <div class="form-group">
+              <label class="form-label">Produkt</label>
+              <input class="form-control" id="apc-produkt" placeholder="z.B. Karotten Bio">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Caterer</label>
+              <select class="form-control" id="apc-caterer"></select>
+            </div>
+          </div>
+          <div class="grid2">
+            <div class="form-group">
+              <label class="form-label">Mindestmenge (kg)</label>
+              <input class="form-control" type="number" id="apc-menge" min="1" placeholder="200">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Preis (€/kg)</label>
+              <input class="form-control" type="number" id="apc-preis" step="0.01" placeholder="2.50">
+            </div>
+          </div>
+          <div class="grid2">
+            <div class="form-group">
+              <label class="form-label">Lieferwoche (z.B. KW 22/2025)</label>
+              <input class="form-control" id="apc-lieferwoche">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Deadline</label>
+              <input class="form-control" type="date" id="apc-deadline">
+            </div>
+          </div>
+          <div class="grid2">
+            <div class="form-group">
+              <label class="form-label">Region</label>
+              <select class="form-control" id="apc-region">
+                <option value="NRW">NRW</option>
+                <option value="Bayern">Bayern</option>
+                <option value="BW">Baden-Württemberg</option>
+                <option value="Niedersachsen">Niedersachsen</option>
+                <option value="Bundesweit">Bundesweit</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Qualitätsstufe</label>
+              <select class="form-control" id="apc-qualitaet">
+                <option value="A">A – Einwandfrei</option>
+                <option value="B">B – Gut</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-primary" id="btn-admin-pool-create">Pool erstellen</button>
+        </div>
+      </div>
+    </div>
   </main>
 </div>
 
@@ -810,6 +870,7 @@ const NAV = [
   { id: 'rechnungen',     label: '🧾 Rechnungen'},
   { id: 'einladungen',    label: '✉ Einladungen'},
   { id: 'vorlagen',       label: '🔄 Vorlagen'},
+  { id: 'pool-erstellen',  label: '➕ Pool erstellen'},
 ];
 
 renderHeader('overview', NAV, (v) => { showView(v); loadView(v); });
@@ -848,6 +909,7 @@ async function loadView(v) {
   if (v === 'rechnungen')     loadRechnungen();
   if (v === 'einladungen')    loadEinladungen();
   if (v === 'vorlagen')       loadVorlagen();
+  if (v === 'pool-erstellen') loadPoolErstellen();
 }
 
 // ── ÜBERSICHT ─────────────────────────────────────────────────
@@ -2835,6 +2897,60 @@ document.getElementById('btn-bulk-close-pools')?.addEventListener('click', async
   loadPools();
   document.getElementById('btn-bulk-close-pools').style.display='none';
   document.getElementById('bulk-select-all').checked=false;
+});
+
+// ── ADMIN POOL ERSTELLEN ─────────────────────────────────────
+async function loadPoolErstellen() {
+  try {
+    const { caterer } = await fetch('/api/caterer', {
+      headers:{'Authorization':'Bearer '+Auth.getToken()}
+    }).then(r=>r.json());
+    const sel = document.getElementById('apc-caterer');
+    if (sel) sel.innerHTML = (caterer||[]).map(c=>`<option value="${c.id}">${c.firma_name}</option>`).join('');
+  } catch {}
+  const now = new Date();
+  const kw  = getAdminKW(now);
+  const pf  = document.getElementById('apc-lieferwoche');
+  if (pf && !pf.value) pf.value = `KW ${kw}/${now.getFullYear()}`;
+  const dd  = document.getElementById('apc-deadline');
+  if (dd && !dd.value) {
+    const d = new Date(); d.setDate(d.getDate()+7);
+    dd.value = d.toISOString().split('T')[0];
+  }
+}
+function getAdminKW(d) {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day  = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - day);
+  const y1   = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  return Math.ceil((((date - y1) / 86400000) + 1) / 7);
+}
+document.getElementById('btn-admin-pool-create')?.addEventListener('click', async () => {
+  const produkt    = document.getElementById('apc-produkt').value.trim();
+  const caterer_id = document.getElementById('apc-caterer').value;
+  const menge_ziel = parseFloat(document.getElementById('apc-menge').value);
+  const preis      = parseFloat(document.getElementById('apc-preis').value);
+  const lieferwoche= document.getElementById('apc-lieferwoche').value.trim();
+  const deadline   = document.getElementById('apc-deadline').value;
+  const region     = document.getElementById('apc-region').value;
+  const qualitaet  = document.getElementById('apc-qualitaet').value;
+  const btn        = document.getElementById('btn-admin-pool-create');
+  if (!produkt||!menge_ziel||!preis||!lieferwoche||!deadline||!caterer_id)
+    return showAlert('alerts','error','Alle Felder ausfüllen');
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>';
+  try {
+    const r = await fetch('/api/pools',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+Auth.getToken()},
+      body:JSON.stringify({produkt,caterer_id,menge_ziel,preis_pro_einheit:preis,lieferwoche,deadline,region,qualitaet_stufe:qualitaet})
+    }).then(r=>r.json());
+    if (r.error) throw new Error(r.error);
+    setHTML('admin-pool-create-result',`<div class="alert alert-success">✓ Pool "${r.pool?.produkt||produkt}" erstellt</div>`);
+    document.getElementById('admin-pool-create-form').style.display='none';
+    toast('Pool erstellt');
+    setTimeout(()=>{showView('pools-alle');loadPoolsAlle();},1500);
+  } catch(err){ showAlert('alerts','error',err.message); }
+  btn.textContent='Pool erstellen'; btn.disabled=false;
 });
 
 // ── INIT ──────────────────────────────────────────────────────
