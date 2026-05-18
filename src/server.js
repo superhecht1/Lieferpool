@@ -179,7 +179,11 @@ app.use(express.static(PUBLIC_DIR, {
   }
 }));
 
-['login','erzeuger','caterer','admin','fahrer','impressum','datenschutz','agb'].forEach(p => {
+// Sitemap + Robots
+app.get('/sitemap.xml', (_, res) => res.sendFile(path.join(PUBLIC_DIR, 'sitemap.xml')));
+app.get('/robots.txt',  (_, res) => res.type('text/plain').sendFile(path.join(PUBLIC_DIR, 'robots.txt')));
+
+['login','erzeuger','caterer','admin','fahrer','impressum','datenschutz','agb','register','reset-password'].forEach(p => {
   app.get('/' + p, (_, res) => res.sendFile(path.join(PUBLIC_DIR, p + '.html')));
 });
 app.get('/', (_, res) => res.sendFile(path.join(PUBLIC_DIR, 'index.html')));
