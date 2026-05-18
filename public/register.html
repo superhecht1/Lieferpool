@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230d1f15'/><text y='24' x='4' font-size='22' font-family='monospace' font-weight='bold' fill='%237ab648'>F</text></svg>">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registrierung – FrischKette</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .role-badge-lg {
+      display:inline-flex;align-items:center;gap:.5rem;
+      background:var(--green-bg);border:1px solid #b8dfc0;
+      border-radius:var(--radius);padding:.5rem 1rem;
+      font-size:13px;font-weight:600;color:var(--green);
+      margin-bottom:1.25rem;
+    }
+    .pw-strength { height:4px;border-radius:2px;margin-top:6px;background:var(--border); }
+    .pw-strength-bar { height:100%;border-radius:2px;transition:width .3s,background .3s;width:0; }
+    .pw-hint { font-size:11px;color:var(--text3);margin-top:4px; }
+    .invite-info { background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:.875rem 1rem;margin-bottom:1.25rem;font-size:13px; }
+  </style>
+</head>
+<body>
+<div class="login-page">
+  <div class="login-box">
+    <div class="login-logo">Frisch<span>Kette</span></div>
+    <div class="login-sub">Konto erstellen</div>
+    <div id="alerts"></div>
+
+    <!-- Laden... -->
+    <div id="step-loading" style="text-align:center;padding:2rem 0">
+      <div class="spinner" style="width:24px;height:24px;margin:0 auto"></div>
+      <p style="font-size:13px;color:var(--text3);margin-top:.75rem">Einladung wird geprüft…</p>
+    </div>
+
+    <!-- Ungültige Einladung -->
+    <div id="step-invalid" style="display:none;text-align:center;padding:1rem 0">
+      <div style="font-size:2.5rem;margin-bottom:.75rem">⚠️</div>
+      <div style="font-size:15px;font-weight:600;color:var(--red);margin-bottom:.5rem">Einladung ungültig</div>
+      <p style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:1.25rem" id="invalid-msg">
+        Dieser Einladungslink ist abgelaufen oder wurde bereits verwendet.
+      </p>
+      <a href="/login" class="btn" style="display:inline-flex">Zum Login</a>
+    </div>
+
+    <!-- Registrierungs-Formular -->
+    <div id="step-form" style="display:none">
+      <div class="role-badge-lg" id="role-badge">🌱 Erzeuger:in</div>
+      <div class="invite-info" id="invite-info">
+        Eingeladen von: FrischKette Admin
+      </div>
+      <div class="form-group">
+        <label class="form-label">Name / Betrieb *</label>
+        <input class="form-control" id="reg-name" placeholder="z.B. Hof Brüggemann" autocomplete="name">
+      </div>
+      <div class="form-group">
+        <label class="form-label">E-Mail *</label>
+        <input class="form-control" type="email" id="reg-email" autocomplete="email" readonly
+               style="background:var(--bg);cursor:not-allowed">
+        <div class="pw-hint">Vom Einladungslink übernommen</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Passwort * (min. 8 Zeichen)</label>
+        <input class="form-control" type="password" id="reg-pw" placeholder="••••••••" autocomplete="new-password">
+        <div class="pw-strength"><div class="pw-strength-bar" id="pw-bar"></div></div>
+        <div class="pw-hint" id="pw-hint">Mindestens 8 Zeichen</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Passwort wiederholen *</label>
+        <input class="form-control" type="password" id="reg-pw2" placeholder="••••••••" autocomplete="new-password">
+      </div>
+      <button class="btn btn-primary" id="btn-register" style="width:100%;margin-top:.25rem">Konto erstellen</button>
+      <hr class="login-divider">
+      <p style="text-align:center;font-size:12px;color:var(--text3)">
+        Bereits registriert? <a href="/login" style="color:var(--green)">Anmelden</a>
+      </p>
+    </div>
+
+    <!-- Erfolg -->
+    <div id="step-success" style="display:none;text-align:center;padding:1rem 0">
+      <div style="font-size:2.5rem;margin-bottom:.75rem">🎉</div>
+      <div style="font-size:15px;font-weight:600;color:var(--green);margin-bottom:.5rem">Willkommen bei FrischKette!</div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:1.25rem">
+        Dein Konto wurde erfolgreich erstellt. Du wirst weitergeleitet…
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+const API    = '/api';
+const params = new URLSearchParams(window.location.search);
+const token  = params.get('token');
+const rolle  = params.get('rolle');
+
+const ROLLE_LABELS = { erzeuger:'🌱 Erzeuger:in', caterer:'🍽 Caterer', fahrer:'🚲 Fahrer:in' };
+const REDIRECT_MAP = { erzeuger:'/erzeuger', caterer:'/caterer', fahrer:'/fahrer', admin:'/admin' };
+
+function showAlert(msg, type='error') {
+  const el = document.getElementById('alerts');
+  el.innerHTML = `<div class="alert alert-${type}" style="margin-bottom:1rem">${msg}</div>`;
+  setTimeout(()=>el.innerHTML='', 6000);
+}
+
+// Einladung prüfen
+async function checkInvite() {
+  if (!token) {
+    // Kein Token — zeige normales Registrierungsformular mit Rollenwahl
+    showNoToken(); return;
+  }
+  try {
+    const res  = await fetch(`${API}/einladungen/check/${token}`);
+    const data = await res.json();
+    if (!res.ok) {
+      document.getElementById('step-loading').style.display = 'none';
+      document.getElementById('step-invalid').style.display = 'block';
+      document.getElementById('invalid-msg').textContent =
+        data.error === 'Einladung bereits verwendet'
+          ? 'Diese Einladung wurde bereits verwendet. Bitte melde dich an.'
+          : data.error === 'Einladung abgelaufen'
+          ? 'Dieser Einladungslink ist abgelaufen (7 Tage Gültigkeit). Bitte kontaktiere den Admin.'
+          : data.error || 'Ungültige Einladung.';
+      return;
+    }
+    // Gültige Einladung
+    const { email, rolle: inv_rolle, name } = data;
+    document.getElementById('step-loading').style.display = 'none';
+    document.getElementById('step-form').style.display    = 'block';
+    document.getElementById('reg-email').value = email;
+    if (name) document.getElementById('reg-name').value = name;
+    document.getElementById('role-badge').textContent = ROLLE_LABELS[inv_rolle] || inv_rolle;
+    document.getElementById('invite-info').innerHTML =
+      `<span style="color:var(--text3)">Rolle:</span> <strong>${ROLLE_LABELS[inv_rolle]||inv_rolle}</strong>`;
+    document.getElementById('reg-name').focus();
+  } catch {
+    document.getElementById('step-loading').style.display = 'none';
+    document.getElementById('step-invalid').style.display = 'block';
+  }
+}
+
+function showNoToken() {
+  // Keine Einladung — direkte Registrierung (falls öffentlich erlaubt)
+  document.getElementById('step-loading').style.display = 'none';
+  document.getElementById('step-form').style.display    = 'block';
+  document.getElementById('role-badge').textContent = ROLLE_LABELS[rolle] || '🌱 Erzeuger:in';
+  document.getElementById('invite-info').innerHTML =
+    `<span style="color:var(--text3)">Öffentliche Registrierung</span>`;
+  const emailField = document.getElementById('reg-email');
+  emailField.removeAttribute('readonly');
+  emailField.style.background = '';
+  emailField.style.cursor     = '';
+  emailField.nextElementSibling.textContent = '';
+}
+
+// Passwort-Stärke
+document.getElementById('reg-pw')?.addEventListener('input', function() {
+  const pw = this.value;
+  const bar  = document.getElementById('pw-bar');
+  const hint = document.getElementById('pw-hint');
+  let s = 0;
+  if (pw.length >= 8)           s++;
+  if (pw.length >= 12)          s++;
+  if (/[A-Z]/.test(pw))         s++;
+  if (/[0-9]/.test(pw))         s++;
+  if (/[^A-Za-z0-9]/.test(pw)) s++;
+  const colors = ['','#c62828','#e65100','#f9a825','#2e7d3e','#1b5e20'];
+  const labels = ['','Sehr schwach','Schwach','Mittel','Stark','Sehr stark'];
+  bar.style.width      = (s*20)+'%';
+  bar.style.background = colors[s]||'var(--border)';
+  hint.textContent     = pw.length < 8 ? 'Mindestens 8 Zeichen' : (labels[s]||'');
+  hint.style.color     = s >= 3 ? 'var(--green)' : 'var(--text3)';
+});
+
+// Registrierung absenden
+document.getElementById('btn-register')?.addEventListener('click', async () => {
+  const name  = document.getElementById('reg-name').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const pw    = document.getElementById('reg-pw').value;
+  const pw2   = document.getElementById('reg-pw2').value;
+  const btn   = document.getElementById('btn-register');
+
+  if (!name)          return showAlert('Name eingeben');
+  if (!email)         return showAlert('E-Mail fehlt');
+  if (pw.length < 8)  return showAlert('Passwort mindestens 8 Zeichen');
+  if (pw !== pw2)     return showAlert('Passwörter stimmen nicht überein');
+
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Erstelle Konto…';
+  try {
+    // Bestimme Rolle
+    let inv_rolle = rolle || 'erzeuger';
+    if (token) {
+      // Aus Einladung lesen
+      const check = await fetch(`${API}/einladungen/check/${token}`).then(r=>r.json()).catch(()=>({}));
+      if (check.rolle) inv_rolle = check.rolle;
+    }
+
+    const res  = await fetch(API + '/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, email, password: pw, role: inv_rolle, invite_token: token }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Registrierung fehlgeschlagen');
+
+    localStorage.setItem('lp_token', data.token);
+    localStorage.setItem('lp_user',  JSON.stringify(data.user));
+
+    document.getElementById('step-form').style.display    = 'none';
+    document.getElementById('step-success').style.display = 'block';
+
+    setTimeout(() => {
+      window.location.href = REDIRECT_MAP[data.user.role] || '/';
+    }, 1800);
+
+  } catch (err) {
+    showAlert(err.message);
+    btn.textContent = 'Konto erstellen'; btn.disabled = false;
+  }
+});
+
+// Enter-Taste
+document.getElementById('reg-pw2')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('btn-register')?.click();
+});
+
+// Start
+checkInvite();
+</script>
+</body>
+</html>

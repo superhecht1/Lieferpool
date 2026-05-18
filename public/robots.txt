@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+Allow: /login
+Allow: /register
+Allow: /impressum
+Allow: /datenschutz
+Allow: /agb
+Disallow: /admin
+Disallow: /api/
+Disallow: /erzeuger
+Disallow: /caterer
+Disallow: /fahrer
+
+Sitemap: https://frischkette.de/sitemap.xml

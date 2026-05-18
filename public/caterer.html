@@ -345,6 +345,45 @@
       </div>
     </div>
 
+
+    <!-- LIEFERSCHEINE (Caterer) -->
+    <div id="view-lieferscheine" class="view" style="display:none">
+      <div class="card">
+        <div class="section-hdr">
+          <span class="section-title">📋 Meine Lieferscheine</span>
+          <div style="display:flex;gap:.5rem">
+            <select class="form-control" id="cat-lief-filter" style="width:140px;padding:5px 8px">
+              <option value="">Alle Status</option>
+              <option value="erstellt">Erstellt</option>
+              <option value="eingegangen">Eingegangen</option>
+              <option value="abgeschlossen">Abgeschlossen</option>
+              <option value="storniert">Storniert</option>
+            </select>
+            <button class="btn btn-sm" id="btn-reload-cat-lief">↻</button>
+          </div>
+        </div>
+        <div id="cat-lief-list"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- LIEFERSCHEINE (Caterer) -->
+    <div id="view-lieferscheine" class="view" style="display:none">
+      <div class="card">
+        <div class="section-hdr">
+          <span class="section-title">Meine Lieferscheine</span>
+          <div style="display:flex;gap:.5rem">
+            <select class="form-control" id="cat-lief-filter" style="width:140px;padding:5px 8px">
+              <option value="">Alle Status</option>
+              <option value="erstellt">Erstellt</option>
+              <option value="eingegangen">Eingegangen</option>
+              <option value="abgeschlossen">Abgeschlossen</option>
+            </select>
+            <button class="btn btn-sm" id="btn-reload-cat-lief">↻</button>
+          </div>
+        </div>
+        <div id="cat-lief-list"><div class="spinner"></div></div>
+      </div>
+    </div>
   </main>
 </div>
 
@@ -366,6 +405,7 @@ const NAV = [
   { id: 'bedarf',       label: 'Bedarfsplanung'  },
   { id: 'vertraege',    label: 'Verträge'        },
   { id: 'vorlagen',     label: '🔄 Vorlagen'     },
+  { id: 'lieferscheine',label: '📋 Lieferscheine' },
   { id: 'profil',       label: 'Profil'          },
 ];
 
@@ -381,6 +421,7 @@ async function loadView(v) {
   if (v === 'vertraege')    loadVertraege();
   if (v === 'profil')       loadCatProfil();
   if (v === 'vorlagen')       loadCatererVorlagen();
+  if (v === 'lieferscheine')  loadCatLieferscheine();
 }
 
 // ── ÜBERSICHT ─────────────────────────────────────────────────
@@ -1012,6 +1053,38 @@ async function vorlageLoeschenCat(id) {
     loadCatererVorlagen();
   } catch(err) { showAlert('alerts','error',err.message); }
 }
+
+
+// ── CATERER LIEFERSCHEINE ─────────────────────────────────────
+async function loadCatLieferscheine() {
+  const status = document.getElementById('cat-lief-filter')?.value || '';
+  try {
+    const { lieferungen } = await fetch('/api/lieferungen' + (status?'?status='+status:''), {
+      headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
+    }).then(r => r.json());
+    setHTML('cat-lief-list', lieferungen?.length ? `
+      <table class="tbl"><thead><tr>
+        <th>Nr.</th><th>Produkt</th><th>KW</th><th>Lieferdatum</th>
+        <th>Bestellt</th><th>Geliefert</th><th>Qualität</th><th>Status</th><th></th>
+      </tr></thead><tbody>${lieferungen.map(l => `<tr>
+        <td style="font-family:'DM Mono',monospace;font-size:11px">${l.lieferschein_nr}</td>
+        <td style="font-weight:500">${l.produkt||'—'}</td>
+        <td class="pool-meta">${l.lieferwoche||'—'}</td>
+        <td class="pool-meta">${l.lieferdatum ? new Date(l.lieferdatum).toLocaleDateString('de-DE') : '—'}</td>
+        <td class="pool-meta">${l.menge_bestellt ? fmt(l.menge_bestellt,0)+' kg' : '—'}</td>
+        <td>${l.menge_geliefert ? fmt(l.menge_geliefert,0)+' kg' : '—'}</td>
+        <td>${l.qualitaet_caterer ? '<span class="badge '+(l.qualitaet_caterer==='A'?'badge-green':l.qualitaet_caterer==='B'?'badge-amber':'badge-red')+'">'+l.qualitaet_caterer+'</span>' : '—'}</td>
+        <td>${statusBadge(l.status)}</td>
+        <td><div style="display:flex;gap:.35rem">
+          <button class="btn btn-sm" onclick="window.open('/api/print/lieferung/${l.id}','_blank')">🖨</button>
+          ${l.status === 'erstellt' ? '<button class="btn btn-primary btn-sm" onclick="document.getElementById(\'qr-input\').value=\''+l.qr_code+'\';showView(\'wareneingang\');loadView(\'wareneingang\');">📦 WE</button>' : ''}
+        </div></td>
+      </tr>`).join('')}</tbody></table>
+    ` : '<p style="color:var(--text3);font-size:13px">Keine Lieferscheine</p>');
+  } catch(err) { setHTML('cat-lief-list','<div class="alert alert-error">'+err.message+'</div>'); }
+}
+document.getElementById('cat-lief-filter')?.addEventListener('change', loadCatLieferscheine);
+document.getElementById('btn-reload-cat-lief')?.addEventListener('click', loadCatLieferscheine);
 
 // ── INIT ──────────────────────────────────────────────────────
 loadOverview();

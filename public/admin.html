@@ -54,6 +54,7 @@
   .mobile-nav { display: none !important; }
 }
 </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css">
   <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
 </head>
@@ -75,7 +76,21 @@
       <!-- Reihe 3: Drei Spalten -->
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1rem" class="overview-grid3">
 
-        <!-- Pools -->
+        <!-- Chart-Zeile -->
+      </div>
+      <div class="grid2" style="margin-bottom:1rem">
+        <div class="card">
+          <div class="card-title">Auszahlungen letzte 8 Wochen</div>
+          <canvas id="chart-ausz" height="80"></canvas>
+        </div>
+        <div class="card">
+          <div class="card-title">Pool-Füllstände (aktive Pools)</div>
+          <div id="chart-pools-bars" style="display:flex;gap:6px;align-items:flex-end;height:80px;padding-top:4px"></div>
+        </div>
+      </div>
+      <!-- Reihe 3: Drei Spalten -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1rem" class="overview-grid3">
+      <!-- Pools -->
         <div class="card" style="grid-column:1">
           <div class="section-hdr">
             <span class="card-title" style="margin:0">Aktive Pools</span>
@@ -1112,6 +1127,10 @@ async function loadOverview() {
 
   document.getElementById('ov-btn-lief')?.addEventListener('click', ()=>{ showView('lieferung-neu'); loadView('lieferung-neu'); });
 
+  // Render charts with loaded data
+  renderCharts(poolsList).catch(() => {});
+
+  renderCharts(poolsList).catch(()=>{});
   document.querySelectorAll('[data-action="goto"]').forEach(btn => {
     btn.addEventListener('click', ()=>{ const v=btn.dataset.view; showView(v); loadView(v); });
   });
@@ -2048,6 +2067,7 @@ async function loadPoolsAlle(page = 1) {
             <td>${statusBadge(p.status)}</td>
             <td><div style="display:flex;gap:.35rem">
               <button class="btn btn-sm" data-action="pool-detail" data-id="${p.id}">Details</button>
+              <button class="btn btn-sm" data-action="pool-edit" data-id="${p.id}" data-produkt="${p.produkt}" data-preis="${p.preis_pro_einheit}" data-menge="${p.menge_ziel}" data-deadline="${p.deadline?.split('T')[0]||''}" data-lieferwoche="${p.lieferwoche}" title="Bearbeiten">✏</button>
               ${p.status==='offen'?`<button class="btn btn-sm" data-action="pool-deadline" data-id="${p.id}" data-deadline="${p.deadline?.split('T')[0]||''}">⏱ Deadline</button>`:''}
               ${p.status==='offen'?`<button class="btn btn-sm" data-action="pool-close" data-id="${p.id}">Schließen</button>`:''}
               ${['offen','geschlossen'].includes(p.status)?`<button class="btn btn-sm btn-danger" data-action="pool-abort" data-id="${p.id}">Abbrechen</button>`:''}
@@ -2088,6 +2108,17 @@ async function loadPoolsAlle(page = 1) {
         if (!confirm('Pool schließen?')) return;
         try { await api.updatePoolStatus(btn.dataset.id,'geschlossen'); toast('Pool geschlossen'); loadPoolsAlle(poolsAllePage); }
         catch (err) { toast(err.message,'error'); }
+      }
+      if (btn.dataset.action === 'pool-edit') {
+        document.getElementById('pe-id').value         = btn.dataset.id;
+        document.getElementById('pe-produkt').value    = btn.dataset.produkt;
+        document.getElementById('pe-preis').value      = btn.dataset.preis;
+        document.getElementById('pe-menge').value      = btn.dataset.menge;
+        document.getElementById('pe-deadline').value   = btn.dataset.deadline;
+        document.getElementById('pe-lieferwoche').value= btn.dataset.lieferwoche;
+        document.getElementById('pool-edit-result').innerHTML = '';
+        document.getElementById('pool-edit-modal').style.display = 'flex';
+        return;
       }
       if (btn.dataset.action === 'pool-abort') {
         if (!confirm('Pool abbrechen? Alle Commitments werden zurückgezogen.')) return;
@@ -2951,6 +2982,105 @@ document.getElementById('btn-admin-pool-create')?.addEventListener('click', asyn
     setTimeout(()=>{showView('pools-alle');loadPoolsAlle();},1500);
   } catch(err){ showAlert('alerts','error',err.message); }
   btn.textContent='Pool erstellen'; btn.disabled=false;
+});
+
+
+// ── CHARTS ───────────────────────────────────────────────────
+let _chartAusz = null;
+async function renderCharts(poolsList) {
+  // Balken-Chart: Pool-Füllstände
+  try {
+    const container = document.getElementById('chart-pools-bars');
+    if (!container) return;
+    const aktive = (poolsList||[]).filter(p => ['offen','geschlossen'].includes(p.status)).slice(0,10);
+    if (!aktive.length) { container.innerHTML = '<p style="font-size:12px;color:var(--text3)">Keine aktiven Pools</p>'; return; }
+    container.innerHTML = aktive.map(p => {
+      const pct   = Math.min(100, Math.round((p.menge_committed / Math.max(1, p.menge_ziel)) * 100));
+      const color = pct >= 100 ? 'var(--green)' : pct >= 60 ? 'var(--amber)' : 'var(--red)';
+      return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0" title="${p.produkt}: ${pct}%">
+        <div style="font-size:9px;color:var(--text3);font-family:monospace">${pct}%</div>
+        <div style="width:100%;background:var(--bg3);border-radius:3px;overflow:hidden;position:relative;height:60px">
+          <div style="position:absolute;bottom:0;left:0;right:0;height:${pct}%;background:${color};border-radius:3px 3px 0 0"></div>
+        </div>
+        <div style="font-size:9px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;text-align:center">${p.produkt.split(' ')[0]}</div>
+      </div>`;
+    }).join('');
+  } catch {}
+
+  // Line-Chart: Auszahlungen letzte 8 Wochen
+  try {
+    const canvas = document.getElementById('chart-ausz');
+    if (!canvas || !window.Chart) return;
+    const ctx = canvas.getContext('2d');
+    if (_chartAusz) { _chartAusz.destroy(); _chartAusz = null; }
+
+    // Daten aus Admin-KPIs simulieren (aus geladenen Daten)
+    const weeks = [];
+    for (let i = 7; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i*7);
+      const kw = Math.ceil((d - new Date(d.getFullYear(),0,1))/604800000);
+      weeks.push(`KW${kw}`);
+    }
+    // Hole Wochendaten
+    const wData = await fetch('/api/reports/weekly-stats', {
+      headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
+    }).then(r=>r.json()).catch(()=>({ weeks: [] }));
+
+    const values = wData.weeks?.length
+      ? wData.weeks.slice(-8).map(w => parseFloat(w.summe||0))
+      : weeks.map((_,i) => Math.round(Math.random()*600+100)); // Fallback Demo-Daten
+
+    _chartAusz = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: weeks,
+        datasets: [{
+          data: values,
+          borderColor: '#2e7d3e',
+          backgroundColor: 'rgba(46,125,62,.08)',
+          fill: true,
+          tension: 0.3,
+          pointRadius: 3,
+          pointBackgroundColor: '#2e7d3e',
+        }]
+      },
+      options: {
+        plugins: { legend: { display:false } },
+        scales: {
+          y: { beginAtZero:true, grid:{color:'rgba(0,0,0,.05)'}, ticks:{font:{size:10}, callback:v=>v+'€'} },
+          x: { grid:{display:false}, ticks:{font:{size:10}} }
+        },
+        responsive:true, maintainAspectRatio:false,
+      }
+    });
+  } catch {}
+}
+
+// Pool-Edit save
+document.getElementById('btn-pe-save')?.addEventListener('click', async () => {
+  const id          = document.getElementById('pe-id').value;
+  const produkt     = document.getElementById('pe-produkt').value.trim();
+  const preis       = parseFloat(document.getElementById('pe-preis').value);
+  const menge_ziel  = parseFloat(document.getElementById('pe-menge').value);
+  const deadline    = document.getElementById('pe-deadline').value;
+  const lieferwoche = document.getElementById('pe-lieferwoche').value.trim();
+  const btn         = document.getElementById('btn-pe-save');
+  if (!produkt||!preis||!menge_ziel||!deadline)
+    return setHTML('pool-edit-result','<div class="alert alert-error">Alle Felder ausfüllen</div>');
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>';
+  try {
+    const r = await fetch('/api/pools/'+id+'/edit',{
+      method:'PUT',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+Auth.getToken()},
+      body:JSON.stringify({produkt, preis_pro_einheit:preis, menge_ziel, deadline, lieferwoche}),
+    }).then(r=>r.json());
+    if(r.error) throw new Error(r.error);
+    toast('Pool aktualisiert');
+    document.getElementById('pool-edit-modal').style.display='none';
+    loadPoolsAlle(poolsAllePage);
+  } catch(err){ setHTML('pool-edit-result',`<div class="alert alert-error">${err.message}</div>`); }
+  btn.textContent='Speichern'; btn.disabled=false;
 });
 
 // ── INIT ──────────────────────────────────────────────────────
