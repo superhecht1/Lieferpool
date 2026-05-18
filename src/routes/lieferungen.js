@@ -119,6 +119,25 @@ router.post('/', auth, role('admin', 'caterer'), async (req, res) => {
 
     if (!lief) return res.status(404).json({ error: 'Lieferung nicht gefunden' });
 
+    // Lieferschein-Email an Caterer
+    try {
+      const { rows:[catRow] } = await db.query(`
+        SELECT c.firma_name, u.email AS caterer_email
+        FROM pools p JOIN caterer c ON c.id=p.caterer_id JOIN users u ON u.id=c.user_id
+        WHERE p.id=$1
+      `, [pool_id]);
+      if (catRow) {
+        email.sendLieferscheinErstellt({
+          catererEmail: catRow.caterer_email,
+          catererName:  catRow.firma_name,
+          produkt:      pool.produkt,
+          lieferwoche:  pool.lieferwoche,
+          lieferscheinNr: lief.lieferschein_nr,
+          qrCode:       lief.qr_code,
+        }).catch(e => console.warn('[email lieferschein]', e.message));
+      }
+    } catch {}
+
     // Erzeuger per E-Mail benachrichtigen
     // HINWEIS: Auszahlungen werden erst beim Wareneingang berechnet (POST /:id/wareneingang)
     try {
@@ -226,12 +245,12 @@ router.get('/meine', auth, role('erzeuger'), async (req, res) => {
       SELECT DISTINCT
         l.id, l.lieferschein_nr, l.qr_code, l.lieferdatum,
         l.menge_bestellt, l.menge_geliefert, l.status, l.created_at,
+        l.wareneingang_at, l.qualitaet_caterer, l.qualitaet_notiz,
         p.produkt, p.lieferwoche, p.preis_pro_einheit,
         c.menge AS meine_menge,
-        -- Mein Anteil: meine Menge / Gesamtmenge * Nettobetrag
         ROUND(
           (c.menge / NULLIF(p.menge_committed, 0))
-          * (l.menge_geliefert * p.preis_pro_einheit * 0.99)
+          * (COALESCE(l.menge_geliefert, 0) * p.preis_pro_einheit * 0.99)
         , 2) AS mein_anteil
       FROM lieferungen l
       JOIN pools p       ON p.id = l.pool_id

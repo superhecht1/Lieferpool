@@ -228,6 +228,139 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 
+
+// POST /api/touren – Tour erstellen (Admin)
+router.post('/', auth, role('admin'), async (req, res) => {
+  const { datum, typ, fahrer_id, fahrzeug_id, startzeit, notiz } = req.body;
+  if (!datum || !typ) return res.status(400).json({ error: 'datum und typ erforderlich' });
+  try {
+    const { rows:[tour] } = await db.query(`
+      INSERT INTO touren (datum, typ, fahrer_id, fahrzeug_id, startzeit, notiz, created_by)
+      VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *
+    `, [datum, typ, fahrer_id||null, fahrzeug_id||null, startzeit||null, notiz||null, req.user.id]);
+
+    if (fahrer_id) {
+      sendPushToFahrer(fahrer_id, {
+        title: '🚲 Neue Tour zugewiesen',
+        body: `${typ} · ${datum} · ${startzeit ? startzeit.slice(0,5)+' Uhr' : ''}`,
+        url: '/fahrer', tag: 'neue-tour-' + tour.id,
+      });
+    }
+    res.status(201).json({ tour });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// PUT /api/touren/:id – Tour aktualisieren (Admin)
+router.put('/:id', auth, role('admin'), async (req, res) => {
+  const { fahrer_id, fahrzeug_id, startzeit, notiz, status } = req.body;
+  try {
+    const { rows:[tour] } = await db.query(`
+      UPDATE touren SET
+        fahrer_id   = COALESCE($1, fahrer_id),
+        fahrzeug_id = COALESCE($2, fahrzeug_id),
+        startzeit   = COALESCE($3, startzeit),
+        notiz       = COALESCE($4, notiz),
+        status      = COALESCE($5, status)
+      WHERE id=$6 RETURNING *
+    `, [fahrer_id, fahrzeug_id, startzeit, notiz, status, req.params.id]);
+    if (!tour) return res.status(404).json({ error: 'Nicht gefunden' });
+    res.json({ tour });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// PUT /api/touren/:id/status – Fahrer startet/beendet Tour
+router.put('/:id/status', auth, async (req, res) => {
+  const { status } = req.body;
+  const erlaubt = ['aktiv', 'abgeschlossen', 'abgebrochen'];
+  if (!erlaubt.includes(status)) return res.status(400).json({ error: 'Ungültiger Status' });
+  try {
+    const extra = status === 'aktiv' ? ', gestartet_at = NOW()' : status === 'abgeschlossen' ? ', abgeschlossen_at = NOW()' : '';
+    const { rows:[tour] } = await db.query(
+      `UPDATE touren SET status=$1${extra} WHERE id=$2 RETURNING *`,
+      [status, req.params.id]
+    );
+    if (!tour) return res.status(404).json({ error: 'Tour nicht gefunden' });
+    res.json({ tour });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/touren/:id/starten
+router.post('/:id/starten', auth, role('fahrer'), async (req, res) => {
+  try {
+    const { rows:[tour] } = await db.query(`
+      UPDATE touren SET status='aktiv', gestartet_at=NOW() WHERE id=$1 AND fahrer_id=$2 RETURNING *
+    `, [req.params.id, req.user.id]);
+    if (!tour) return res.status(404).json({ error: 'Tour nicht gefunden' });
+    res.json({ tour });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/touren/:id/stopps – Stopp hinzufügen (Admin)
+router.post('/:id/stopps', auth, role('admin'), async (req, res) => {
+  const { typ, name, adresse, lat, lng, produkt, menge_geplant_kg, erzeuger_id, caterer_id, lieferung_id } = req.body;
+  if (!typ || !name) return res.status(400).json({ error: 'typ und name erforderlich' });
+  try {
+    const { rows:[count] } = await db.query(
+      `SELECT COALESCE(MAX(reihenfolge),0)+1 AS next FROM tour_stopps WHERE tour_id=$1`, [req.params.id]
+    );
+    let distanzKm = null;
+    if (lat && lng) {
+      const HUB_LAT = parseFloat(process.env.HUB_LAT || '50.9245');
+      const HUB_LON = parseFloat(process.env.HUB_LON || '6.9195');
+      distanzKm = haversineKm(HUB_LAT, HUB_LON, parseFloat(lat), parseFloat(lng));
+    }
+    const { rows:[stopp] } = await db.query(`
+      INSERT INTO tour_stopps (tour_id, reihenfolge, typ, name, adresse, lat, lng, distanz_hub_km,
+        produkt, menge_geplant_kg, erzeuger_id, caterer_id, lieferung_id)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *
+    `, [req.params.id, count.next, typ, name, adresse||null, lat||null, lng||null, distanzKm,
+        produkt||null, menge_geplant_kg||null, erzeuger_id||null, caterer_id||null, lieferung_id||null]);
+    res.status(201).json({ stopp });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// DELETE /api/touren/:id/stopps/:stoppId
+router.delete('/:id/stopps/:stoppId', auth, role('admin'), async (req, res) => {
+  try {
+    await db.query(`DELETE FROM tour_stopps WHERE id=$1 AND tour_id=$2`, [req.params.stoppId, req.params.id]);
+    res.json({ message: 'Stopp gelöscht' });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/touren/:id/optimieren – Nearest-Neighbor Routenoptimierung
+router.post('/:id/optimieren', auth, role('admin'), async (req, res) => {
+  try {
+    const { rows: stopps } = await db.query(
+      `SELECT * FROM tour_stopps WHERE tour_id=$1 AND lat IS NOT NULL ORDER BY reihenfolge`,
+      [req.params.id]
+    );
+    if (stopps.length < 2) return res.json({ message: 'Zu wenige Stopps für Optimierung', changed: false });
+
+    const HUB_LAT = parseFloat(process.env.HUB_LAT || '50.9245');
+    const HUB_LON = parseFloat(process.env.HUB_LON || '6.9195');
+
+    const unvisited = [...stopps];
+    const sorted = [];
+    let curLat = HUB_LAT, curLon = HUB_LON;
+    while (unvisited.length) {
+      let best = 0, bestDist = Infinity;
+      unvisited.forEach((s, i) => {
+        const d = haversineKm(curLat, curLon, parseFloat(s.lat), parseFloat(s.lng));
+        if (d < bestDist) { bestDist = d; best = i; }
+      });
+      const next = unvisited.splice(best, 1)[0];
+      sorted.push(next);
+      curLat = parseFloat(next.lat); curLon = parseFloat(next.lng);
+    }
+
+    const allKurz = sorted.every(s => parseFloat(s.distanz_hub_km || 99) < 5);
+    for (let i = 0; i < sorted.length; i++) {
+      await db.query(`UPDATE tour_stopps SET reihenfolge=$1 WHERE id=$2`, [i+1, sorted[i].id]);
+    }
+    res.json({ message: `${sorted.length} Stopps optimiert`, e_lastenrad_ok: allKurz, changed: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 module.exports = router;
 
 // Helper: Push senden wenn Tour einem Fahrer zugewiesen wird
