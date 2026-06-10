@@ -23,68 +23,36 @@ function fmt(n, decimals = 2) {
   return parseFloat(n || 0).toFixed(decimals).replace('.', ',');
 }
 
+function toXLSX(rows, columns, sheetName) {
+  const XLSX = require('xlsx');
+  const wsData = [
+    columns.map(c => c.label),
+    ...rows.map(row => columns.map(c => {
+      const val = row[c.key];
+      if (val === null || val === undefined) return '';
+      // Zahlen als Zahl, Datum als String
+      if (c.type === 'number') return parseFloat(val) || 0;
+      if (val instanceof Date) return val.toLocaleDateString('de-DE');
+      if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val)) {
+        return new Date(val).toLocaleDateString('de-DE');
+      }
+      return String(val);
+    }))
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  // Header-Zeile fett (nur Stil, SheetJS ohne pro braucht raw)
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName || 'Daten');
+  return XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+}
+
 // ----------------------------------------------------------------
 // GET /api/reports/auszahlungen.csv
 // ----------------------------------------------------------------
 router.get('/auszahlungen.csv', auth, role('admin', 'erzeuger'), async (req, res) => {
   try {
-    const { von, bis, status } = req.query;
-    const params  = [];
-    const filters = [];
-
-    // Erzeuger sieht nur eigene
-    if (req.user.role === 'erzeuger') {
-      const { rows: [e] } = await db.query(
-        `SELECT id FROM erzeuger WHERE user_id = $1`, [req.user.id]
-      );
-      if (!e) return res.status(403).json({ error: 'Kein Erzeuger-Profil' });
-      params.push(e.id);
-      filters.push(`a.erzeuger_id = $${params.length}`);
-    }
-
-    if (von)    { params.push(von);    filters.push(`a.created_at >= $${params.length}`); }
-    if (bis)    { params.push(bis);    filters.push(`a.created_at <= $${params.length}`); }
-    if (status) { params.push(status); filters.push(`a.status = $${params.length}`); }
-
-    const where = filters.length ? 'WHERE ' + filters.join(' AND ') : '';
-
-    const { rows } = await db.query(`
-      SELECT
-        a.created_at,
-        e.betrieb_name,
-        p.produkt,
-        p.lieferwoche,
-        c.menge         AS commitment_menge_kg,
-        a.brutto,
-        a.abzug_qualitaet,
-        a.platform_fee,
-        a.netto,
-        a.status,
-        a.ausgezahlt_am,
-        a.zahlungsart
-      FROM auszahlungen a
-      JOIN erzeuger e    ON e.id = a.erzeuger_id
-      JOIN commitments c ON c.id = a.commitment_id
-      JOIN pools p       ON p.id = c.pool_id
-      ${where}
-      ORDER BY a.created_at DESC
-    `, params);
-
-    const csv = toCSV(rows, [
-      { label: 'Datum',            key: 'created_at',          },
-      { label: 'Betrieb',          key: 'betrieb_name'         },
-      { label: 'Produkt',          key: 'produkt'              },
-      { label: 'Lieferwoche',      key: 'lieferwoche'          },
-      { label: 'Menge (kg)',       key: 'commitment_menge_kg'  },
-      { label: 'Brutto (€)',       key: 'brutto'               },
-      { label: 'Qualitätsabzug',   key: 'abzug_qualitaet'      },
-      { label: 'Plattformfee',     key: 'platform_fee'         },
-      { label: 'Netto (€)',        key: 'netto'                },
-      { label: 'Status',           key: 'status'               },
-      { label: 'Ausgezahlt am',    key: 'ausgezahlt_am'        },
-      { label: 'Zahlungsart',      key: 'zahlungsart'          },
-    ]);
-
+    const rows = await getAuszahlungenRows(req);
+    const csv = toCSV(rows, auszahlungenCols());
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="auszahlungen.csv"');
     res.send(csv);
@@ -95,123 +63,189 @@ router.get('/auszahlungen.csv', auth, role('admin', 'erzeuger'), async (req, res
 });
 
 // ----------------------------------------------------------------
-// GET /api/reports/pools.csv
+// GET /api/reports/auszahlungen.xlsx
+// ----------------------------------------------------------------
+router.get('/auszahlungen.xlsx', auth, role('admin', 'erzeuger'), async (req, res) => {
+  try {
+    const rows = await getAuszahlungenRows(req);
+    const buf  = toXLSX(rows, auszahlungenCols(), 'Auszahlungen');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="auszahlungen.xlsx"');
+    res.send(buf);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Export fehlgeschlagen' });
+  }
+});
+
+async function getAuszahlungenRows(req) {
+  const { von, bis, status } = req.query;
+  const params  = [];
+  const filters = [];
+  if (req.user.role === 'erzeuger') {
+    const { rows: [e] } = await db.query(`SELECT id FROM erzeuger WHERE user_id = $1`, [req.user.id]);
+    if (!e) throw new Error('Kein Erzeuger-Profil');
+    params.push(e.id);
+    filters.push(`a.erzeuger_id = $${params.length}`);
+  }
+  if (von)    { params.push(von);    filters.push(`a.created_at >= $${params.length}`); }
+  if (bis)    { params.push(bis);    filters.push(`a.created_at <= $${params.length}`); }
+  if (status) { params.push(status); filters.push(`a.status = $${params.length}`); }
+  const where = filters.length ? 'WHERE ' + filters.join(' AND ') : '';
+  const { rows } = await db.query(`
+    SELECT a.created_at, e.betrieb_name, p.produkt, p.lieferwoche,
+           c.menge AS commitment_menge_kg, a.brutto, a.abzug_qualitaet,
+           a.platform_fee, a.netto, a.status, a.ausgezahlt_am, a.zahlungsart
+    FROM auszahlungen a
+    JOIN erzeuger e    ON e.id = a.erzeuger_id
+    JOIN commitments c ON c.id = a.commitment_id
+    JOIN pools p       ON p.id = c.pool_id
+    ${where}
+    ORDER BY a.created_at DESC
+  `, params);
+  return rows;
+}
+
+function auszahlungenCols() {
+  return [
+    { label: 'Datum',           key: 'created_at'         },
+    { label: 'Betrieb',         key: 'betrieb_name'        },
+    { label: 'Produkt',         key: 'produkt'             },
+    { label: 'Lieferwoche',     key: 'lieferwoche'         },
+    { label: 'Menge (kg)',      key: 'commitment_menge_kg', type: 'number' },
+    { label: 'Brutto (€)',      key: 'brutto',              type: 'number' },
+    { label: 'Qualitätsabzug',  key: 'abzug_qualitaet',    type: 'number' },
+    { label: 'Plattformfee',    key: 'platform_fee',        type: 'number' },
+    { label: 'Netto (€)',       key: 'netto',               type: 'number' },
+    { label: 'Status',          key: 'status'              },
+    { label: 'Ausgezahlt am',   key: 'ausgezahlt_am'       },
+    { label: 'Zahlungsart',     key: 'zahlungsart'         },
+  ];
+}
+
+// ----------------------------------------------------------------
+// GET /api/reports/pools.csv + .xlsx
 // ----------------------------------------------------------------
 router.get('/pools.csv', auth, role('admin'), async (req, res) => {
   try {
-    const { rows } = await db.query(`
-      SELECT
-        p.created_at,
-        p.produkt,
-        p.lieferwoche,
-        p.menge_ziel,
-        p.menge_committed,
-        p.preis_pro_einheit,
-        p.status,
-        p.region,
-        COUNT(c.id)::int AS erzeuger_count,
-        ROUND(p.menge_committed / NULLIF(p.menge_ziel,0) * 100, 1) AS fuellstand_pct
-      FROM pools p
-      LEFT JOIN commitments c ON c.pool_id = p.id AND c.status != 'zurueckgezogen'
-      GROUP BY p.id
-      ORDER BY p.created_at DESC
-    `);
-
-    const csv = toCSV(rows, [
-      { label: 'Erstellt am',      key: 'created_at'       },
-      { label: 'Produkt',          key: 'produkt'          },
-      { label: 'Lieferwoche',      key: 'lieferwoche'      },
-      { label: 'Ziel (kg)',        key: 'menge_ziel'       },
-      { label: 'Committet (kg)',   key: 'menge_committed'  },
-      { label: 'Füllstand (%)',    key: 'fuellstand_pct'   },
-      { label: 'Preis (€/kg)',     key: 'preis_pro_einheit'},
-      { label: 'Erzeuger',         key: 'erzeuger_count'   },
-      { label: 'Region',           key: 'region'           },
-      { label: 'Status',           key: 'status'           },
-    ]);
-
+    const rows = await getPoolsRows();
+    const csv  = toCSV(rows, poolsCols());
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="pools.csv"');
     res.send(csv);
-  } catch (err) {
-    res.status(500).json({ error: 'Export fehlgeschlagen' });
-  }
+  } catch (err) { res.status(500).json({ error: 'Export fehlgeschlagen' }); }
 });
 
+router.get('/pools.xlsx', auth, role('admin'), async (req, res) => {
+  try {
+    const rows = await getPoolsRows();
+    const buf  = toXLSX(rows, poolsCols(), 'Pools');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="pools.xlsx"');
+    res.send(buf);
+  } catch (err) { res.status(500).json({ error: 'Export fehlgeschlagen' }); }
+});
+
+async function getPoolsRows() {
+  const { rows } = await db.query(`
+    SELECT p.created_at, p.produkt, p.lieferwoche, p.menge_ziel, p.menge_committed,
+           p.preis_pro_einheit, p.status, p.region,
+           COUNT(c.id)::int AS erzeuger_count,
+           ROUND(p.menge_committed / NULLIF(p.menge_ziel,0) * 100, 1) AS fuellstand_pct
+    FROM pools p
+    LEFT JOIN commitments c ON c.pool_id = p.id AND c.status != 'zurueckgezogen'
+    GROUP BY p.id
+    ORDER BY p.created_at DESC
+  `);
+  return rows;
+}
+
+function poolsCols() {
+  return [
+    { label: 'Erstellt am',    key: 'created_at'        },
+    { label: 'Produkt',        key: 'produkt'            },
+    { label: 'Lieferwoche',    key: 'lieferwoche'        },
+    { label: 'Ziel (kg)',      key: 'menge_ziel',        type: 'number' },
+    { label: 'Committet (kg)', key: 'menge_committed',   type: 'number' },
+    { label: 'Füllstand (%)',  key: 'fuellstand_pct',    type: 'number' },
+    { label: 'Preis (€/kg)',   key: 'preis_pro_einheit', type: 'number' },
+    { label: 'Erzeuger',       key: 'erzeuger_count',    type: 'number' },
+    { label: 'Region',         key: 'region'             },
+    { label: 'Status',         key: 'status'             },
+  ];
+}
+
 // ----------------------------------------------------------------
-// GET /api/reports/lieferungen.csv
+// GET /api/reports/lieferungen.csv + .xlsx
 // ----------------------------------------------------------------
 router.get('/lieferungen.csv', auth, role('admin'), async (req, res) => {
   try {
-    const { rows } = await db.query(`
-      SELECT
-        l.created_at,
-        l.lieferschein_nr,
-        l.qr_code,
-        p.produkt,
-        p.lieferwoche,
-        l.menge_bestellt,
-        l.menge_geliefert,
-        l.qualitaet,
-        l.status,
-        l.wareneingang_at,
-        l.notiz
-      FROM lieferungen l
-      JOIN pools p ON p.id = l.pool_id
-      ORDER BY l.created_at DESC
-    `);
-
-    const csv = toCSV(rows, [
-      { label: 'Erstellt am',        key: 'created_at'       },
-      { label: 'Lieferschein Nr.',   key: 'lieferschein_nr'  },
-      { label: 'QR-Code',            key: 'qr_code'          },
-      { label: 'Produkt',            key: 'produkt'          },
-      { label: 'Lieferwoche',        key: 'lieferwoche'      },
-      { label: 'Bestellt (kg)',      key: 'menge_bestellt'   },
-      { label: 'Geliefert (kg)',     key: 'menge_geliefert'  },
-      { label: 'Qualität',           key: 'qualitaet'        },
-      { label: 'Status',             key: 'status'           },
-      { label: 'Wareneingang am',    key: 'wareneingang_at'  },
-      { label: 'Notiz',              key: 'notiz'            },
-    ]);
-
+    const rows = await getLieferungenRows();
+    const csv  = toCSV(rows, lieferungenCols());
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="lieferungen.csv"');
     res.send(csv);
-  } catch (err) {
-    res.status(500).json({ error: 'Export fehlgeschlagen' });
-  }
+  } catch (err) { res.status(500).json({ error: 'Export fehlgeschlagen' }); }
 });
 
+router.get('/lieferungen.xlsx', auth, role('admin'), async (req, res) => {
+  try {
+    const rows = await getLieferungenRows();
+    const buf  = toXLSX(rows, lieferungenCols(), 'Lieferungen');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="lieferungen.xlsx"');
+    res.send(buf);
+  } catch (err) { res.status(500).json({ error: 'Export fehlgeschlagen' }); }
+});
+
+async function getLieferungenRows() {
+  const { rows } = await db.query(`
+    SELECT l.created_at, l.lieferschein_nr, l.qr_code, p.produkt, p.lieferwoche,
+           l.menge_bestellt, l.menge_geliefert, l.qualitaet, l.status,
+           l.wareneingang_at, l.notiz
+    FROM lieferungen l
+    JOIN pools p ON p.id = l.pool_id
+    ORDER BY l.created_at DESC
+  `);
+  return rows;
+}
+
+function lieferungenCols() {
+  return [
+    { label: 'Erstellt am',       key: 'created_at'      },
+    { label: 'Lieferschein Nr.',  key: 'lieferschein_nr' },
+    { label: 'QR-Code',           key: 'qr_code'         },
+    { label: 'Produkt',           key: 'produkt'         },
+    { label: 'Lieferwoche',       key: 'lieferwoche'     },
+    { label: 'Bestellt (kg)',     key: 'menge_bestellt',  type: 'number' },
+    { label: 'Geliefert (kg)',    key: 'menge_geliefert', type: 'number' },
+    { label: 'Qualität',          key: 'qualitaet'       },
+    { label: 'Status',            key: 'status'          },
+    { label: 'Wareneingang am',   key: 'wareneingang_at' },
+    { label: 'Notiz',             key: 'notiz'           },
+  ];
+}
+
 // ----------------------------------------------------------------
-// GET /api/reports/abrechnung/:erzeuger_id
-// HTML-Abrechnung für einen Erzeuger (druckbar / als PDF speicherbar)
+// GET /api/reports/abrechnung/:erzeuger_id – HTML-Druckansicht
 // ----------------------------------------------------------------
 router.get('/abrechnung/:erzeuger_id', auth, role('admin', 'erzeuger'), async (req, res) => {
   try {
-    // Erzeuger prüfen
     const { rows: [e] } = await db.query(`
       SELECT e.*, u.email, u.name FROM erzeuger e
       JOIN users u ON u.id = e.user_id
       WHERE e.id = $1
     `, [req.params.erzeuger_id]);
-
     if (!e) return res.status(404).json({ error: 'Erzeuger nicht gefunden' });
-
-    // Nur eigene Daten für Erzeuger
     if (req.user.role === 'erzeuger') {
-      const { rows: [me] } = await db.query(
-        `SELECT id FROM erzeuger WHERE user_id = $1`, [req.user.id]
-      );
+      const { rows: [me] } = await db.query(`SELECT id FROM erzeuger WHERE user_id = $1`, [req.user.id]);
       if (!me || me.id !== e.id) return res.status(403).json({ error: 'Kein Zugriff' });
     }
-
     const { von, bis } = req.query;
     const params  = [e.id];
     const filters = [`a.erzeuger_id = $1`];
     if (von) { params.push(von); filters.push(`a.created_at >= $${params.length}`); }
     if (bis) { params.push(bis); filters.push(`a.created_at <= $${params.length}`); }
-
     const { rows: auszahlungen } = await db.query(`
       SELECT a.*, p.produkt, p.lieferwoche, c.menge AS commitment_menge
       FROM auszahlungen a
@@ -220,12 +254,10 @@ router.get('/abrechnung/:erzeuger_id', auth, role('admin', 'erzeuger'), async (r
       WHERE ${filters.join(' AND ')}
       ORDER BY a.created_at DESC
     `, params);
-
     const gesamt     = auszahlungen.reduce((s, r) => s + parseFloat(r.netto), 0);
     const ausgezahlt = auszahlungen.filter(r => r.status === 'ausgezahlt').reduce((s, r) => s + parseFloat(r.netto), 0);
     const ausstehend = auszahlungen.filter(r => r.status !== 'ausgezahlt').reduce((s, r) => s + parseFloat(r.netto), 0);
-
-    const zeitraum = von && bis
+    const zeitraum   = von && bis
       ? `${new Date(von).toLocaleDateString('de-DE')} – ${new Date(bis).toLocaleDateString('de-DE')}`
       : 'Alle Zeiträume';
 
@@ -265,7 +297,7 @@ router.get('/abrechnung/:erzeuger_id', auth, role('admin', 'erzeuger'), async (r
 <body>
 <div class="head">
   <div>
-    <div class="logo">Liefer<span>Pool</span></div>
+    <div class="logo">Frisch<span>Kette</span></div>
     <div style="font-size:11px;color:#8a9484;margin-top:4px">Regionale Lieferkooperative</div>
   </div>
   <div class="meta">
@@ -274,10 +306,8 @@ router.get('/abrechnung/:erzeuger_id', auth, role('admin', 'erzeuger'), async (r
     Erstellt: ${new Date().toLocaleDateString('de-DE')}
   </div>
 </div>
-
 <h1>${e.betrieb_name}</h1>
 <div class="betrieb">${e.email} · Region: ${e.region}${e.iban ? ' · IBAN: ' + e.iban : ''}</div>
-
 <div class="summary">
   <div class="sum-box">
     <div class="sum-label">Gesamt Netto</div>
@@ -292,18 +322,11 @@ router.get('/abrechnung/:erzeuger_id', auth, role('admin', 'erzeuger'), async (r
     <div class="sum-val">${fmt(ausstehend)} €</div>
   </div>
 </div>
-
 <table>
   <thead>
     <tr>
-      <th>Datum</th>
-      <th>Produkt</th>
-      <th>KW</th>
-      <th>Menge (kg)</th>
-      <th>Brutto (€)</th>
-      <th>Abzüge (€)</th>
-      <th>Netto (€)</th>
-      <th>Status</th>
+      <th>Datum</th><th>Produkt</th><th>KW</th><th>Menge (kg)</th>
+      <th>Brutto (€)</th><th>Abzüge (€)</th><th>Netto (€)</th><th>Status</th>
     </tr>
   </thead>
   <tbody>
@@ -330,17 +353,14 @@ router.get('/abrechnung/:erzeuger_id', auth, role('admin', 'erzeuger'), async (r
     </tr>
   </tbody>
 </table>
-
 <div class="foot">
-  LieferPool · Automatisch generierte Abrechnung · Keine Rechnung im steuerrechtlichen Sinne
+  FrischKette · Automatisch generierte Abrechnung · Keine Rechnung im steuerrechtlichen Sinne
   <button onclick="window.print()" class="no-print" style="margin-left:16px;padding:4px 12px;background:#2e7d3e;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px">
     Drucken / Als PDF speichern
   </button>
 </div>
-
 </body>
 </html>`;
-
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.send(html);
   } catch (err) {
@@ -350,7 +370,7 @@ router.get('/abrechnung/:erzeuger_id', auth, role('admin', 'erzeuger'), async (r
 });
 
 // ----------------------------------------------------------------
-// GET /api/reports/dashboard – Kennzahlen für Admin-Übersicht
+// GET /api/reports/dashboard
 // ----------------------------------------------------------------
 router.get('/dashboard', auth, role('admin'), async (req, res) => {
   try {
@@ -360,7 +380,6 @@ router.get('/dashboard', auth, role('admin'), async (req, res) => {
       db.query(`SELECT COUNT(*)::int AS count FROM erzeuger`),
       db.query(`SELECT COUNT(*)::int AS count FROM lieferungen WHERE status = 'eingegangen'`),
     ]);
-
     res.json({
       pools:       pools.rows,
       auszahlungen:auszahlungen.rows,
@@ -372,8 +391,7 @@ router.get('/dashboard', auth, role('admin'), async (req, res) => {
   }
 });
 
-
-// GET /api/reports/weekly-stats – Auszahlungen pro Woche (für Admin-Chart)
+// GET /api/reports/weekly-stats
 router.get('/weekly-stats', auth, role('admin'), async (req, res) => {
   try {
     const { rows } = await db.query(`

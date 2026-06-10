@@ -256,4 +256,139 @@ router.post('/:id/stornieren', auth, role('admin'), async (req, res) => {
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
+
+// GET /api/rechnungen/:id/download – Rechnung als echter PDF-Download (pdfkit)
+router.get('/:id/download', auth, async (req, res) => {
+  try {
+    const { rows:[r] } = await db.query(`
+      SELECT r.*,
+             e.betrieb_name, e.adresse AS erz_adresse, e.plz AS erz_plz,
+             e.ort AS erz_ort, e.ust_id,
+             u.email AS erz_email
+      FROM rechnungen r
+      JOIN erzeuger e ON e.id=r.erzeuger_id
+      JOIN users u ON u.id=e.user_id
+      WHERE r.id=$1
+    `, [req.params.id]);
+    if (!r) return res.status(404).send('Rechnung nicht gefunden');
+    if (req.user.role === 'erzeuger') {
+      const { rows:[erz] } = await db.query(`SELECT id FROM erzeuger WHERE user_id=$1`,[req.user.id]);
+      if (!erz || erz.id !== r.erzeuger_id) return res.status(403).send('Kein Zugriff');
+    }
+
+    const PDFDocument = require('pdfkit');
+    const doc = new PDFDocument({ margin: 60, size: 'A4' });
+    const filename = `Rechnung-${r.rechnungs_nr}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    doc.pipe(res);
+
+    const G = '#2e7d3e';
+    const DARK = '#0d1f15';
+    const GRAY = '#8a9484';
+    const W = 495; // usable width
+
+    // ── Logo ─────────────────────────────────────────────────────
+    doc.fontSize(20).font('Helvetica-Bold').fillColor(DARK).text('Frisch', 60, 60, { continued: true });
+    doc.fillColor(G).text('Kette');
+    doc.fontSize(9).font('Helvetica').fillColor(GRAY).text('Regionale Lieferkooperative', 60, 85);
+
+    // ── Rechts: Datum, Status ─────────────────────────────────────
+    const datum = new Date(r.rechnungsdatum).toLocaleDateString('de-DE');
+    const leist = r.leistungsdatum ? new Date(r.leistungsdatum).toLocaleDateString('de-DE') : datum;
+    doc.fontSize(9).font('Helvetica').fillColor(GRAY)
+       .text(`Rechnungsdatum: ${datum}`, 60, 60, { align: 'right', width: W })
+       .text(`Leistungsdatum: ${leist}`, 60, 72, { align: 'right', width: W })
+       .text(`Status: ${r.status}`,      60, 84, { align: 'right', width: W });
+
+    // ── Trennlinie ────────────────────────────────────────────────
+    doc.moveTo(60, 105).lineTo(555, 105).lineWidth(1.5).strokeColor(DARK).stroke();
+
+    // ── Titel ─────────────────────────────────────────────────────
+    doc.fontSize(16).font('Helvetica-Bold').fillColor(DARK).text('Abrechnung / Gutschrift', 60, 120);
+    doc.fontSize(10).font('Helvetica').fillColor(GRAY).text(`Rechnungs-Nr.: ${r.rechnungs_nr}`, 60, 142);
+
+    // ── Adressblock ───────────────────────────────────────────────
+    const adrY = 175;
+    doc.fontSize(8).font('Helvetica-Bold').fillColor(GRAY)
+       .text('LEISTUNGSERBRINGER (ERZEUGER:IN)', 60, adrY)
+       .text('AUFTRAGGEBER (PLATTFORM)', 310, adrY);
+
+    doc.fontSize(10).font('Helvetica-Bold').fillColor(DARK)
+       .text(r.betrieb_name, 60, adrY + 14)
+       .text('FrischKette / superhecht.ai', 310, adrY + 14);
+    doc.fontSize(9).font('Helvetica').fillColor(DARK)
+       .text([r.erz_adresse, `${r.erz_plz||''} ${r.erz_ort||''}`, r.erz_email,
+              r.ust_id ? `USt-ID: ${r.ust_id}` : '(USt-ID fehlt)'].filter(Boolean).join('
+'), 60, adrY + 27)
+       .text('Lackgässchen 24
+50968 Köln
+rusniok@googlemail.com', 310, adrY + 27);
+
+    // ── Tabelle ───────────────────────────────────────────────────
+    const tY = 290;
+    // Header
+    doc.rect(60, tY, W, 20).fill(DARK);
+    doc.fontSize(9).font('Helvetica-Bold').fillColor('#fff');
+    doc.text('Pos.', 66, tY+6, { width: 25 });
+    doc.text('Leistungsbeschreibung', 95, tY+6, { width: 230 });
+    doc.text('Netto (€)', 330, tY+6, { width: 60, align: 'right' });
+    const mwstSatz = parseFloat(r.mwst_satz).toFixed(0);
+    doc.text(`MwSt. ${mwstSatz}%`, 395, tY+6, { width: 60, align: 'right' });
+    doc.text('Brutto (€)', 460, tY+6, { width: 90, align: 'right' });
+
+    // Row 1
+    const row1Y = tY + 22;
+    doc.rect(60, row1Y, W, 22).fill('#f9faf7');
+    doc.fontSize(9).font('Helvetica').fillColor(DARK);
+    doc.text('1', 66, row1Y+7, { width: 25 });
+    doc.text(r.leistung_beschr || '', 95, row1Y+7, { width: 230 });
+    doc.text(parseFloat(r.netto).toFixed(2), 330, row1Y+7, { width: 60, align: 'right' });
+    doc.text(parseFloat(r.mwst).toFixed(2),  395, row1Y+7, { width: 60, align: 'right' });
+    doc.text(parseFloat(r.brutto).toFixed(2),460, row1Y+7, { width: 90, align: 'right' });
+
+    // Summenzeilen
+    const s1Y = row1Y + 26;
+    doc.rect(60, s1Y, W, 18).fill('#f0f1ee');
+    doc.fontSize(9).font('Helvetica-Bold').fillColor(DARK);
+    doc.text('Summe Netto', 66, s1Y+5, { width: 360 });
+    doc.text(`${parseFloat(r.netto).toFixed(2)} €`, 66, s1Y+5, { width: W-10, align: 'right' });
+
+    const s2Y = s1Y + 20;
+    doc.rect(60, s2Y, W, 18).fill('#ffffff');
+    doc.fontSize(9).font('Helvetica').fillColor(DARK);
+    doc.text(`zzgl. Umsatzsteuer ${mwstSatz}% (Lebensmittel)`, 66, s2Y+5, { width: 360 });
+    doc.text(`${parseFloat(r.mwst).toFixed(2)} €`, 66, s2Y+5, { width: W-10, align: 'right' });
+
+    const s3Y = s2Y + 22;
+    doc.rect(60, s3Y, W, 22).fill('#eaf4ec');
+    doc.fontSize(11).font('Helvetica-Bold').fillColor(DARK);
+    doc.text('Gesamtbetrag Brutto', 66, s3Y+6, { width: 360 });
+    doc.text(`${parseFloat(r.brutto).toFixed(2)} €`, 66, s3Y+6, { width: W-10, align: 'right' });
+
+    // ── Hinweis ───────────────────────────────────────────────────
+    const hinweisY = s3Y + 40;
+    doc.fontSize(8.5).font('Helvetica').fillColor(GRAY)
+       .text(
+         `Hinweis: Diese Abrechnung wird gemäß §14 UStG als Gutschrift ausgestellt. ` +
+         `Die Zahlung erfolgt per SEPA-Überweisung. ` +
+         `Lebensmittel unterliegen dem ermäßigten Umsatzsteuersatz von ${mwstSatz}% (§12 Abs. 2 UStG).`,
+         60, hinweisY, { width: W, lineGap: 2 }
+       );
+
+    // ── Footer ─────────────────────────────────────────────────────
+    doc.moveTo(60, 770).lineTo(555, 770).lineWidth(0.5).strokeColor(GRAY).stroke();
+    doc.fontSize(8).font('Helvetica').fillColor(GRAY)
+       .text(
+         `FrischKette · superhecht.ai (i.Gr.) · Lackgässchen 24 · 50968 Köln · Rechnungs-Nr.: ${r.rechnungs_nr}`,
+         60, 775, { width: W, align: 'center' }
+       );
+
+    doc.end();
+  } catch(err) {
+    console.error(err);
+    if (!res.headersSent) res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
