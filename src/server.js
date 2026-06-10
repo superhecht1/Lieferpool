@@ -138,6 +138,13 @@ const monitoring = require('./routes/monitoring');
 app.use('/api/monitoring',   monitoring.router);
 app.use('/health',           monitoring.router);
 
+
+// PWA: Service Worker & Manifests für Erzeuger und Caterer
+app.get('/sw-erzeuger.js',         (req, res) => res.set('Content-Type','application/javascript').sendFile(path.join(__dirname,'../public/sw-erzeuger.js')));
+app.get('/sw-caterer.js',          (req, res) => res.set('Content-Type','application/javascript').sendFile(path.join(__dirname,'../public/sw-caterer.js')));
+app.get('/manifest-erzeuger.json', (req, res) => res.json(require('../public/manifest-erzeuger.json')));
+app.get('/manifest-caterer.json',  (req, res) => res.json(require('../public/manifest-caterer.json')));
+
 // Chain Status
 app.get('/api/chain/status', async (req, res) => {
   if (chainMode !== 'production') return res.json({ enabled: false, mode: 'mock' });
@@ -151,6 +158,43 @@ app.get('/api/chain/status', async (req, res) => {
       contractAddress: process.env.CONTRACT_ADDRESS,
       walletBalance: ethers.formatEther(balance) + ' MATIC' });
   } catch (err) { res.status(503).json({ enabled: true, error: err.message }); }
+});
+
+
+// POST /api/admin/bulk-email – E-Mail an alle Erzeuger senden
+app.post('/api/admin/bulk-email', require('./middleware/auth').auth, require('./middleware/auth').role('admin'), async (req, res) => {
+  const { betreff, text, nur_aktive = true } = req.body;
+  if (!betreff || !text) return res.status(400).json({ error: 'betreff und text erforderlich' });
+  try {
+    const { send } = require('./services/email');
+    const filter = nur_aktive
+      ? `WHERE e.verifiziert = true AND u.aktiv = true`
+      : `WHERE u.aktiv = true`;
+    const { rows } = await require('./db').query(
+      `SELECT u.email, u.name, e.betrieb_name
+       FROM erzeuger e JOIN users u ON u.id=e.user_id
+       ${filter}
+       ORDER BY e.betrieb_name`
+    );
+    let gesendet = 0, fehler = 0;
+    for (const emp of rows) {
+      try {
+        await send({
+          to:      emp.email,
+          subject: betreff,
+          html:    `<div style="font-family:sans-serif;max-width:600px">
+            <p>Hallo ${emp.betrieb_name || emp.name},</p>
+            <div style="margin:1rem 0;line-height:1.7">${text.replace(/\n/g,'<br>')}</div>
+            <p style="color:#8a9484;font-size:12px;margin-top:2rem">
+              FrischKette · Diese E-Mail wurde über das Admin-Dashboard gesendet.
+            </p>
+          </div>`,
+        });
+        gesendet++;
+      } catch { fehler++; }
+    }
+    res.json({ gesendet, fehler, gesamt: rows.length });
+  } catch(err) { res.status(500).json({ error: err.message }); }
 });
 
 // Push Test
