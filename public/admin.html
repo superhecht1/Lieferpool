@@ -940,8 +940,12 @@ if (headerEl) {
   headerEl.appendChild(searchWrap);
 }
 
-// (setHTML wrapped below by sort util)
-function setHTML(id, html) { const el = document.getElementById(id); if (el) el.innerHTML = html; }
+function setHTML(id, html) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = html;
+  el.querySelectorAll('table.tbl').forEach(makeSortable);
+}
 
 // ── TABELLEN-SORTIERUNG ───────────────────────────────────────
 // Aufruf: makeSortable(tableElement) nach jedem Render
@@ -976,12 +980,7 @@ function makeSortable(table) {
 }
 
 // Alle .tbl-Tabellen nach Render sortierbar machen
-const _origSetHTML = setHTML;
-function setHTML(id, html) {
-  _origSetHTML(id, html);
-  const el = document.getElementById(id);
-  if (el) el.querySelectorAll('table.tbl').forEach(makeSortable);
-}
+
 
 
 async function loadView(v) {
