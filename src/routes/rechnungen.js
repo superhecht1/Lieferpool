@@ -319,11 +319,8 @@ router.get('/:id/download', auth, async (req, res) => {
        .text('FrischKette / superhecht.ai', 310, adrY + 14);
     doc.fontSize(9).font('Helvetica').fillColor(DARK)
        .text([r.erz_adresse, `${r.erz_plz||''} ${r.erz_ort||''}`, r.erz_email,
-              r.ust_id ? `USt-ID: ${r.ust_id}` : '(USt-ID fehlt)'].filter(Boolean).join('
-'), 60, adrY + 27)
-       .text('Lackgässchen 24
-50968 Köln
-rusniok@googlemail.com', 310, adrY + 27);
+              r.ust_id ? `USt-ID: ${r.ust_id}` : '(USt-ID fehlt)'].filter(Boolean).join('\n'), 60, adrY + 27)
+       .text('Lackgässchen 24\n50968 Köln\nrusniok@googlemail.com', 310, adrY + 27);
 
     // ── Tabelle ───────────────────────────────────────────────────
     const tY = 290;
