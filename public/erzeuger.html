@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LieferPool – Erzeuger</title>
   <link rel="stylesheet" href="style.css">
+<link rel="manifest" href="/manifest-erzeuger.json">
 </head>
 <body>
 <div class="app">
@@ -67,6 +68,7 @@
         <div class="section-hdr">
           <span class="section-title">Auszahlungshistorie</span>
           <button class="btn btn-sm" id="btn-export-az">↓ CSV Export</button>
+              <button class="btn btn-sm btn-primary" id="btn-export-az-xlsx">↓ XLSX</button>
         </div>
         <div id="az-list"></div>
       </div>
@@ -518,6 +520,13 @@ async function loadAuszahlungen() {
 document.getElementById('btn-export-az')?.addEventListener('click', () => {
   api.downloadAuszahlungenCSV();
 });
+document.getElementById('btn-export-az-xlsx')?.addEventListener('click', () => {
+  const tok = Auth.getToken();
+  const a = document.createElement('a');
+  a.href = '/api/reports/auszahlungen.xlsx?_t=' + tok;
+  a.download = 'auszahlungen.xlsx';
+  document.body.appendChild(a); a.click(); a.remove();
+});
 
 document.getElementById('btn-abrechnung')?.addEventListener('click', async () => {
   try {
@@ -817,6 +826,16 @@ document.getElementById('btn-dsgvo-delete-confirm')?.addEventListener('click', a
 });
 // ── INIT ──────────────────────────────────────────────────────
 loadPools();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw-erzeuger.js')
+      .then(reg => console.log('SW Erzeuger registriert:', reg.scope))
+      .catch(err => console.warn('SW Erzeuger Fehler:', err));
+  });
+}
 </script>
 </body>
 </html>

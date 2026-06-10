@@ -380,9 +380,9 @@
       <div class="grid2">
 
         <div class="card">
-          <div class="card-title">CSV-Exporte</div>
+          <div class="card-title">Exporte</div>
           <p style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:1.25rem">
-            Alle Exporte sind Excel-kompatibel (UTF-8 BOM, Semikolon-getrennt).
+            CSV (Excel-kompatibel) oder direkt als Excel-Datei (.xlsx).
           </p>
           <div style="display:flex;flex-direction:column;gap:.75rem">
             <div style="display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem;background:var(--bg);border-radius:6px;border:1px solid var(--border)">
@@ -390,21 +390,30 @@
                 <div style="font-weight:500;font-size:13px">Auszahlungen</div>
                 <div class="pool-meta">Alle Zahlungen inkl. Status, Erzeuger, Beträge</div>
               </div>
-              <button class="btn btn-sm btn-primary" data-export="auszahlungen">↓ CSV</button>
+              <div style="display:flex;gap:.4rem">
+                <button class="btn btn-sm" data-export="auszahlungen">↓ CSV</button>
+                <button class="btn btn-sm btn-primary" data-export="auszahlungen-xlsx">↓ XLSX</button>
+              </div>
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem;background:var(--bg);border-radius:6px;border:1px solid var(--border)">
               <div>
                 <div style="font-weight:500;font-size:13px">Pools</div>
                 <div class="pool-meta">Alle Pools mit Füllstand und Erzeugeranzahl</div>
               </div>
-              <button class="btn btn-sm btn-primary" data-export="pools">↓ CSV</button>
+              <div style="display:flex;gap:.4rem">
+                <button class="btn btn-sm" data-export="pools">↓ CSV</button>
+                <button class="btn btn-sm btn-primary" data-export="pools-xlsx">↓ XLSX</button>
+              </div>
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem;background:var(--bg);border-radius:6px;border:1px solid var(--border)">
               <div>
                 <div style="font-weight:500;font-size:13px">Lieferungen</div>
                 <div class="pool-meta">Alle bestätigten Wareneingänge</div>
               </div>
-              <button class="btn btn-sm btn-primary" data-export="lieferungen">↓ CSV</button>
+              <div style="display:flex;gap:.4rem">
+                <button class="btn btn-sm" data-export="lieferungen">↓ CSV</button>
+                <button class="btn btn-sm btn-primary" data-export="lieferungen-xlsx">↓ XLSX</button>
+              </div>
             </div>
           </div>
         </div>
@@ -434,6 +443,32 @@
         </div>
 
       </div>
+
+      <!-- BULK E-MAIL -->
+      <div class="card" style="margin-top:1.25rem">
+        <div class="card-title">📧 Massen-E-Mail an alle Erzeuger</div>
+        <p style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:1.25rem">
+          Sendet eine E-Mail an alle verifizierten, aktiven Erzeuger.
+        </p>
+        <div style="display:flex;gap:1rem;align-items:center;margin-bottom:.75rem">
+          <label style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:.4rem">
+            <input type="checkbox" id="bulk-nur-aktive" checked> Nur verifizierte + aktive Erzeuger
+          </label>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Betreff</label>
+          <input class="form-control" id="bulk-betreff" placeholder="z. B. Wichtige Info zur nächsten Lieferung">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Nachricht</label>
+          <textarea class="form-control" id="bulk-text" rows="5" style="resize:vertical" placeholder="Ihre Nachricht an alle Erzeuger..."></textarea>
+        </div>
+        <div style="display:flex;align-items:center;gap:1rem">
+          <button class="btn btn-primary" id="btn-bulk-send">📤 E-Mail senden</button>
+          <div id="bulk-email-result" style="font-size:13px"></div>
+        </div>
+      </div>
+
     </div>
 
     <!-- ALLE POOLS -->
@@ -905,7 +940,49 @@ if (headerEl) {
   headerEl.appendChild(searchWrap);
 }
 
+// (setHTML wrapped below by sort util)
 function setHTML(id, html) { const el = document.getElementById(id); if (el) el.innerHTML = html; }
+
+// ── TABELLEN-SORTIERUNG ───────────────────────────────────────
+// Aufruf: makeSortable(tableElement) nach jedem Render
+function makeSortable(table) {
+  if (!table) return;
+  const headers = table.querySelectorAll('thead th');
+  let lastCol = -1, lastDir = 1;
+  headers.forEach((th, col) => {
+    th.style.cursor = 'pointer';
+    th.style.userSelect = 'none';
+    th.addEventListener('click', () => {
+      const dir = (col === lastCol) ? -lastDir : 1;
+      lastCol = col; lastDir = dir;
+      // Sort-Indikator
+      headers.forEach(h => h.style.color = '');
+      th.style.color = 'var(--green)';
+      // Rows sortieren
+      const tbody = table.querySelector('tbody');
+      if (!tbody) return;
+      const rows = Array.from(tbody.querySelectorAll('tr'));
+      rows.sort((a, b) => {
+        const av = a.cells[col]?.textContent.trim() || '';
+        const bv = b.cells[col]?.textContent.trim() || '';
+        const an = parseFloat(av.replace(/[^0-9,.-]/g,'').replace(',','.'));
+        const bn = parseFloat(bv.replace(/[^0-9,.-]/g,'').replace(',','.'));
+        if (!isNaN(an) && !isNaN(bn)) return (an - bn) * dir;
+        return av.localeCompare(bv, 'de') * dir;
+      });
+      rows.forEach(r => tbody.appendChild(r));
+    });
+  });
+}
+
+// Alle .tbl-Tabellen nach Render sortierbar machen
+const _origSetHTML = setHTML;
+function setHTML(id, html) {
+  _origSetHTML(id, html);
+  const el = document.getElementById(id);
+  if (el) el.querySelectorAll('table.tbl').forEach(makeSortable);
+}
+
 
 async function loadView(v) {
   if (v === 'overview')      loadOverview();
@@ -1732,9 +1809,16 @@ document.getElementById('view-reports')?.addEventListener('click',e=>{
   const btn=e.target.closest('[data-export]');
   if(!btn) return;
   const type=btn.dataset.export;
-  if(type==='auszahlungen') api.downloadAuszahlungenCSV();
-  if(type==='pools')        api.downloadPoolsCSV();
-  if(type==='lieferungen')  api.downloadLieferungenCSV();
+  const tok = Auth.getToken();
+  function dl(url, name) {
+    const a=document.createElement('a'); a.href=url+'?_t='+tok; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+  }
+  if(type==='auszahlungen')      api.downloadAuszahlungenCSV();
+  if(type==='pools')             api.downloadPoolsCSV();
+  if(type==='lieferungen')       api.downloadLieferungenCSV();
+  if(type==='auszahlungen-xlsx') dl('/api/reports/auszahlungen.xlsx','auszahlungen.xlsx');
+  if(type==='pools-xlsx')        dl('/api/reports/pools.xlsx','pools.xlsx');
+  if(type==='lieferungen-xlsx')  dl('/api/reports/lieferungen.xlsx','lieferungen.xlsx');
 });
 document.getElementById('btn-open-abrechnung')?.addEventListener('click',()=>{
   const id=document.getElementById('report-erzeuger-sel').value;
@@ -1742,6 +1826,30 @@ document.getElementById('btn-open-abrechnung')?.addEventListener('click',()=>{
   const bis=document.getElementById('report-bis').value||undefined;
   if(!id) return showAlert('alerts','error','Erzeuger auswählen');
   api.openAbrechnung(id,{von,bis});
+});
+
+// Bulk E-Mail
+document.getElementById('btn-bulk-send')?.addEventListener('click', async () => {
+  const betreff    = document.getElementById('bulk-betreff')?.value.trim();
+  const text       = document.getElementById('bulk-text')?.value.trim();
+  const nur_aktive = document.getElementById('bulk-nur-aktive')?.checked;
+  const result     = document.getElementById('bulk-email-result');
+  const btn        = document.getElementById('btn-bulk-send');
+  if (!betreff || !text) { result.innerHTML='<span style="color:var(--red)">Betreff und Nachricht erforderlich</span>'; return; }
+  if (!confirm(`E-Mail "${betreff}" an alle Erzeuger senden?`)) return;
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span> Sende...';
+  result.innerHTML='';
+  try {
+    const res = await fetch('/api/admin/bulk-email', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+Auth.getToken()},
+      body: JSON.stringify({ betreff, text, nur_aktive }),
+    }).then(async r => { const d=await r.json(); if(!r.ok) throw new Error(d.error); return d; });
+    result.innerHTML=`<span style="color:var(--green)">✓ ${res.gesendet} gesendet${res.fehler?', '+res.fehler+' Fehler':''}</span>`;
+    document.getElementById('bulk-betreff').value='';
+    document.getElementById('bulk-text').value='';
+  } catch(err) { result.innerHTML=`<span style="color:var(--red)">${err.message}</span>`; }
+  finally { btn.disabled=false; btn.textContent='📤 E-Mail senden'; }
 });
 
 // ── FAHRER MANAGEMENT ─────────────────────────────────────────
@@ -2706,7 +2814,8 @@ async function loadRechnungen() {
           <td style="font-family:'DM Mono',monospace;font-weight:600">${parseFloat(r.brutto).toFixed(2)} €</td>
           <td>${statusBadge(r.status)}</td>
           <td style="display:flex;gap:.35rem">
-            <button class="btn btn-sm" onclick="window.open('/api/rechnungen/${r.id}/pdf','_blank')">🖨</button>
+            <button class="btn btn-sm" onclick="window.open('/api/rechnungen/${r.id}/pdf','_blank')" title="Druckansicht">🖨</button>
+            <button class="btn btn-sm btn-primary" onclick="dlRechnungPDF('${r.id}','${r.rechnungs_nr}')" title="PDF herunterladen">↓ PDF</button>
             ${r.status!=='storniert'?`<button class="btn btn-sm btn-danger" onclick="rechStornieren('${r.id}','${r.rechnungs_nr}')">✕</button>`:''}
           </td>
         </tr>`).join('')}</tbody>
@@ -2715,6 +2824,16 @@ async function loadRechnungen() {
   } catch(err) { showAlert('alerts','error',err.message); }
 }
 
+
+function dlRechnungPDF(id, nr) {
+  const tok = Auth.getToken();
+  const a   = document.createElement('a');
+  a.href    = `/api/rechnungen/${id}/download?_t=${tok}`;
+  a.download= `Rechnung-${nr}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
 document.getElementById('btn-reload-rech')?.addEventListener('click', loadRechnungen);
 
 async function rechStornieren(id, nr) {

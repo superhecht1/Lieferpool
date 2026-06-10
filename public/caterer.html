@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>LieferPool – Caterer</title>
   <link rel="stylesheet" href="style.css">
+<link rel="manifest" href="/manifest-caterer.json">
 </head>
 <body>
 <div class="app">
@@ -1088,6 +1089,16 @@ document.getElementById('btn-reload-cat-lief')?.addEventListener('click', loadCa
 
 // ── INIT ──────────────────────────────────────────────────────
 loadOverview();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw-caterer.js')
+      .then(reg => console.log('SW Caterer registriert:', reg.scope))
+      .catch(err => console.warn('SW Caterer Fehler:', err));
+  });
+}
 </script>
 </body>
 </html>
