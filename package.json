@@ -20,7 +20,8 @@
     "vapid": "node -e \"const wp=require('web-push');const k=wp.generateVAPIDKeys();console.log('VAPID_PUBLIC_KEY=' + k.publicKey);console.log('VAPID_PRIVATE_KEY=' + k.privateKey)\"",
     "migrate:security": "node scripts/migrate_security.js",
     "test": "node tests/basic.test.js",
-    "migrate:fix8": "node scripts/migrate_fix8.js"
+    "migrate:fix8": "node scripts/migrate_fix8.js",
+    "export:xlsx": "node -e \"require('./src/routes/reports')\""
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -36,7 +37,9 @@
     "stripe": "^14.0.0",
     "qrcode": "^1.5.4",
     "csrf-csrf": "^3.0.3",
-    "otplib": "^12.0.1"
+    "otplib": "^12.0.1",
+    "xlsx": "^0.18.5",
+    "pdfkit": "^0.15.0"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^4.0.0",
