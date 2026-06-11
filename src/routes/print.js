@@ -194,6 +194,10 @@ ${parseFloat(lief.pfand_kisten_geliefert||0) > 0 ? `
 </html>`;
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    if (req.query.download === '1') {
+      const nr = lieferung?.lieferschein_nr || req.params.id;
+      res.setHeader('Content-Disposition', `attachment; filename="Lieferschein-${nr}.html"`);
+    }
     res.send(html);
   } catch (err) {
     console.error('[print lieferung]', err.message);
