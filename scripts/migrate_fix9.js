@@ -36,6 +36,17 @@ async function migrate() {
     )
   `);
 
+
+  // fahrer_profile: lizenzklasse Spalte (Code erwartet diese, Migration hatte nur 'fuehrerschein')
+  await db.query(`
+    ALTER TABLE fahrer_profile
+    ADD COLUMN IF NOT EXISTS lizenzklasse VARCHAR(10) DEFAULT 'B'
+  `);
+  await db.query(`
+    UPDATE fahrer_profile SET lizenzklasse = fuehrerschein
+    WHERE lizenzklasse = 'B' AND fuehrerschein IS NOT NULL
+  `);
+
   console.log('[migrate_fix9] ✓ done');
   await db.end();
   process.exit(0);
