@@ -139,13 +139,13 @@ router.get('/empfaenger-liste', auth, async (req, res) => {
          FROM users u
          LEFT JOIN erzeuger e ON e.user_id=u.id
          LEFT JOIN caterer  c ON c.user_id=u.id
-         WHERE u.id != $1 AND u.aktiv=true
+         WHERE u.id != $1 AND COALESCE(u.aktiv, true) = true
          ORDER BY u.role, u.name`,
         [req.user.id]
       ));
     } else {
       ({ rows } = await db.query(
-        `SELECT id, name, email, role FROM users WHERE role='admin' AND aktiv=true`,
+        `SELECT id, name, email, role FROM users WHERE role='admin' AND COALESCE(aktiv, true) = true`,
         []
       ));
     }
