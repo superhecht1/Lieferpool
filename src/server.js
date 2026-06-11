@@ -249,6 +249,11 @@ app.get('/robots.txt',  (_, res) => res.type('text/plain').sendFile(path.join(PU
 });
 app.get('/', (_, res) => res.sendFile(path.join(PUBLIC_DIR, 'index.html')));
 
+// QR-Scan Deeplink: /lieferung/:id → caterer.html (Wareneingang mit QR-Code)
+app.get('/lieferung/:qr', (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, 'caterer.html'));
+});
+
 // 404
 app.use((req, res) => {
   if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Endpunkt nicht gefunden' });
