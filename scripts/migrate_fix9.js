@@ -1,7 +1,9 @@
 /**
  * migrate_fix9.js – Nachrichten-System
  */
-const db = require('./src/db');
+require('dotenv').config();
+const { Pool } = require('pg');
+const db = new Pool({ connectionString: process.env.DATABASE_URL });
 
 async function migrate() {
   console.log('[migrate_fix9] Nachrichten-System...');
@@ -35,7 +37,8 @@ async function migrate() {
   `);
 
   console.log('[migrate_fix9] ✓ done');
+  await db.end();
   process.exit(0);
 }
 
-migrate().catch(err => { console.error(err); process.exit(1); });
+migrate().catch(async err => { console.error(err); await db.end(); process.exit(1); });
