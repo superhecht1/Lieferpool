@@ -95,6 +95,17 @@ router.post('/', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// PUT /api/nachrichten/alle-gelesen – alle als gelesen
+router.put('/alle-gelesen', auth, async (req, res) => {
+  try {
+    await db.query(
+      `UPDATE nachrichten SET gelesen=true WHERE an_user_id=$1 AND gelesen=false`,
+      [req.user.id]
+    );
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // PUT /api/nachrichten/:id/gelesen – als gelesen markieren
 router.put('/:id/gelesen', auth, async (req, res) => {
   try {
@@ -106,16 +117,6 @@ router.put('/:id/gelesen', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// PUT /api/nachrichten/alle-gelesen – alle als gelesen
-router.put('/alle-gelesen', auth, async (req, res) => {
-  try {
-    await db.query(
-      `UPDATE nachrichten SET gelesen=true WHERE an_user_id=$1 AND gelesen=false`,
-      [req.user.id]
-    );
-    res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
 
 // DELETE /api/nachrichten/:id
 router.delete('/:id', auth, async (req, res) => {
