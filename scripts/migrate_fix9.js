@@ -11,8 +11,8 @@ async function migrate() {
   await db.query(`
     CREATE TABLE IF NOT EXISTS nachrichten (
       id           SERIAL PRIMARY KEY,
-      von_user_id  INTEGER REFERENCES users(id) ON DELETE SET NULL,
-      an_user_id   INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      von_user_id  UUID REFERENCES users(id) ON DELETE SET NULL,
+      an_user_id   UUID REFERENCES users(id) ON DELETE CASCADE,
       betreff      TEXT    NOT NULL DEFAULT '',
       text         TEXT    NOT NULL,
       gelesen      BOOLEAN NOT NULL DEFAULT false,
