@@ -36,8 +36,8 @@ app.use(helmet({
       scriptSrc:     ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://js.stripe.com'],
       scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc:      ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net'],
-      fontSrc:       ["'self'", 'https://fonts.gstatic.com', 'https://cdn.jsdelivr.net'],
-      connectSrc:    ["'self'", 'https://api.stripe.com', 'https://cdn.jsdelivr.net'],
+      fontSrc:       ["'self'", 'https://fonts.gstatic.com', 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net'],
+      connectSrc:    ["'self'", 'https://api.stripe.com', 'https://cdn.jsdelivr.net', 'https://fonts.googleapis.com'],
       imgSrc:        ["'self'", 'data:', 'blob:', 'https://*.tile.openstreetmap.org', 'https://api.qrserver.com'],
       frameSrc:      ["'self'", 'https://js.stripe.com'],
       objectSrc:     ["'none'"],
@@ -131,6 +131,7 @@ app.use('/api/dsgvo',        require('./routes/dsgvo'));
 app.use('/api/pfand',        require('./routes/pfand'));
 app.use('/api/rechnungen',   require('./routes/rechnungen'));
 app.use('/api/einladungen',  require('./routes/einladungen'));
+app.use('/api/nachrichten',  require('./routes/nachrichten'));
 app.use('/api/pool-vorlagen',require('./routes/pool-vorlagen'));
 app.use('/api/suche',        require('./routes/suche'));
 app.use('/api/storno',       require('./routes/storno'));
