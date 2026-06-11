@@ -1076,7 +1076,7 @@ document.getElementById('btn-nm-senden')?.addEventListener('click', async () => 
   if (!text) { res.innerHTML='<span style="color:var(--red)">Nachricht eingeben</span>'; return; }
   btn.disabled=true; btn.innerHTML='<span class="spinner"></span>';
   try {
-    await api.sendNachricht({ an_user_id: parseInt(an), betreff: betr, text });
+    await api.sendNachricht({ an_user_id: an, betreff: betr, text });
     res.innerHTML='<span style="color:var(--green)">✓ Gesendet</span>';
     document.getElementById('nm-text').value='';
     document.getElementById('nm-betreff').value='';
