@@ -60,7 +60,8 @@ self.addEventListener('fetch', e => {
       if (cached) return cached;
       return fetch(e.request).then(res => {
         if (res.ok) {
-          caches.open(CACHE).then(c => c.put(e.request, res.clone()));
+          const resClone = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, resClone));
         }
         return res;
       }).catch(() => caches.match('/fahrer') || new Response('Offline', { status: 503 }));
