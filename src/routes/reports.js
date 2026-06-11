@@ -410,4 +410,91 @@ router.get('/weekly-stats', auth, role('admin'), async (req, res) => {
   }
 });
 
+
+// GET /api/reports/monatsstats?jahr=2025 – Monatliche Auszahlungen + Pools
+router.get('/monatsstats', auth, role('admin'), async (req, res) => {
+  try {
+    const jahr = parseInt(req.query.jahr) || new Date().getFullYear();
+    const [az, pools, lief] = await Promise.all([
+      db.query(`
+        SELECT
+          EXTRACT(MONTH FROM created_at)::int AS monat,
+          COUNT(*)::int                        AS anzahl,
+          COALESCE(SUM(netto), 0)::numeric(12,2) AS summe
+        FROM auszahlungen
+        WHERE EXTRACT(YEAR FROM created_at) = $1
+        GROUP BY EXTRACT(MONTH FROM created_at)
+        ORDER BY monat
+      `, [jahr]),
+      db.query(`
+        SELECT
+          EXTRACT(MONTH FROM created_at)::int AS monat,
+          COUNT(*)::int                        AS anzahl
+        FROM pools
+        WHERE EXTRACT(YEAR FROM created_at) = $1
+        GROUP BY EXTRACT(MONTH FROM created_at)
+        ORDER BY monat
+      `, [jahr]),
+      db.query(`
+        SELECT
+          EXTRACT(MONTH FROM created_at)::int AS monat,
+          COUNT(*)::int                        AS anzahl,
+          COALESCE(SUM(menge_geliefert), 0)::numeric(12,2) AS kg_gesamt
+        FROM lieferungen
+        WHERE EXTRACT(YEAR FROM created_at) = $1 AND status='eingegangen'
+        GROUP BY EXTRACT(MONTH FROM created_at)
+        ORDER BY monat
+      `, [jahr]),
+    ]);
+
+    const MONATE = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+    const result = Array.from({length:12}, (_,i) => {
+      const m = i + 1;
+      const a = az.rows.find(r => r.monat === m)   || { anzahl:0, summe:0 };
+      const p = pools.rows.find(r => r.monat === m) || { anzahl:0 };
+      const l = lief.rows.find(r => r.monat === m)  || { anzahl:0, kg_gesamt:0 };
+      return { monat: m, label: MONATE[i], az_anzahl: a.anzahl, az_summe: parseFloat(a.summe),
+               pools_anzahl: p.anzahl, lief_anzahl: l.anzahl, lief_kg: parseFloat(l.kg_gesamt) };
+    });
+
+    res.json({ jahr, monate: result });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/reports/jahresstats – Jahresvergleich (letzte 3 Jahre)
+router.get('/jahresstats', auth, role('admin'), async (req, res) => {
+  try {
+    const currentYear = new Date().getFullYear();
+    const jahre = [currentYear - 2, currentYear - 1, currentYear];
+
+    const [az, pools] = await Promise.all([
+      db.query(`
+        SELECT EXTRACT(YEAR FROM created_at)::int AS jahr,
+               COUNT(*)::int AS anzahl,
+               COALESCE(SUM(netto), 0)::numeric(12,2) AS summe
+        FROM auszahlungen
+        WHERE EXTRACT(YEAR FROM created_at) >= $1
+        GROUP BY EXTRACT(YEAR FROM created_at)
+        ORDER BY jahr
+      `, [currentYear - 2]),
+      db.query(`
+        SELECT EXTRACT(YEAR FROM created_at)::int AS jahr,
+               COUNT(*)::int AS anzahl
+        FROM pools
+        WHERE EXTRACT(YEAR FROM created_at) >= $1
+        GROUP BY EXTRACT(YEAR FROM created_at)
+        ORDER BY jahr
+      `, [currentYear - 2]),
+    ]);
+
+    const result = jahre.map(j => {
+      const a = az.rows.find(r => r.jahr === j)    || { anzahl:0, summe:0 };
+      const p = pools.rows.find(r => r.jahr === j) || { anzahl:0 };
+      return { jahr: j, az_anzahl: a.anzahl, az_summe: parseFloat(a.summe), pools_anzahl: p.anzahl };
+    });
+
+    res.json({ jahre: result });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 module.exports = router;
