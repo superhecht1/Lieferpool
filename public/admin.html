@@ -1261,6 +1261,8 @@ async function loadView(v) {
   if (v === 'einladungen')    loadEinladungen();
   if (v === 'vorlagen')       loadVorlagen();
   if (v === 'pool-erstellen') loadPoolErstellen();
+  if (v === 'nachrichten')    loadNachrichten();
+  if (v === 'statistik')      loadStatistik();
 }
 
 // ── ÜBERSICHT ─────────────────────────────────────────────────
@@ -1831,6 +1833,7 @@ async function loadLieferscheineListe() {
             <td>
               <div style="display:flex;gap:.35rem">
                 <button class="btn btn-sm" onclick="window.open('/api/print/lieferung/${l.id}','_blank')">🖨</button>
+                <button class="btn btn-sm btn-primary" onclick="window.open('/api/print/lieferung/${l.id}?download=1','_blank')" title="HTML herunterladen">↓</button>
                 ${l.status!=='abgeschlossen'?`<button class="btn btn-sm btn-danger" data-action="del-lief" data-id="${l.id}" data-nr="${l.lieferschein_nr}" style="padding:3px 8px">✕</button>`:''}
               </div>
             </td>

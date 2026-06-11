@@ -1218,8 +1218,8 @@ document.getElementById('btn-bedarf-zu-pool')?.addEventListener('click', async (
     prognosen.forEach(p => {
       const key = `${p.produkt}|${p.lieferwoche||''}`;
       if (!agg[key]) agg[key] = { produkt: p.produkt, lieferwoche: p.lieferwoche||'', menge:0, preis: p.preis_vorstellung||0, region: p.region||'NRW' };
-      agg[key].menge += parseFloat(p.menge_bedarf||0);
-      if (p.preis_vorstellung) agg[key].preis = p.preis_vorstellung;
+      agg[key].menge += parseFloat(p.menge_pro_woche||p.menge_bedarf||0);
+      if (p.preis_vorstellung||p.preis) agg[key].preis = p.preis_vorstellung||p.preis||agg[key].preis;
     });
 
     const items = Object.values(agg).filter(a => a.menge > 0);
