@@ -37,6 +37,10 @@ async function migrate() {
   `);
 
 
+
+  // users: aktiv Spalte sicherstellen
+  await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS aktiv BOOLEAN DEFAULT true`);
+
   // fahrer_profile: lizenzklasse Spalte (Code erwartet diese, Migration hatte nur 'fuehrerschein')
   await db.query(`
     ALTER TABLE fahrer_profile
