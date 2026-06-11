@@ -216,6 +216,22 @@ app.get('/health', (_, res) => res.json({ status: 'ok', chain: chainMode, ts: ne
 
 // ── Static + HTML Routes ───────────────────────────────────────
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
+
+// Favicon
+app.get('/favicon.ico', (req, res) => {
+  // Inline 1x1 green pixel ICO
+  const ico = Buffer.from(
+    '000001000100101000000100200068040000160000002800000010000000200000000100200000000000' +
+    '400000000000000000000000000000000000000000000000000000000000000000000000000000000000' +
+    '0000002e7d3eff2e7d3eff2e7d3eff2e7d3eff2e7d3eff2e7d3eff2e7d3eff2e7d3eff' +
+    '2e7d3eff2e7d3eff2e7d3eff2e7d3eff2e7d3eff2e7d3eff2e7d3eff2e7d3eff',
+    'hex'
+  );
+  res.setHeader('Content-Type', 'image/x-icon');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.send(ico);
+});
+
 app.use(express.static(PUBLIC_DIR, {
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.html')) {
