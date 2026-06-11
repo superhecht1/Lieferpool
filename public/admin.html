@@ -471,7 +471,71 @@
 
     </div>
 
-    <!-- ALLE POOLS -->
+    
+    <!-- NACHRICHTEN -->
+    <div id="view-nachrichten" class="view" style="display:none">
+      <div class="grid2" style="align-items:flex-start">
+        <div class="card">
+          <div class="section-hdr">
+            <span class="section-title">📥 Posteingang</span>
+            <div style="display:flex;gap:.5rem">
+              <button class="btn btn-sm" id="btn-alle-gelesen">Alle gelesen</button>
+              <button class="btn btn-sm" id="btn-reload-nachrichten">↻</button>
+            </div>
+          </div>
+          <div id="nachrichten-inbox"><div class="spinner"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">✉ Neue Nachricht</div>
+          <div class="form-group">
+            <label class="form-label">Empfänger</label>
+            <select class="form-control" id="nm-empfaenger">
+              <option value="">— Empfänger wählen —</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Betreff</label>
+            <input class="form-control" id="nm-betreff" placeholder="Betreff (optional)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nachricht</label>
+            <textarea class="form-control" id="nm-text" rows="5" style="resize:vertical" placeholder="Ihre Nachricht..."></textarea>
+          </div>
+          <div style="display:flex;align-items:center;gap:1rem">
+            <button class="btn btn-primary" id="btn-nm-senden">Senden</button>
+            <div id="nm-result" style="font-size:13px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATISTIK -->
+    <div id="view-statistik" class="view" style="display:none">
+      <div class="card" style="margin-bottom:1.25rem">
+        <div class="section-hdr">
+          <span class="section-title">📊 Monatsstatistik</span>
+          <div style="display:flex;gap:.5rem;align-items:center">
+            <select class="form-control" id="stat-jahr" style="width:100px;padding:4px 8px">
+              <option value="">aktuelles Jahr</option>
+            </select>
+            <button class="btn btn-sm" id="btn-stat-laden">Laden</button>
+          </div>
+        </div>
+        <div style="position:relative;height:200px;margin-top:1rem">
+          <canvas id="chart-monat-az"></canvas>
+        </div>
+        <div id="stat-tabelle" style="margin-top:1.5rem"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">📈 Jahresvergleich</div>
+        <div style="position:relative;height:160px;margin-top:.75rem">
+          <canvas id="chart-jahres-az"></canvas>
+        </div>
+        <div id="stat-jahre-tabelle" style="margin-top:1.25rem"></div>
+      </div>
+    </div>
+
+<!-- ALLE POOLS -->
     <div id="view-pools-alle" class="view" style="display:none">
       <div class="card">
         <div class="section-hdr">
@@ -923,6 +987,8 @@ const NAV = [
   { id: 'einladungen',    label: '✉ Einladungen'},
   { id: 'vorlagen',       label: '🔄 Vorlagen'},
   { id: 'pool-erstellen',  label: '➕ Pool erstellen'},
+  { id: 'nachrichten',      label: '💬 Nachrichten'},
+  { id: 'statistik',        label: '📊 Statistik'},
 ];
 
 renderHeader('overview', NAV, (v) => { showView(v); loadView(v); });
@@ -946,6 +1012,198 @@ function setHTML(id, html) {
   el.innerHTML = html;
   el.querySelectorAll('table.tbl').forEach(makeSortable);
 }
+
+
+// ── NACHRICHTEN ────────────────────────────────────────────────
+async function loadNachrichten() {
+  try {
+    const [{ nachrichten, ungelesen }, { empfaenger }] = await Promise.all([
+      api.getNachrichten(),
+      api.getEmpfaengerListe(),
+    ]);
+
+    // Ungelesen Badge in Nav aktualisieren
+    const navBtn = document.querySelector('[data-view="nachrichten"]');
+    if (navBtn && ungelesen > 0) {
+      navBtn.innerHTML = `💬 Nachrichten <span style="background:var(--red);color:#fff;border-radius:9px;padding:1px 6px;font-size:10px;margin-left:4px">${ungelesen}</span>`;
+    }
+
+    // Empfänger-Dropdown
+    const sel = document.getElementById('nm-empfaenger');
+    if (sel) sel.innerHTML = '<option value="">— Empfänger wählen —</option>' +
+      empfaenger.map(e => `<option value="${e.id}">[${e.role}] ${e.firma || e.name} (${e.email})</option>`).join('');
+
+    setHTML('nachrichten-inbox', nachrichten.length ? nachrichten.map(n => `
+      <div style="padding:.875rem 0;border-bottom:1px solid var(--border);${!n.gelesen?'background:var(--bg-highlight,var(--bg2));margin:0 -1rem;padding:.875rem 1rem;border-radius:4px':''}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">
+          <div style="min-width:0;flex:1">
+            <div style="font-weight:${n.gelesen?400:600};font-size:13px">${n.betreff || '(kein Betreff)'}</div>
+            <div class="pool-meta">Von: ${n.von_name || 'System'} · ${new Date(n.created_at).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
+            <div style="font-size:13px;color:var(--text2);margin-top:.25rem;white-space:pre-wrap">${n.text}</div>
+          </div>
+          <div style="display:flex;gap:.35rem;flex-shrink:0">
+            ${!n.gelesen ? `<button class="btn btn-sm" onclick="markGelesen(${n.id})">✓</button>` : ''}
+            <button class="btn btn-sm" onclick="deleteNachricht(${n.id})">🗑</button>
+          </div>
+        </div>
+      </div>
+    `).join('') : '<p style="color:var(--text3);font-size:13px">Keine Nachrichten</p>');
+  } catch(err) { showAlert('alerts','error',err.message); }
+}
+
+async function markGelesen(id) {
+  await api.markGelesen(id).catch(()=>{});
+  loadNachrichten();
+}
+async function deleteNachricht(id) {
+  if (!confirm('Nachricht löschen?')) return;
+  await api.deleteNachricht(id).catch(()=>{});
+  loadNachrichten();
+}
+
+document.getElementById('btn-alle-gelesen')?.addEventListener('click', async () => {
+  await api.markAlleGelesen().catch(()=>{});
+  loadNachrichten();
+});
+document.getElementById('btn-reload-nachrichten')?.addEventListener('click', loadNachrichten);
+document.getElementById('btn-nm-senden')?.addEventListener('click', async () => {
+  const an   = document.getElementById('nm-empfaenger')?.value;
+  const text = document.getElementById('nm-text')?.value.trim();
+  const betr = document.getElementById('nm-betreff')?.value.trim() || '';
+  const res  = document.getElementById('nm-result');
+  const btn  = document.getElementById('btn-nm-senden');
+  if (!an)   { res.innerHTML='<span style="color:var(--red)">Empfänger wählen</span>'; return; }
+  if (!text) { res.innerHTML='<span style="color:var(--red)">Nachricht eingeben</span>'; return; }
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>';
+  try {
+    await api.sendNachricht({ an_user_id: parseInt(an), betreff: betr, text });
+    res.innerHTML='<span style="color:var(--green)">✓ Gesendet</span>';
+    document.getElementById('nm-text').value='';
+    document.getElementById('nm-betreff').value='';
+    setTimeout(()=>{ if(res) res.innerHTML=''; },3000);
+  } catch(e) { res.innerHTML=`<span style="color:var(--red)">${e.message}</span>`; }
+  btn.disabled=false; btn.textContent='Senden';
+});
+
+// Ungelesen-Badge beim Start laden
+(async()=>{
+  try {
+    const { count } = await api.getUngelesenCount();
+    if (count > 0) {
+      const navBtn = document.querySelector('[data-view="nachrichten"]');
+      if (navBtn) navBtn.innerHTML += ` <span style="background:var(--red);color:#fff;border-radius:9px;padding:1px 6px;font-size:10px">${count}</span>`;
+    }
+  } catch {}
+})();
+
+// ── STATISTIK ─────────────────────────────────────────────────
+let _monatChart = null, _jahresChart = null;
+
+async function loadStatistik() {
+  try {
+    // Jahr-Dropdown befüllen
+    const sel = document.getElementById('stat-jahr');
+    const curJahr = new Date().getFullYear();
+    if (sel && sel.options.length <= 1) {
+      for (let j = curJahr; j >= curJahr - 4; j--) {
+        const opt = document.createElement('option');
+        opt.value = j; opt.textContent = j;
+        if (j === curJahr) opt.selected = true;
+        sel.appendChild(opt);
+      }
+    }
+    await renderMonatStats(curJahr);
+    await renderJahresStats();
+  } catch(err) { showAlert('alerts','error',err.message); }
+}
+
+async function renderMonatStats(jahr) {
+  const { monate } = await api.getMonatsStats(jahr);
+
+  const MONATE = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+  const labels = monate.map(m => m.label);
+  const summen = monate.map(m => m.az_summe);
+  const pools  = monate.map(m => m.pools_anzahl);
+  const kg     = monate.map(m => m.lief_kg);
+
+  const canvas = document.getElementById('chart-monat-az');
+  if (!canvas || !window.Chart) return;
+  if (_monatChart) _monatChart.destroy();
+  _monatChart = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Auszahlungen (€)', data: summen, backgroundColor: 'rgba(46,125,62,.7)', yAxisID: 'y' },
+        { label: 'Lieferung (kg)',   data: kg,     backgroundColor: 'rgba(198,146,42,.5)', yAxisID: 'y2', type:'line', tension:0.3, fill:false },
+      ],
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      scales: {
+        y:  { position:'left',  beginAtZero:true, ticks:{ callback: v=>'€'+v } },
+        y2: { position:'right', beginAtZero:true, grid:{drawOnChartArea:false}, ticks:{ callback: v=>v+'kg' } },
+      },
+      plugins: { legend:{ position:'bottom', labels:{ font:{size:11} } } },
+    },
+  });
+
+  // Tabelle
+  const gesamt = summen.reduce((a,b)=>a+b,0);
+  setHTML('stat-tabelle', `
+    <table class="tbl"><thead><tr><th>Monat</th><th>Auszahlungen</th><th>Pools</th><th>Lieferungen</th><th>Volumen (kg)</th></tr></thead>
+    <tbody>${monate.map(m=>`<tr>
+      <td style="font-weight:500">${m.label} ${jahr}</td>
+      <td style="font-family:'DM Mono',monospace">${m.az_summe.toFixed(2).replace('.',',')} €</td>
+      <td class="pool-meta">${m.pools_anzahl}</td>
+      <td class="pool-meta">${m.lief_anzahl}</td>
+      <td class="pool-meta">${m.lief_kg.toFixed(0)} kg</td>
+    </tr>`).join('')}
+    <tr style="font-weight:600;background:var(--bg2)"><td>Gesamt</td><td style="font-family:'DM Mono',monospace">${gesamt.toFixed(2).replace('.',',')} €</td><td colspan="3"></td></tr>
+    </tbody></table>
+  `);
+}
+
+async function renderJahresStats() {
+  const { jahre } = await api.getJahresStats();
+
+  const canvas = document.getElementById('chart-jahres-az');
+  if (!canvas || !window.Chart) return;
+  if (_jahresChart) _jahresChart.destroy();
+  _jahresChart = new Chart(canvas.getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: jahre.map(j => String(j.jahr)),
+      datasets: [
+        { label: 'Auszahlungen (€)', data: jahre.map(j => j.az_summe), backgroundColor: 'rgba(46,125,62,.75)' },
+        { label: 'Pools',            data: jahre.map(j => j.pools_anzahl), backgroundColor: 'rgba(13,31,21,.3)', yAxisID:'y2' },
+      ],
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      scales: {
+        y:  { position:'left',  beginAtZero:true },
+        y2: { position:'right', beginAtZero:true, grid:{drawOnChartArea:false} },
+      },
+      plugins: { legend:{ position:'bottom', labels:{ font:{size:11} } } },
+    },
+  });
+
+  setHTML('stat-jahre-tabelle', `
+    <table class="tbl"><thead><tr><th>Jahr</th><th>Auszahlungen (€)</th><th>Pools</th></tr></thead>
+    <tbody>${jahre.map(j=>`<tr>
+      <td style="font-weight:600">${j.jahr}</td>
+      <td style="font-family:'DM Mono',monospace">${j.az_summe.toFixed(2).replace('.',',')} €</td>
+      <td class="pool-meta">${j.pools_anzahl}</td>
+    </tr>`).join('')}</tbody></table>
+  `);
+}
+
+document.getElementById('btn-stat-laden')?.addEventListener('click', async () => {
+  const jahr = parseInt(document.getElementById('stat-jahr')?.value) || new Date().getFullYear();
+  await renderMonatStats(jahr).catch(e => showAlert('alerts','error',e.message));
+});
+
 
 // ── TABELLEN-SORTIERUNG ───────────────────────────────────────
 // Aufruf: makeSortable(tableElement) nach jedem Render
@@ -1227,7 +1485,15 @@ async function loadZertifikate() {
             <td style="font-weight:500">${z.betrieb_name}<div style="font-size:11px;color:var(--text3)">${z.email}</div></td>
             <td><span class="badge badge-gray">${z.typ}</span></td>
             <td class="pool-meta">${z.zert_nummer}</td>
-            <td class="pool-meta">${z.gueltig_bis?.split('T')[0]||'—'}</td>
+            <td class="pool-meta">${(() => {
+              if (!z.gueltig_bis) return '—';
+              const d = new Date(z.gueltig_bis);
+              const days = Math.ceil((d - Date.now()) / 86400000);
+              const label = d.toLocaleDateString('de-DE');
+              if (days < 0) return '<span style=\"color:var(--red);font-weight:600\">⚠ ABGELAUFEN</span>';
+              if (days < 30) return '<span style=\"color:var(--amber);font-weight:600\">⚠ ' + label + ' (' + days + 'd)</span>';
+              return label;
+            })()}</td>
             <td class="pool-meta">${new Date(z.created_at).toLocaleDateString('de-DE')}</td>
             <td><div style="display:flex;gap:.5rem">
               <button class="btn btn-primary btn-sm" data-action="approve" data-id="${z.id}">Bestätigen</button>
@@ -1357,7 +1623,15 @@ async function loadErzeugerDetail(erzId) {
           ${zertifikate.length ? zertifikate.map(z=>`
             <div class="auszahl-row">
               <div><div style="font-size:13px;font-weight:500">${z.typ} · ${z.zert_nummer}</div>
-              <div class="pool-meta">Gültig bis: ${z.gueltig_bis?.split('T')[0]||'—'}</div></div>
+              <div class="pool-meta">Gültig bis: ${(() => {
+              if (!z.gueltig_bis) return '—';
+              const d = new Date(z.gueltig_bis);
+              const days = Math.ceil((d - Date.now()) / 86400000);
+              const label = d.toLocaleDateString('de-DE');
+              if (days < 0) return '<span style=\"color:var(--red);font-weight:600\">⚠ ABGELAUFEN</span>';
+              if (days < 30) return '<span style=\"color:var(--amber);font-weight:600\">⚠ ' + label + ' (' + days + 'd)</span>';
+              return label;
+            })()}</div></div>
               ${statusBadge(z.status)}
             </div>`).join('') : '<p style="color:var(--text3);font-size:13px">Keine</p>'}
           <div class="card-title" style="margin-top:1rem">Letzte Zusagen</div>

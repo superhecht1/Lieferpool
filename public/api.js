@@ -212,6 +212,41 @@ const api = {
   downloadPoolsCSV:        ()      => window.open(API_BASE+'/reports/pools.csv','_blank'),
   downloadLieferungenCSV:  ()      => window.open(API_BASE+'/reports/lieferungen.csv','_blank'),
   openAbrechnung:          (id, params={}) => { const q=new URLSearchParams(params).toString(); window.open(API_BASE+'/reports/abrechnung/'+id+(q?'?'+q:''),'_blank'); },
+  // CATERER (Admin)
+  getAllCaterer:     ()           => get('/caterer'),
+  getCatererDetail: (id)         => get('/caterer/detail/' + id),
+
+  // POOL-VORLAGEN
+  getPoolVorlagen:       ()       => get('/pool-vorlagen'),
+  createPoolVorlage:     (data)   => post('/pool-vorlagen', data),
+  deletePoolVorlage:     (id)     => del('/pool-vorlagen/' + id),
+  poolAusVorlage:        (id,data)=> post('/pool-vorlagen/' + id + '/erstellen', data||{}),
+
+  // NACHRICHTEN
+  getNachrichten:        ()       => get('/nachrichten'),
+  getNachrichtenGesendet:()       => get('/nachrichten/gesendet'),
+  getUngelesenCount:     ()       => get('/nachrichten/ungelesen-count'),
+  getEmpfaengerListe:    ()       => get('/nachrichten/empfaenger-liste'),
+  sendNachricht:         (data)   => post('/nachrichten', data),
+  markGelesen:           (id)     => req('PUT', '/nachrichten/' + id + '/gelesen', {}),
+  markAlleGelesen:       ()       => req('PUT', '/nachrichten/alle-gelesen', {}),
+  deleteNachricht:       (id)     => del('/nachrichten/' + id),
+
+  // TRACKING
+  getTrackingPositions:  ()       => get('/tracking/positions'),
+  getTrackingTrail:      (id)     => get('/tracking/trail/' + id),
+
+  // AUDIT
+  getAuditLog:     (p={})  => { const q=new URLSearchParams(p).toString(); return get('/audit'+(q?'?'+q:'')); },
+
+  // REPORTS ERWEITERT
+  getMonatsStats:  (jahr)  => get('/reports/monatsstats' + (jahr ? '?jahr=' + jahr : '')),
+  getJahresStats:  ()      => get('/reports/jahresstats'),
+
+  // LIEFERSCHEIN PDF
+  openLieferscheinPDF: (id) => window.open('/api/print/lieferung/' + id, '_blank'),
+
+
 };
 
 window.api  = api;

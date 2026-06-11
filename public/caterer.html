@@ -199,6 +199,7 @@
         <div class="card">
           <div class="section-hdr">
             <span class="section-title">Meine Bedarfsprognosen</span>
+            <button class="btn btn-sm btn-primary" id="btn-bedarf-zu-pool" title="Aggregierten Bedarf als Pool anlegen">🌱 Als Pool vorschlagen</button>
             <button class="btn btn-sm" id="btn-reload-bedarf">↻</button>
           </div>
           <div id="bedarf-list"><div class="spinner"></div></div>
@@ -408,6 +409,7 @@ const NAV = [
   { id: 'vorlagen',     label: '🔄 Vorlagen'     },
   { id: 'lieferscheine',label: '📋 Lieferscheine' },
   { id: 'profil',       label: 'Profil'          },
+  { id: 'nachrichten',  label: '💬 Nachrichten'   },
 ];
 
 renderHeader('overview', NAV, (v) => { showView(v); loadView(v); });
@@ -423,6 +425,7 @@ async function loadView(v) {
   if (v === 'profil')       loadCatProfil();
   if (v === 'vorlagen')       loadCatererVorlagen();
   if (v === 'lieferscheine')  loadCatLieferscheine();
+  if (v === 'nachrichten')    loadCatNachrichten();
 }
 
 // ── ÜBERSICHT ─────────────────────────────────────────────────
@@ -1077,7 +1080,8 @@ async function loadCatLieferscheine() {
         <td>${l.qualitaet_caterer ? '<span class="badge '+(l.qualitaet_caterer==='A'?'badge-green':l.qualitaet_caterer==='B'?'badge-amber':'badge-red')+'">'+l.qualitaet_caterer+'</span>' : '—'}</td>
         <td>${statusBadge(l.status)}</td>
         <td><div style="display:flex;gap:.35rem">
-          <button class="btn btn-sm" onclick="window.open('/api/print/lieferung/${l.id}','_blank')">🖨</button>
+          <button class="btn btn-sm" onclick="window.open('/api/print/lieferung/${l.id}','_blank')" title="Druckansicht">🖨</button>
+                  <button class="btn btn-sm btn-primary" onclick="window.location='/api/print/lieferung/${l.id}?download=1'" title="PDF Download">↓ PDF">🖨</button>
           ${l.status === 'erstellt' ? '<button class="btn btn-primary btn-sm" onclick="document.getElementById(\'qr-input\').value=\''+l.qr_code+'\';showView(\'wareneingang\');loadView(\'wareneingang\');">📦 WE</button>' : ''}
         </div></td>
       </tr>`).join('')}</tbody></table>
@@ -1091,6 +1095,38 @@ document.getElementById('btn-reload-cat-lief')?.addEventListener('click', loadCa
 loadOverview();
 </script>
 
+
+    <!-- NACHRICHTEN (CATERER) -->
+    <div id="view-nachrichten" class="view" style="display:none">
+      <div class="grid2" style="align-items:flex-start">
+        <div class="card">
+          <div class="section-hdr">
+            <span class="section-title">📥 Posteingang</span>
+            <div style="display:flex;gap:.5rem">
+              <button class="btn btn-sm" id="btn-cat-alle-gelesen">Alle gelesen</button>
+              <button class="btn btn-sm" id="btn-cat-reload-nm">↻</button>
+            </div>
+          </div>
+          <div id="cat-nachrichten-inbox"><div class="spinner"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">✉ Nachricht an Admin</div>
+          <div class="form-group">
+            <label class="form-label">Betreff</label>
+            <input class="form-control" id="cat-nm-betreff" placeholder="Betreff (optional)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nachricht</label>
+            <textarea class="form-control" id="cat-nm-text" rows="5" style="resize:vertical" placeholder="Ihre Nachricht..."></textarea>
+          </div>
+          <div style="display:flex;align-items:center;gap:1rem">
+            <button class="btn btn-primary" id="btn-cat-nm-senden">Senden</button>
+            <div id="cat-nm-result" style="font-size:13px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -1099,6 +1135,115 @@ if ('serviceWorker' in navigator) {
       .catch(err => console.warn('SW Caterer Fehler:', err));
   });
 }
+
+
+// ── NACHRICHTEN (CATERER) ─────────────────────────────────────
+let _catAdminUserId = null;
+
+async function loadCatNachrichten() {
+  try {
+    const [{ nachrichten, ungelesen }, { empfaenger }] = await Promise.all([
+      api.getNachrichten(),
+      api.getEmpfaengerListe(),
+    ]);
+    _catAdminUserId = empfaenger?.[0]?.id || null;
+
+    const navBtn = document.querySelector('[data-view="nachrichten"]');
+    if (navBtn && ungelesen > 0)
+      navBtn.innerHTML = `💬 Nachrichten <span style="background:var(--red);color:#fff;border-radius:9px;padding:1px 6px;font-size:10px;margin-left:4px">${ungelesen}</span>`;
+
+    setHTML('cat-nachrichten-inbox', nachrichten.length ? nachrichten.map(n => `
+      <div style="padding:.875rem 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;gap:.5rem">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:${n.gelesen?400:600};font-size:13px">${n.betreff||'(kein Betreff)'}</div>
+            <div class="pool-meta">Von: ${n.von_name||'Admin'} · ${new Date(n.created_at).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
+            <div style="font-size:13px;color:var(--text2);margin-top:.25rem;white-space:pre-wrap">${n.text}</div>
+          </div>
+          <div style="display:flex;gap:.35rem;flex-shrink:0">
+            ${!n.gelesen?`<button class="btn btn-sm" onclick="catMarkGelesen(${n.id})">✓</button>`:''}
+            <button class="btn btn-sm" onclick="catDeleteNachricht(${n.id})">🗑</button>
+          </div>
+        </div>
+      </div>
+    `).join('') : '<p style="color:var(--text3);font-size:13px">Keine Nachrichten</p>');
+  } catch(e) { showAlert('alerts','error',e.message); }
+}
+async function catMarkGelesen(id) { await api.markGelesen(id).catch(()=>{}); loadCatNachrichten(); }
+async function catDeleteNachricht(id) { if(!confirm('Löschen?')) return; await api.deleteNachricht(id).catch(()=>{}); loadCatNachrichten(); }
+
+document.getElementById('btn-cat-alle-gelesen')?.addEventListener('click', async () => {
+  await api.markAlleGelesen().catch(()=>{}); loadCatNachrichten();
+});
+document.getElementById('btn-cat-reload-nm')?.addEventListener('click', loadCatNachrichten);
+document.getElementById('btn-cat-nm-senden')?.addEventListener('click', async () => {
+  const text = document.getElementById('cat-nm-text')?.value.trim();
+  const betr = document.getElementById('cat-nm-betreff')?.value.trim()||'';
+  const res  = document.getElementById('cat-nm-result');
+  const btn  = document.getElementById('btn-cat-nm-senden');
+  if (!text) { res.innerHTML='<span style="color:var(--red)">Nachricht eingeben</span>'; return; }
+  if (!_catAdminUserId) { res.innerHTML='<span style="color:var(--red)">Kein Admin gefunden</span>'; return; }
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span>';
+  try {
+    await api.sendNachricht({ an_user_id: _catAdminUserId, betreff: betr, text });
+    res.innerHTML='<span style="color:var(--green)">✓ Gesendet</span>';
+    document.getElementById('cat-nm-text').value='';
+    setTimeout(()=>{ if(res) res.innerHTML=''; },3000);
+  } catch(e) { res.innerHTML=`<span style="color:var(--red)">${e.message}</span>`; }
+  btn.disabled=false; btn.textContent='Senden';
+});
+
+// Ungelesen-Badge beim Start
+(async()=>{
+  try {
+    const { count } = await api.getUngelesenCount();
+    if (count>0) {
+      const nb = document.querySelector('[data-view="nachrichten"]');
+      if (nb) nb.innerHTML += ` <span style="background:var(--red);color:#fff;border-radius:9px;padding:1px 6px;font-size:10px">${count}</span>`;
+    }
+  } catch {}
+})();
+
+// ── AUTO-POOL-VORSCHLAG AUS BEDARFSPLANUNG ────────────────────
+document.getElementById('btn-bedarf-zu-pool')?.addEventListener('click', async () => {
+  try {
+    const { prognosen } = await api.getBedarfPrognosen();
+    if (!prognosen || prognosen.length === 0) {
+      showAlert('alerts','info','Keine Bedarfsprognosen vorhanden. Zuerst Prognosen anlegen.');
+      return;
+    }
+
+    // Aggregieren nach Produkt + Lieferwoche
+    const agg = {};
+    prognosen.forEach(p => {
+      const key = `${p.produkt}|${p.lieferwoche||''}`;
+      if (!agg[key]) agg[key] = { produkt: p.produkt, lieferwoche: p.lieferwoche||'', menge:0, preis: p.preis_vorstellung||0, region: p.region||'NRW' };
+      agg[key].menge += parseFloat(p.menge_bedarf||0);
+      if (p.preis_vorstellung) agg[key].preis = p.preis_vorstellung;
+    });
+
+    const items = Object.values(agg).filter(a => a.menge > 0);
+    if (items.length === 0) { showAlert('alerts','info','Keine Mengen in Prognosen'); return; }
+
+    // Bei mehreren: wähle die größte Menge
+    items.sort((a,b) => b.menge - a.menge);
+    const top = items[0];
+
+    // Pool-Formular vorausfüllen und Tab wechseln
+    showView('pool-neu'); loadView('pool-neu');
+    setTimeout(() => {
+      const set = (id, val) => { const el=document.getElementById(id); if(el) el.value=val; };
+      set('pf-produkt', top.produkt);
+      set('pf-menge',   top.menge.toFixed(0));
+      set('pf-preis',   top.preis||'');
+      set('pf-lieferwoche', top.lieferwoche);
+      set('pf-region',  top.region);
+      updateCostPreview && updateCostPreview();
+      toast('Pool-Formular aus Bedarfsplanung vorausgefüllt');
+    }, 100);
+  } catch(e) { showAlert('alerts','error',e.message); }
+});
+
 </script>
 </body>
 </html>
