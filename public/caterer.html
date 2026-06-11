@@ -414,6 +414,18 @@ const NAV = [
 
 renderHeader('overview', NAV, (v) => { showView(v); loadView(v); });
 
+// QR-Code Deeplink: /lieferung/<qr>
+(function() {
+  const parts = window.location.pathname.split('/');
+  if (parts[1] === 'lieferung' && parts[2]) {
+    setTimeout(() => {
+      showView('wareneingang'); loadView('wareneingang');
+      const inp = document.getElementById('qr-input');
+      if (inp) { inp.value = parts[2].toUpperCase(); scanQR && scanQR(); }
+    }, 400);
+  }
+})();
+
 function setHTML(id, html) { const el = document.getElementById(id); if (el) el.innerHTML = html; }
 
 async function loadView(v) {
