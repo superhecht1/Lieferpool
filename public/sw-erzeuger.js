@@ -1,9 +1,9 @@
 /**
- * Service Worker für FrischKette Erzeuger-App
- * Offline-Modus + Cache-Strategie
+ * Service Worker – FrischKette Caterer
+ * Nur same-origin Requests werden gecacht.
  */
-const CACHE     = 'frischkette-erzeuger-v1';
-const API_CACHE = 'frischkette-erzeuger-api-v1';
+const CACHE     = 'frischkette-erzeuger-v2';
+const API_CACHE = 'frischkette-erzeuger-api-v2';
 
 const STATIC = [
   '/erzeuger',
@@ -34,17 +34,29 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
 
+  // Nur http/https + nur same-origin cachen
+  if (!url.protocol.startsWith('http')) return;
+  if (url.origin !== self.location.origin) return;
+
+  // Kein Caching für Downloads und non-GET
+  if (e.request.method !== 'GET') return;
+  if (url.search.includes('download=1')) {
+    // Downloads direkt durchleiten, kein Cache
+    e.respondWith(fetch(e.request));
+    return;
+  }
+
   if (url.pathname.startsWith('/api/')) {
     e.respondWith(
       fetch(e.request.clone())
         .then(res => {
-          if (e.request.method === 'GET' && res.ok) {
+          if (res.ok) {
             const clone = res.clone();
-            caches.open(API_CACHE).then(c => c.put(e.request, clone));
+            caches.open(API_CACHE).then(c => c.put(e.request, clone)).catch(() => {});
           }
           return res;
         })
-        .catch(() => caches.match(e.request))
+        .catch(() => caches.match(e.request).then(r => r || Response.error()))
     );
     return;
   }
@@ -52,23 +64,25 @@ self.addEventListener('fetch', e => {
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
-      return fetch(e.request).then(res => {
-        if (res.ok) caches.open(CACHE).then(c => c.put(e.request, res.clone()));
+      return fetch(e.request.clone()).then(res => {
+        if (res.ok) {
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone)).catch(() => {});
+        }
         return res;
-      }).catch(() => caches.match('/erzeuger') || new Response('Offline', { status: 503 }));
+      }).catch(() => caches.match('/erzeuger.html').then(r => r || Response.error()));
     })
   );
 });
 
 self.addEventListener('push', e => {
   const data  = e.data?.json() || {};
-  const title = data.title || 'FrischKette Erzeuger';
-  const body  = data.body  || 'Neue Nachricht';
+  const title = data.title || 'FrischKette';
   e.waitUntil(
     self.registration.showNotification(title, {
-      body,
-      icon:    '/favicon.ico',
-      badge:   '/favicon.ico',
+      body:    data.body || '',
+      icon:    '/icon-192.png',
+      badge:   '/icon-192.png',
       tag:     data.tag || 'frischkette-erzeuger',
       data:    data.url ? { url: data.url } : {},
       vibrate: [200, 100, 200],
@@ -81,8 +95,8 @@ self.addEventListener('notificationclick', e => {
   const url = e.notification.data?.url || '/erzeuger';
   e.waitUntil(
     clients.matchAll({ type: 'window' }).then(wins => {
-      const match = wins.find(w => w.url.includes('/erzeuger'));
-      if (match) { match.focus(); match.navigate(url); }
+      const w = wins.find(w => w.url.includes('/erzeuger'));
+      if (w) { w.focus(); w.navigate(url); }
       else clients.openWindow(url);
     })
   );

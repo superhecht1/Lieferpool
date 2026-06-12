@@ -38,7 +38,11 @@ self.addEventListener('fetch', e => {
   if (!url.protocol.startsWith('http')) return;
   if (url.origin !== self.location.origin) return;
   if (e.request.method !== 'GET') return;
-  if (url.search.includes('download=1')) return;
+  if (url.search.includes('download=1')) {
+    // Downloads direkt durchleiten, kein Cache
+    e.respondWith(fetch(e.request));
+    return;
+  }
 
   if (url.pathname.startsWith('/api/')) {
     e.respondWith(
