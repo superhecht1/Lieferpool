@@ -41,6 +41,32 @@ async function migrate() {
   // users: aktiv Spalte sicherstellen
   await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS aktiv BOOLEAN DEFAULT true`);
 
+
+  // ── Blockchain-Support ──────────────────────────────────────
+  // chain_tx Spalten
+  await db.query(`ALTER TABLE pools        ADD COLUMN IF NOT EXISTS chain_tx VARCHAR(100)`);
+  await db.query(`ALTER TABLE commitments  ADD COLUMN IF NOT EXISTS chain_tx VARCHAR(100)`);
+  await db.query(`ALTER TABLE lieferungen  ADD COLUMN IF NOT EXISTS chain_tx VARCHAR(100)`);
+  await db.query(`ALTER TABLE auszahlungen ADD COLUMN IF NOT EXISTS chain_tx VARCHAR(100)`);
+  await db.query(`ALTER TABLE zertifikate  ADD COLUMN IF NOT EXISTS chain_tx VARCHAR(100)`);
+  await db.query(`ALTER TABLE zertifikate  ADD COLUMN IF NOT EXISTS cert_hash VARCHAR(200)`);
+
+  // chain_events Tabelle
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS chain_events (
+      id          SERIAL PRIMARY KEY,
+      event_type  VARCHAR(60)  NOT NULL,
+      entity_id   UUID,
+      entity_type VARCHAR(40),
+      tx_hash     VARCHAR(100),
+      block_nr    INTEGER,
+      payload     JSONB        DEFAULT '{}',
+      created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+    )
+  `);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_chain_events_entity ON chain_events(entity_id)`);
+  await db.query(`CREATE INDEX IF NOT EXISTS idx_chain_events_type   ON chain_events(event_type)`);
+
   // fahrer_profile: lizenzklasse Spalte (Code erwartet diese, Migration hatte nur 'fuehrerschein')
   await db.query(`
     ALTER TABLE fahrer_profile
