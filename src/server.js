@@ -151,13 +151,17 @@ app.get('/api/chain/status', async (req, res) => {
   if (chainMode !== 'production') return res.json({ enabled: false, mode: 'mock' });
   try {
     const { ethers } = require('ethers');
-    const provider   = new ethers.JsonRpcProvider(process.env.RPC_URL || 'https://polygon-rpc.com');
-    const blockNr    = await provider.getBlockNumber();
-    const wallet     = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-    const balance    = await provider.getBalance(wallet.address);
-    res.json({ enabled: true, mode: 'production', blockNumber: blockNr,
+    const provider = new ethers.JsonRpcProvider(process.env.RPC_URL || 'https://polygon-rpc.com');
+    const blockNr  = await provider.getBlockNumber();
+    const wallet   = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+    const bal      = await provider.getBalance(wallet.address);
+    res.json({
+      enabled: true, mode: 'production',
+      blockNumber:     blockNr,
+      balance:         parseFloat(ethers.formatEther(bal)).toFixed(4),
       contractAddress: process.env.CONTRACT_ADDRESS,
-      walletBalance: ethers.formatEther(balance) + ' MATIC' });
+      walletAddress:   wallet.address,
+    });
   } catch (err) { res.status(503).json({ enabled: true, error: err.message }); }
 });
 
