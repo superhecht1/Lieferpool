@@ -95,17 +95,6 @@ router.post('/', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// PUT /api/nachrichten/alle-gelesen – alle als gelesen
-router.put('/alle-gelesen', auth, async (req, res) => {
-  try {
-    await db.query(
-      `UPDATE nachrichten SET gelesen=true WHERE an_user_id=$1 AND gelesen=false`,
-      [req.user.id]
-    );
-    res.json({ ok: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
-});
-
 // PUT /api/nachrichten/:id/gelesen – als gelesen markieren
 router.put('/:id/gelesen', auth, async (req, res) => {
   try {
@@ -117,6 +106,16 @@ router.put('/:id/gelesen', auth, async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// PUT /api/nachrichten/alle-gelesen – alle als gelesen
+router.put('/alle-gelesen', auth, async (req, res) => {
+  try {
+    await db.query(
+      `UPDATE nachrichten SET gelesen=true WHERE an_user_id=$1 AND gelesen=false`,
+      [req.user.id]
+    );
+    res.json({ ok: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
 // DELETE /api/nachrichten/:id
 router.delete('/:id', auth, async (req, res) => {
@@ -140,13 +139,13 @@ router.get('/empfaenger-liste', auth, async (req, res) => {
          FROM users u
          LEFT JOIN erzeuger e ON e.user_id=u.id
          LEFT JOIN caterer  c ON c.user_id=u.id
-         WHERE u.id != $1
+         WHERE u.id != $1 AND u.aktiv=true
          ORDER BY u.role, u.name`,
         [req.user.id]
       ));
     } else {
       ({ rows } = await db.query(
-        `SELECT id, name, email, role FROM users WHERE role='admin'`,
+        `SELECT id, name, email, role FROM users WHERE role='admin' AND aktiv=true`,
         []
       ));
     }
