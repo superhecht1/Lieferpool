@@ -22,7 +22,10 @@
     "test": "node tests/basic.test.js",
     "migrate:fix8": "node scripts/migrate_fix8.js",
     "export:xlsx": "node -e \"require('./src/routes/reports')\"",
-    "migrate:fix9": "node scripts/migrate_fix9.js"
+    "migrate:fix9": "node scripts/migrate_fix9.js",
+    "deploy": "node scripts/deploy.js",
+    "deploy:hardhat": "npx hardhat run scripts/deploy-hardhat.js --network polygon",
+    "deploy:mumbai": "npx hardhat run scripts/deploy-hardhat.js --network mumbai"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
