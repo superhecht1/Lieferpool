@@ -7,6 +7,24 @@
 const express = require('express');
 const db      = require('../db');
 const { auth, role } = require('../middleware/auth');
+const jwt = require('jsonwebtoken');
+
+// Auth middleware für Print-Routen: Header ODER ?_t= Query-Param
+function printAuth(req, res, next) {
+  // Standard Bearer Header
+  const header = req.headers.authorization;
+  if (header?.startsWith('Bearer ')) return auth(req, res, next);
+
+  // Fallback: ?_t=TOKEN in URL (für window.open ohne Header)
+  const token = req.query._t;
+  if (!token) return res.status(401).json({ error: 'Nicht angemeldet' });
+  try {
+    req.user = jwt.verify(token, process.env.JWT_SECRET);
+    next();
+  } catch {
+    res.status(401).json({ error: 'Token ungültig' });
+  }
+}
 
 const router = express.Router();
 
@@ -39,7 +57,7 @@ const PRINT_CSS = `
 </style>`;
 
 // ── Lieferschein ───────────────────────────────────────────────
-router.get('/lieferung/:id', auth, async (req, res) => {
+router.get('/lieferung/:id', printAuth, async (req, res) => {
   try {
     const { rows: [lief] } = await db.query(`
       SELECT l.*,
@@ -206,7 +224,7 @@ ${parseFloat(lief.pfand_kisten_geliefert||0) > 0 ? `
 });
 
 // ── Tourenplan ─────────────────────────────────────────────────
-router.get('/tour/:id', auth, async (req, res) => {
+router.get('/tour/:id', printAuth, async (req, res) => {
   try {
     const { rows: [tour] } = await db.query(`
       SELECT t.*, u.name AS fahrer_name, u.email AS fahrer_email,
@@ -324,7 +342,7 @@ ${tour.notiz ? `<div class="info-box" style="margin-bottom:16px"><div class="inf
 
 
 // ── Erzeuger-Lieferschein ──────────────────────────────────────
-router.get('/lieferung-erz/:id', auth, role('erzeuger'), async (req, res) => {
+router.get('/lieferung-erz/:id', printAuth, async (req, res) => {
   try {
     const { rows: [erz] } = await db.query(
       `SELECT e.*, u.email FROM erzeuger e JOIN users u ON u.id=e.user_id WHERE e.user_id=$1`,
