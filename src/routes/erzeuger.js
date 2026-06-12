@@ -206,6 +206,13 @@ router.put('/zertifikate/:id/status', auth, role('admin'), async (req, res) => {
       console.warn('[email]', emailErr.message);
     }
 
+    // Blockchain: Zertifikat verifizieren
+    if (z.status === 'verifiziert' && z.cert_hash) {
+      chain.verifyCertificate(z.erzeuger_id, z.cert_hash)
+        .then(r => db.query(`UPDATE zertifikate SET chain_tx=$1 WHERE id=$2`, [r.txHash, z.id]))
+        .catch(err => console.warn('[chain] verifyCertificate:', err.message));
+    }
+
     res.json({ zertifikat: z });
   } catch (err) {
     res.status(500).json({ error: 'Status konnte nicht gesetzt werden' });

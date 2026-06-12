@@ -1,4 +1,5 @@
 const express = require('express');
+const chain   = require('../services/chain');
 const db      = require('../db');
 const { auth, role } = require('../middleware/auth');
 const email   = require('../services/email');
@@ -185,6 +186,25 @@ router.post('/bulk-ausgezahlt', auth, role('admin'), async (req, res) => {
     `);
 
     const gesamt = rows.reduce((s, r) => s + parseFloat(r.netto), 0);
+
+    // Blockchain: Auszahlungen registrieren
+    if (rows.length > 0) {
+      try {
+        const { rows: detail } = await db.query(
+          `SELECT a.id, a.erzeuger_id, a.netto, c.pool_id
+           FROM auszahlungen a JOIN commitments c ON c.id=a.commitment_id
+           WHERE a.id = ANY($1::uuid[])`,
+          [rows.map(r => r.id)]
+        );
+        const byPool = {};
+        detail.forEach(p => { (byPool[p.pool_id] = byPool[p.pool_id] || []).push(p); });
+        for (const [poolId, payouts] of Object.entries(byPool)) {
+          chain.releasePayments(poolId, payouts)
+            .catch(err => console.warn('[chain] releasePayments:', err.message));
+        }
+      } catch (err) { console.warn('[chain] releasePayments prep:', err.message); }
+    }
+
     res.json({
       message: `${rows.length} Auszahlungen als ausgezahlt markiert`,
       count:   rows.length,

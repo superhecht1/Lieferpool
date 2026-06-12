@@ -1,4 +1,5 @@
 const express = require('express');
+const chain   = require('../services/chain');
 const db      = require('../db');
 const { auth, role } = require('../middleware/auth');
 const payout  = require('../services/payout');
@@ -287,6 +288,10 @@ router.post('/:id/wareneingang', auth, role('caterer', 'admin'), async (req, res
     // Auszahlungen berechnen falls noch nicht geschehen
     const payout = require('../services/payout');
     await payout.calculateAndCreatePayouts(req.params.id).catch(()=>{});
+
+    // Blockchain: Wareneingang bestätigen
+    chain.confirmDelivery(req.params.id, lief.pool_id, menge_geliefert || lief.menge_geliefert, qualitaet || lief.qualitaet)
+      .catch(err => console.warn('[chain] confirmDelivery:', err.message));
 
     res.json({ message: 'Wareneingang bestätigt', qualitaet: qualitaet || lief.qualitaet });
   } catch(err) {
