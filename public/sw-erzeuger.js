@@ -40,11 +40,8 @@ self.addEventListener('fetch', e => {
 
   // Kein Caching für Downloads und non-GET
   if (e.request.method !== 'GET') return;
-  if (url.search.includes('download=1')) {
-    // Downloads direkt durchleiten, kein Cache
-    e.respondWith(fetch(e.request));
-    return;
-  }
+  // Downloads + non-GET: SW komplett raus, Browser handelt nativ
+  if (url.search.includes('download=1')) return;
 
   if (url.pathname.startsWith('/api/')) {
     e.respondWith(
