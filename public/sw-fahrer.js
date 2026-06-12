@@ -1,9 +1,9 @@
 /**
- * Service Worker für FrischKette Fahrer-App
- * Offline-Modus + Cache-Strategie
+ * Service Worker – FrischKette Fahrer
+ * Nur same-origin Requests werden gecacht.
  */
-const CACHE     = 'frischkette-fahrer-v1';
-const API_CACHE = 'frischkette-api-v1';
+const CACHE     = 'frischkette-fahrer-v2';
+const API_CACHE = 'frischkette-fahrer-api-v2';
 
 const STATIC = [
   '/fahrer',
@@ -15,7 +15,6 @@ const STATIC = [
   '/login.html',
 ];
 
-// Install: statische Assets cachen
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE).then(c => c.addAll(STATIC).catch(() => {}))
@@ -23,7 +22,6 @@ self.addEventListener('install', e => {
   self.skipWaiting();
 });
 
-// Activate: alte Caches löschen
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
@@ -33,70 +31,66 @@ self.addEventListener('activate', e => {
   self.clients.claim();
 });
 
-// Fetch: Cache-First für statische, Network-First für API
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
 
-  // API-Calls: Network-First, bei Fehler aus Cache
+  // Nur http/https + nur same-origin cachen
+  if (!url.protocol.startsWith('http')) return;
+  if (url.origin !== self.location.origin) return;
+  if (e.request.method !== 'GET') return;
+  if (url.search.includes('download=1')) return;
+
   if (url.pathname.startsWith('/api/')) {
     e.respondWith(
       fetch(e.request.clone())
         .then(res => {
-          // GET-Responses cachen (nicht POST/PUT/DELETE)
-          if (e.request.method === 'GET' && res.ok) {
+          if (res.ok) {
             const clone = res.clone();
-            caches.open(API_CACHE).then(c => c.put(e.request, clone));
+            caches.open(API_CACHE).then(c => c.put(e.request, clone)).catch(() => {});
           }
           return res;
         })
-        .catch(() => caches.match(e.request))
+        .catch(() => caches.match(e.request).then(r => r || Response.error()))
     );
     return;
   }
 
-  // Statische Assets: Cache-First
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
-      return fetch(e.request).then(res => {
+      return fetch(e.request.clone()).then(res => {
         if (res.ok) {
-          const resClone = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, resClone));
+          const clone = res.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone)).catch(() => {});
         }
         return res;
-      }).catch(() => caches.match('/fahrer') || new Response('Offline', { status: 503 }));
+      }).catch(() => caches.match('/fahrer.html').then(r => r || Response.error()));
     })
   );
 });
 
-// Push-Notification empfangen
 self.addEventListener('push', e => {
-  const data = e.data?.json() || {};
-  const title = data.title || 'FrischKette';
-  const body  = data.body  || 'Neue Nachricht';
-  const icon  = '/favicon.ico';
-
+  const data  = e.data?.json() || {};
+  const title = data.title || 'FrischKette Fahrer';
   e.waitUntil(
     self.registration.showNotification(title, {
-      body,
-      icon,
-      badge: icon,
-      tag:   data.tag || 'frischkette',
-      data:  data.url ? { url: data.url } : {},
-      actions: data.actions || [],
+      body:    data.body || '',
+      icon:    '/icon-192.png',
+      badge:   '/icon-192.png',
+      tag:     data.tag || 'frischkette-fahrer',
+      data:    data.url ? { url: data.url } : {},
       vibrate: [200, 100, 200],
     })
   );
 });
 
-// Notification-Klick → App öffnen
 self.addEventListener('notificationclick', e => {
   e.notification.close();
   const url = e.notification.data?.url || '/fahrer';
   e.waitUntil(
     clients.matchAll({ type: 'window' }).then(wins => {
-      const match = wins.find(w => w.url.includes('/fahrer'));
-      if (match) { match.focus(); match.navigate(url); }
+      const w = wins.find(w => w.url.includes('/fahrer'));
+      if (w) { w.focus(); w.navigate(url); }
       else clients.openWindow(url);
     })
   );
