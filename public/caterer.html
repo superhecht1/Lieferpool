@@ -414,6 +414,18 @@ const NAV = [
 
 renderHeader('overview', NAV, (v) => { showView(v); loadView(v); });
 
+// QR-Code Deeplink: /lieferung/<qr>
+(function() {
+  const parts = window.location.pathname.split('/');
+  if (parts[1] === 'lieferung' && parts[2]) {
+    setTimeout(() => {
+      showView('wareneingang'); loadView('wareneingang');
+      const inp = document.getElementById('qr-input');
+      if (inp) { inp.value = parts[2].toUpperCase(); scanQR && scanQR(); }
+    }, 400);
+  }
+})();
+
 function setHTML(id, html) { const el = document.getElementById(id); if (el) el.innerHTML = html; }
 
 async function loadView(v) {
@@ -1080,8 +1092,8 @@ async function loadCatLieferscheine() {
         <td>${l.qualitaet_caterer ? '<span class="badge '+(l.qualitaet_caterer==='A'?'badge-green':l.qualitaet_caterer==='B'?'badge-amber':'badge-red')+'">'+l.qualitaet_caterer+'</span>' : '—'}</td>
         <td>${statusBadge(l.status)}</td>
         <td><div style="display:flex;gap:.35rem">
-          <button class="btn btn-sm" onclick="window.open('/api/print/lieferung/${l.id}','_blank')" title="Druckansicht">🖨</button>
-                  <button class="btn btn-sm btn-primary" onclick="window.location='/api/print/lieferung/${l.id}?download=1'" title="PDF Download">↓ PDF">🖨</button>
+          <button class="btn btn-sm" onclick="openPrint('/api/print/lieferung/${l.id}')" title="Druckansicht">🖨</button>
+                  <button class="btn btn-sm btn-primary" onclick="dlPrint('/api/print/lieferung/${l.id}')" title="Lieferschein herunterladen">↓</button>
           ${l.status === 'erstellt' ? '<button class="btn btn-primary btn-sm" onclick="document.getElementById(\'qr-input\').value=\''+l.qr_code+'\';showView(\'wareneingang\');loadView(\'wareneingang\');">📦 WE</button>' : ''}
         </div></td>
       </tr>`).join('')}</tbody></table>
@@ -1243,6 +1255,22 @@ document.getElementById('btn-bedarf-zu-pool')?.addEventListener('click', async (
     }, 100);
   } catch(e) { showAlert('alerts','error',e.message); }
 });
+
+
+// ── Print / Download Helpers ─────────────────────────────────
+function openPrint(path) {
+  const tok = Auth.getToken();
+  window.open(path + '?_t=' + encodeURIComponent(tok), '_blank');
+}
+function dlPrint(path) {
+  const tok = Auth.getToken();
+  const a   = document.createElement('a');
+  a.href    = path + '?download=1&_t=' + encodeURIComponent(tok);
+  a.download = '';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
 
 </script>
 </body>

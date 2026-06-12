@@ -1928,8 +1928,8 @@ async function loadLieferscheineListe() {
             </td>
             <td>
               <div style="display:flex;gap:.35rem">
-                <button class="btn btn-sm" onclick="window.open('/api/print/lieferung/${l.id}','_blank')">🖨</button>
-                <button class="btn btn-sm btn-primary" onclick="window.open('/api/print/lieferung/${l.id}?download=1','_blank')" title="HTML herunterladen">↓</button>
+                <button class="btn btn-sm" onclick="openPrint('/api/print/lieferung/${l.id}')">🖨</button>
+                <button class="btn btn-sm btn-primary" onclick="dlPrint('/api/print/lieferung/${l.id}')" title="HTML herunterladen">↓</button>
                 ${l.status!=='abgeschlossen'?`<button class="btn btn-sm btn-danger" data-action="del-lief" data-id="${l.id}" data-nr="${l.lieferschein_nr}" style="padding:3px 8px">✕</button>`:''}
               </div>
             </td>
@@ -2024,7 +2024,7 @@ document.getElementById('btn-create-lief')?.addEventListener('click', async () =
         <span style="font-family:'DM Mono',monospace;font-size:13px;color:var(--text2)">${lieferung.qr_code}</span>
       </div>
       <div style="margin-top:.875rem;display:flex;gap:.5rem;justify-content:center">
-        <button class="btn btn-sm btn-primary" onclick="window.open('/api/print/lieferung/${lieferung.id}','_blank')">🖨 Lieferschein drucken</button>
+        <button class="btn btn-sm btn-primary" onclick="openPrint('/api/print/lieferung/${lieferung.id}')">🖨 Lieferschein drucken</button>
       </div>
     </div>`);
     const f=document.getElementById('lief-create-form'); if(f) f.style.display='none';
@@ -2407,7 +2407,7 @@ async function deleteStopp(tid, sid) {
 }
 
 document.getElementById('btn-detail-close')?.addEventListener('click', () => { const c=document.getElementById('tour-detail-card'); if(c) c.style.display='none'; aktiveTourId=null; });
-document.getElementById('btn-print-tour')?.addEventListener('click', () => { if(aktiveTourId) window.open('/api/print/tour/'+aktiveTourId,'_blank'); });
+document.getElementById('btn-print-tour')?.addEventListener('click', () => { if(aktiveTourId) openPrint('/api/print/tour/'+aktiveTourId); });
 document.getElementById('btn-stopp-add')?.addEventListener('click', () => { const c=document.getElementById('stopp-add-card'); if(c) c.style.display=c.style.display==='none'?'block':'none'; });
 document.getElementById('btn-stopp-save')?.addEventListener('click', async () => {
   if(!aktiveTourId) return;
@@ -3578,6 +3578,22 @@ document.getElementById('btn-pe-save')?.addEventListener('click', async () => {
 
 // ── INIT ──────────────────────────────────────────────────────
 loadOverview();
+
+// ── Print / Download Helpers ──────────────────────────────────
+function openPrint(path) {
+  const tok = Auth.getToken();
+  window.open(path + '?_t=' + encodeURIComponent(tok), '_blank');
+}
+function dlPrint(path) {
+  const tok = Auth.getToken();
+  const a   = document.createElement('a');
+  a.href    = path + '?download=1&_t=' + encodeURIComponent(tok);
+  a.download = '';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
 </script>
 
 <nav class="mobile-nav" id="mobile-nav">

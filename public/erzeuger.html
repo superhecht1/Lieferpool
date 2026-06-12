@@ -786,7 +786,7 @@ async function loadMeineLieferscheine() {
                    onclick="window.open(this.src.replace('120x120','300x300'),'_blank')">
             </td>
             <td>
-              <button class="btn btn-sm" onclick="window.open('/api/print/lieferung-erz/${l.id}','_blank')" title="Lieferschein drucken">🖨</button>
+              <button class="btn btn-sm" onclick="openPrint('/api/print/lieferung-erz/${l.id}')" title="Lieferschein drucken">🖨</button>
             </td>
           </tr>`).join('')}
         </tbody>
@@ -955,6 +955,19 @@ document.getElementById('btn-erz-nm-senden')?.addEventListener('click', async ()
     }
   } catch {}
 })();
+
+
+function openPrint(path) {
+  const tok = Auth.getToken();
+  window.open(path + '?_t=' + encodeURIComponent(tok), '_blank');
+}
+function dlPrint(path) {
+  const tok = Auth.getToken();
+  const a = document.createElement('a');
+  a.href = path + '?download=1&_t=' + encodeURIComponent(tok);
+  a.download = '';
+  document.body.appendChild(a); a.click(); a.remove();
+}
 
 </script>
 </body>
