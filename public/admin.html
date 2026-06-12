@@ -989,6 +989,7 @@ const NAV = [
   { id: 'pool-erstellen',  label: '➕ Pool erstellen'},
   { id: 'nachrichten',      label: '💬 Nachrichten'},
   { id: 'statistik',        label: '📊 Statistik'},
+  { id: 'blockchain',       label: '⛓ Blockchain'},
 ];
 
 renderHeader('overview', NAV, (v) => { showView(v); loadView(v); });
@@ -1203,6 +1204,101 @@ document.getElementById('btn-stat-laden')?.addEventListener('click', async () =>
   const jahr = parseInt(document.getElementById('stat-jahr')?.value) || new Date().getFullYear();
   await renderMonatStats(jahr).catch(e => showAlert('alerts','error',e.message));
 });
+
+
+
+// ── BLOCKCHAIN ────────────────────────────────────────────────
+async function loadBlockchain() {
+  try {
+    // Chain Status
+    const cs = await fetch('/api/chain/status', {
+      headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
+    }).then(r => r.json()).catch(() => ({ enabled: false, mode: 'mock' }));
+
+    setHTML('chain-status-box', `
+      <div style="display:flex;gap:1rem;flex-wrap:wrap">
+        <div class="sum-box" style="background:var(--bg2);border-radius:6px;padding:12px 16px">
+          <div class="pool-meta">Modus</div>
+          <div style="font-weight:600;margin-top:4px">
+            ${cs.enabled
+              ? '<span style="color:var(--green)">🟢 Polygon Live</span>'
+              : '<span style="color:var(--amber)">🟡 Mock-Modus</span>'}
+          </div>
+        </div>
+        ${cs.enabled ? `
+          <div class="sum-box" style="background:var(--bg2);border-radius:6px;padding:12px 16px">
+            <div class="pool-meta">Block</div>
+            <div style="font-weight:600;margin-top:4px">#${cs.blockNumber?.toLocaleString('de-DE') || '—'}</div>
+          </div>
+          <div class="sum-box" style="background:var(--bg2);border-radius:6px;padding:12px 16px">
+            <div class="pool-meta">Wallet Balance</div>
+            <div style="font-weight:600;margin-top:4px">${cs.balance || '—'} MATIC</div>
+          </div>
+          <div class="sum-box" style="background:var(--bg2);border-radius:6px;padding:12px 16px">
+            <div class="pool-meta">Contract</div>
+            <div style="font-size:11px;font-family:monospace;margin-top:4px">
+              <a href="https://polygonscan.com/address/${cs.contractAddress}" target="_blank" style="color:var(--green)">${cs.contractAddress?.slice(0,10)}...${cs.contractAddress?.slice(-6)}</a>
+            </div>
+          </div>
+        ` : `
+          <div class="sum-box" style="background:var(--bg2);border-radius:6px;padding:12px 16px">
+            <div class="pool-meta">Info</div>
+            <div style="font-size:12px;margin-top:4px">Mock-TxHashes werden in DB gespeichert.<br>Für Produktion: CONTRACT_ADDRESS + BLOCKCHAIN_ENABLED=true setzen.</div>
+          </div>
+        `}
+      </div>
+    `);
+
+    await loadChainEvents();
+  } catch(err) { showAlert('alerts','error',err.message); }
+}
+
+async function loadChainEvents() {
+  const type = document.getElementById('chain-filter-type')?.value || '';
+  const url  = '/api/chain/events' + (type ? '?type=' + type : '');
+  try {
+    const { events, total } = await fetch(url, {
+      headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
+    }).then(r => r.json());
+
+    const typeLabels = {
+      pool_created:          '🌱 Pool erstellt',
+      quantity_committed:    '🤝 Commitment',
+      pool_locked:           '🔒 Pool gesperrt',
+      delivery_confirmed:    '📦 Wareneingang',
+      payments_released:     '💰 Auszahlung',
+      certificate_registered:'📜 Zertifikat reg.',
+      certificate_verified:  '✅ Zertifikat verif.',
+    };
+
+    setHTML('chain-events-list', events.length ? `
+      <div class="pool-meta" style="margin-bottom:.75rem">${total} Events gesamt</div>
+      <table class="tbl">
+        <thead>
+          <tr><th>Zeitpunkt</th><th>Event</th><th>Typ</th><th>TX Hash</th><th>Block</th></tr>
+        </thead>
+        <tbody>
+          ${events.map(e => `
+            <tr>
+              <td class="pool-meta">${new Date(e.created_at).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</td>
+              <td style="font-weight:500">${typeLabels[e.event_type] || e.event_type}</td>
+              <td class="pool-meta">${e.entity_type || '—'}</td>
+              <td style="font-family:monospace;font-size:11px">
+                ${e.tx_hash && e.tx_hash !== '0x' + '0'.repeat(64)
+                  ? `<a href="https://polygonscan.com/tx/${e.tx_hash}" target="_blank" style="color:var(--green)">${e.tx_hash.slice(0,8)}...${e.tx_hash.slice(-6)}</a>`
+                  : '<span style="color:var(--text3)">mock</span>'}
+              </td>
+              <td class="pool-meta">${e.block_nr ? '#' + e.block_nr.toLocaleString('de-DE') : '—'}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    ` : '<p style="color:var(--text3);font-size:13px">Noch keine Chain-Events</p>');
+  } catch(err) { setHTML('chain-events-list', `<p style="color:var(--red)">${err.message}</p>`); }
+}
+
+document.getElementById('btn-chain-refresh')?.addEventListener('click', loadBlockchain);
+document.getElementById('chain-filter-type')?.addEventListener('change', loadChainEvents);
 
 
 // ── TABELLEN-SORTIERUNG ───────────────────────────────────────
@@ -3539,3 +3635,52 @@ loadOverview();
 </div>
 </body>
 </html>
+    <!-- BLOCKCHAIN -->
+    <div id="view-blockchain" class="view" style="display:none">
+      <div class="card" style="margin-bottom:1.25rem">
+        <div class="section-hdr">
+          <span class="section-title">⛓ Blockchain-Status</span>
+          <button class="btn btn-sm" id="btn-chain-refresh">↻ Refresh</button>
+        </div>
+        <div id="chain-status-box" style="margin-top:.75rem"><div class="spinner"></div></div>
+      </div>
+
+      <div class="card" style="margin-bottom:1.25rem">
+        <div class="section-hdr">
+          <span class="section-title">📋 Chain Events</span>
+          <div style="display:flex;gap:.5rem;align-items:center">
+            <select class="form-control" id="chain-filter-type" style="padding:4px 8px;width:160px">
+              <option value="">Alle Events</option>
+              <option value="pool_created">Pool erstellt</option>
+              <option value="quantity_committed">Commitment</option>
+              <option value="pool_locked">Pool gesperrt</option>
+              <option value="delivery_confirmed">Wareneingang</option>
+              <option value="payments_released">Auszahlungen</option>
+              <option value="certificate_registered">Zertifikat reg.</option>
+              <option value="certificate_verified">Zertifikat verif.</option>
+            </select>
+          </div>
+        </div>
+        <div id="chain-events-list" style="margin-top:.75rem"><div class="spinner"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🚀 Deploy-Anleitung</div>
+        <div style="font-size:13px;line-height:1.8;color:var(--text2)">
+          <strong style="color:var(--text1)">Schritt 1 — Contract kompilieren:</strong><br>
+          <code style="background:var(--bg2);padding:2px 6px;border-radius:3px">npx hardhat compile</code><br><br>
+          <strong style="color:var(--text1)">Schritt 2 — Auf Polygon deployen:</strong><br>
+          <code style="background:var(--bg2);padding:2px 6px;border-radius:3px">npx hardhat run scripts/deploy-hardhat.js --network polygon</code><br><br>
+          <strong style="color:var(--text1)">Schritt 3 — Render ENV setzen:</strong><br>
+          <code style="background:var(--bg2);padding:2px 6px;border-radius:3px">CONTRACT_ADDRESS=0x...</code><br>
+          <code style="background:var(--bg2);padding:2px 6px;border-radius:3px">BLOCKCHAIN_ENABLED=true</code><br>
+          <code style="background:var(--bg2);padding:2px 6px;border-radius:3px">PRIVATE_KEY=0x...</code><br>
+          <code style="background:var(--bg2);padding:2px 6px;border-radius:3px">RPC_URL=https://polygon-rpc.com</code><br><br>
+          <a href="https://polygonscan.com" target="_blank" style="color:var(--green)">🔍 Polygonscan</a>
+          &nbsp;·&nbsp;
+          <a href="https://faucet.polygon.technology" target="_blank" style="color:var(--green)">💧 MATIC Faucet (Testnet)</a>
+        </div>
+      </div>
+    </div>
+
+
