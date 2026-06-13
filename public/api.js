@@ -211,7 +211,15 @@ const api = {
   downloadAuszahlungenCSV: (p={}) => { const q=new URLSearchParams(p).toString(); window.open(API_BASE+'/reports/auszahlungen.csv'+(q?'?'+q:''),'_blank'); },
   downloadPoolsCSV:        ()      => window.open(API_BASE+'/reports/pools.csv','_blank'),
   downloadLieferungenCSV:  ()      => window.open(API_BASE+'/reports/lieferungen.csv','_blank'),
-  openAbrechnung:          (id, params={}) => { const q=new URLSearchParams(params).toString(); window.open(API_BASE+'/reports/abrechnung/'+id+(q?'?'+q:''),'_blank'); },
+  openAbrechnung: async (id, params={}) => {
+    const q   = new URLSearchParams(params).toString();
+    const url = '/api/reports/abrechnung/' + id + (q ? '?' + q : '');
+    const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + Auth.getToken() } });
+    if (!res.ok) throw new Error('Abrechnung fehlgeschlagen');
+    const html = await res.text();
+    const win  = window.open('', '_blank');
+    win.document.write(html); win.document.close();
+  },
   // CATERER (Admin)
   getAllCaterer:     ()           => get('/caterer'),
   getCatererDetail: (id)         => get('/caterer/detail/' + id),

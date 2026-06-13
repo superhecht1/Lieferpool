@@ -3197,14 +3197,20 @@ async function loadRechnungen() {
 }
 
 
-function dlRechnungPDF(id, nr) {
-  const tok = Auth.getToken();
-  const a   = document.createElement('a');
-  a.href    = `/api/rechnungen/${id}/download?_t=${tok}`;
-  a.download= `Rechnung-${nr}.pdf`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+async function dlRechnungPDF(id, nr) {
+  try {
+    const res = await fetch(`/api/rechnungen/${id}/download`, {
+      headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
+    });
+    if (!res.ok) throw new Error('Download fehlgeschlagen');
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `Rechnung-${nr}.pdf`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  } catch(err) { alert(err.message); }
 }
 document.getElementById('btn-reload-rech')?.addEventListener('click', loadRechnungen);
 
@@ -3579,11 +3585,33 @@ document.getElementById('btn-pe-save')?.addEventListener('click', async () => {
 // ── INIT ──────────────────────────────────────────────────────
 loadOverview();
 
-// ── Print / Download Helpers ──────────────────────────────────
-function openPrint(path) {
-  const tok = Auth.getToken();
-  window.open(path + '?_t=' + encodeURIComponent(tok), '_blank');
+// ── Print / Download Helpers ─────────────────────────────────
+async function openPrint(path) {
+  try {
+    const res = await fetch(path, { headers: { 'Authorization': 'Bearer ' + Auth.getToken() } });
+    if (!res.ok) { const e = await res.json().catch(()=>{}); throw new Error(e?.error||'Fehler'); }
+    const html = await res.text();
+    const win  = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
+  } catch(err) { alert('Drucken fehlgeschlagen: ' + err.message); }
 }
+async function dlPrint(path) {
+  try {
+    const res = await fetch(path + (path.includes('?') ? '&' : '?') + 'download=1', {
+      headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
+    });
+    if (!res.ok) { const e = await res.json().catch(()=>{}); throw new Error(e?.error||'Fehler'); }
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'Lieferschein.html';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  } catch(err) { alert('Download fehlgeschlagen: ' + err.message); }
+}
+
 function dlPrint(path) {
   const tok = Auth.getToken();
   const a   = document.createElement('a');

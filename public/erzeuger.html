@@ -969,6 +969,34 @@ function dlPrint(path) {
   document.body.appendChild(a); a.click(); a.remove();
 }
 
+
+// ── Print / Download Helpers ─────────────────────────────────
+async function openPrint(path) {
+  try {
+    const res = await fetch(path, { headers: { 'Authorization': 'Bearer ' + Auth.getToken() } });
+    if (!res.ok) { const e = await res.json().catch(()=>{}); throw new Error(e?.error||'Fehler'); }
+    const html = await res.text();
+    const win  = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
+  } catch(err) { alert('Drucken fehlgeschlagen: ' + err.message); }
+}
+async function dlPrint(path) {
+  try {
+    const res = await fetch(path + (path.includes('?') ? '&' : '?') + 'download=1', {
+      headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
+    });
+    if (!res.ok) { const e = await res.json().catch(()=>{}); throw new Error(e?.error||'Fehler'); }
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'Lieferschein.html';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  } catch(err) { alert('Download fehlgeschlagen: ' + err.message); }
+}
+
 </script>
 </body>
 </html>
