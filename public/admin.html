@@ -1208,6 +1208,16 @@ document.getElementById('btn-stat-laden')?.addEventListener('click', async () =>
 
 
 // ── BLOCKCHAIN ────────────────────────────────────────────────
+function switchChainTab(tab) {
+  ['db','live','txs'].forEach(t => {
+    document.getElementById('chain-tab-'+t).style.display = t===tab ? '' : 'none';
+    const btn = document.getElementById('btn-events-'+t);
+    if (btn) { btn.style.background = t===tab ? 'var(--green)' : ''; btn.style.color = t===tab ? '#fff' : ''; }
+  });
+  if (tab === 'live') loadChainLiveEvents();
+  if (tab === 'txs')  loadChainWalletTxs();
+}
+
 async function loadBlockchain() {
   try {
     // Chain Status
@@ -1298,6 +1308,89 @@ async function loadChainEvents() {
 }
 
 document.getElementById('btn-chain-refresh')?.addEventListener('click', loadBlockchain);
+document.getElementById('chain-filter-type')?.addEventListener('change', loadChainEvents);
+
+async function loadChainLiveEvents() {
+  setHTML('chain-live-list', '<div class="spinner"></div>');
+  try {
+    const data = await fetch('/api/chain/events-live', {
+      headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
+    }).then(r => r.json());
+
+    if (data.note) {
+      setHTML('chain-live-list', `<div style="font-size:13px;color:var(--amber);padding:.75rem 0">⚠ ${data.note}</div>`);
+      return;
+    }
+
+    setHTML('chain-live-list', data.events?.length ? `
+      <div class="pool-meta" style="margin-bottom:.75rem">${data.events.length} Events · Chain: ${data.chain}</div>
+      <table class="tbl">
+        <thead><tr><th>Block</th><th>Event</th><th>TX Hash</th><th>Zeit</th></tr></thead>
+        <tbody>${data.events.map(e => `
+          <tr>
+            <td class="pool-meta">#${e.blockNr?.toLocaleString('de-DE')}</td>
+            <td style="font-weight:500">${e.name}</td>
+            <td style="font-family:monospace;font-size:11px">
+              <a href="${e.explorerUrl}" target="_blank" style="color:var(--green)">${e.txHash?.slice(0,8)}...${e.txHash?.slice(-6)}</a>
+            </td>
+            <td class="pool-meta">${e.timestamp ? new Date(e.timestamp).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—'}</td>
+          </tr>
+        `).join('')}</tbody>
+      </table>
+    ` : '<p style="color:var(--text3);font-size:13px">Noch keine On-Chain Events (oder Contract nicht deployed)</p>');
+  } catch(err) { setHTML('chain-live-list', `<p style="color:var(--red)">${err.message}</p>`); }
+}
+
+async function loadChainWalletTxs() {
+  setHTML('chain-txs-list', '<div class="spinner"></div>');
+  try {
+    const data = await fetch('/api/chain/wallet-txs', {
+      headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
+    }).then(r => r.json());
+
+    setHTML('chain-txs-list', data.txs?.length ? `
+      <div class="pool-meta" style="margin-bottom:.75rem">Wallet: <code style="font-size:11px">${data.walletAddress}</code></div>
+      <table class="tbl">
+        <thead><tr><th>Block</th><th>Status</th><th>MATIC</th><th>TX Hash</th><th>Zeit</th></tr></thead>
+        <tbody>${data.txs.map(tx => `
+          <tr>
+            <td class="pool-meta">#${tx.blockNr?.toLocaleString('de-DE')}</td>
+            <td><span class="badge ${tx.status==='success'?'badge-green':'badge-red'}">${tx.status}</span></td>
+            <td class="pool-meta">${parseFloat(tx.value||0).toFixed(4)}</td>
+            <td style="font-family:monospace;font-size:11px">
+              <a href="${tx.explorerUrl}" target="_blank" style="color:var(--green)">${tx.hash?.slice(0,8)}...${tx.hash?.slice(-6)}</a>
+            </td>
+            <td class="pool-meta">${tx.timestamp ? new Date(tx.timestamp).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—'}</td>
+          </tr>
+        `).join('')}</tbody>
+      </table>
+    ` : `<p style="color:var(--text3);font-size:13px">${data.note || 'Keine Transaktionen'}</p>`);
+  } catch(err) { setHTML('chain-txs-list', `<p style="color:var(--red)">${err.message}</p>`); }
+}
+
+// TX Suche
+document.getElementById('btn-chain-tx-suchen')?.addEventListener('click', async () => {
+  const hash = document.getElementById('chain-tx-input')?.value.trim();
+  if (!hash) return;
+  setHTML('chain-tx-result', '<div class="spinner"></div>');
+  try {
+    const data = await fetch(`/api/chain/tx/${hash}`, {
+      headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
+    }).then(async r => { const d=await r.json(); if(!r.ok) throw new Error(d.error); return d; });
+    const tx = data.tx;
+    setHTML('chain-tx-result', `
+      <div style="background:var(--bg2);border-radius:6px;padding:1rem;font-size:13px;line-height:2">
+        <div><strong>Status:</strong> <span style="color:${tx.status==='success'?'var(--green)':'var(--red)'}">${tx.status}</span></div>
+        <div><strong>Block:</strong> #${tx.blockNr?.toLocaleString('de-DE')}</div>
+        <div><strong>Zeit:</strong> ${tx.timestamp ? new Date(tx.timestamp).toLocaleString('de-DE') : '—'}</div>
+        <div><strong>Gas used:</strong> ${tx.gasUsed?.toLocaleString('de-DE')}</div>
+        <div><strong>Von:</strong> <code style="font-size:11px">${tx.from}</code></div>
+        <div><strong>An:</strong> <code style="font-size:11px">${tx.to}</code></div>
+        <div><a href="${tx.explorerUrl}" target="_blank" style="color:var(--green)">→ Polygonscan</a></div>
+      </div>
+    `);
+  } catch(err) { setHTML('chain-tx-result', `<p style="color:var(--red)">${err.message}</p>`); }
+});
 document.getElementById('chain-filter-type')?.addEventListener('change', loadChainEvents);
 
 
@@ -3689,10 +3782,20 @@ function dlPrint(path) {
         <div id="chain-status-box" style="margin-top:.75rem"><div class="spinner"></div></div>
       </div>
 
+      <!-- Events Tabs: DB-Events + Covalent Live -->
       <div class="card" style="margin-bottom:1.25rem">
         <div class="section-hdr">
           <span class="section-title">📋 Chain Events</span>
           <div style="display:flex;gap:.5rem;align-items:center">
+            <button class="btn btn-sm" id="btn-events-db" onclick="switchChainTab('db')" style="background:var(--green);color:#fff">🗄 DB</button>
+            <button class="btn btn-sm" id="btn-events-live" onclick="switchChainTab('live')">🔴 Live (Covalent)</button>
+            <button class="btn btn-sm" id="btn-events-txs" onclick="switchChainTab('txs')">💳 Wallet-TXs</button>
+          </div>
+        </div>
+
+        <!-- DB Events -->
+        <div id="chain-tab-db">
+          <div style="display:flex;gap:.5rem;align-items:center;margin:.75rem 0">
             <select class="form-control" id="chain-filter-type" style="padding:4px 8px;width:160px">
               <option value="">Alle Events</option>
               <option value="pool_created">Pool erstellt</option>
@@ -3704,8 +3807,35 @@ function dlPrint(path) {
               <option value="certificate_verified">Zertifikat verif.</option>
             </select>
           </div>
+          <div id="chain-events-list"><div class="spinner"></div></div>
         </div>
-        <div id="chain-events-list" style="margin-top:.75rem"><div class="spinner"></div></div>
+
+        <!-- Live Events (Covalent) -->
+        <div id="chain-tab-live" style="display:none">
+          <p style="font-size:13px;color:var(--text2);margin:.75rem 0">
+            Echte On-Chain Events vom LieferPool-Contract via Covalent GoldRush API.
+            Nur verfügbar wenn COVALENT_API_KEY + CONTRACT_ADDRESS gesetzt.
+          </p>
+          <div id="chain-live-list"><div class="spinner"></div></div>
+        </div>
+
+        <!-- Wallet Transactions (Covalent) -->
+        <div id="chain-tab-txs" style="display:none">
+          <p style="font-size:13px;color:var(--text2);margin:.75rem 0">
+            Letzte Transaktionen der Hub-Wallet auf Polygon.
+          </p>
+          <div id="chain-txs-list"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+      <!-- TX suchen -->
+      <div class="card" style="margin-bottom:1.25rem">
+        <div class="card-title">🔍 Transaktion suchen</div>
+        <div style="display:flex;gap:.5rem;margin-top:.75rem">
+          <input class="form-control" id="chain-tx-input" placeholder="TX Hash: 0x..." style="font-family:monospace;font-size:12px">
+          <button class="btn btn-primary" id="btn-chain-tx-suchen">Suchen</button>
+        </div>
+        <div id="chain-tx-result" style="margin-top:.75rem"></div>
       </div>
 
       <div class="card">
