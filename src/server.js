@@ -146,24 +146,86 @@ app.get('/sw-caterer.js',          (req, res) => res.set('Content-Type','applica
 app.get('/manifest-erzeuger.json', (req, res) => res.json(require('../public/manifest-erzeuger.json')));
 app.get('/manifest-caterer.json',  (req, res) => res.json(require('../public/manifest-caterer.json')));
 
-// Chain Status
+// Chain Status — nutzt Covalent für Lesezugriffe
 app.get('/api/chain/status', async (req, res) => {
-  if (chainMode !== 'production') return res.json({ enabled: false, mode: 'mock' });
+  if (chainMode !== 'production') {
+    // Mock-Modus: zeige ob Covalent konfiguriert ist
+    const cov = require('./services/covalent');
+    return res.json({
+      enabled: false,
+      mode: 'mock',
+      covalentConfigured: cov.isConfigured(),
+      contractAddress: process.env.CONTRACT_ADDRESS || null,
+    });
+  }
   try {
-    const { ethers } = require('ethers');
-    const provider = new ethers.JsonRpcProvider(process.env.RPC_URL || 'https://polygon-rpc.com');
-    const blockNr  = await provider.getBlockNumber();
-    const wallet   = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
-    const bal      = await provider.getBalance(wallet.address);
+    const cov    = require('./services/covalent');
+    const ethers = require('ethers');
+
+    // Parallel: Block + Balance über Covalent (kein eigener RPC nötig)
+    const [blockNr, balance] = await Promise.all([
+      cov.getLatestBlock().catch(() => null),
+      process.env.PRIVATE_KEY
+        ? cov.getWalletBalance(new ethers.Wallet(process.env.PRIVATE_KEY).address).catch(() => '?')
+        : Promise.resolve('?'),
+    ]);
+
+    const walletAddress = process.env.PRIVATE_KEY
+      ? new ethers.Wallet(process.env.PRIVATE_KEY).address
+      : null;
+
     res.json({
-      enabled: true, mode: 'production',
+      enabled:         true,
+      mode:            'production',
+      covalentActive:  cov.isConfigured(),
       blockNumber:     blockNr,
-      balance:         parseFloat(ethers.formatEther(bal)).toFixed(4),
+      balance,
       contractAddress: process.env.CONTRACT_ADDRESS,
-      walletAddress:   wallet.address,
+      walletAddress,
+      chain:           cov.CHAIN,
     });
   } catch (err) { res.status(503).json({ enabled: true, error: err.message }); }
 });
+
+// GET /api/chain/events-live – Live Contract-Events via Covalent
+app.get('/api/chain/events-live', require('./middleware/auth').auth, require('./middleware/auth').role('admin'), async (req, res) => {
+  try {
+    const cov = require('./services/covalent');
+    if (!cov.isConfigured()) {
+      return res.json({ events: [], note: 'COVALENT_API_KEY oder CONTRACT_ADDRESS nicht gesetzt' });
+    }
+    const { startBlock, endBlock, limit = 50 } = req.query;
+    const events = await cov.getContractEvents(
+      process.env.CONTRACT_ADDRESS,
+      { startBlock, endBlock, pageSize: parseInt(limit) }
+    );
+    res.json({ events, chain: cov.CHAIN });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/chain/wallet-txs – Wallet-Transaktionen via Covalent
+app.get('/api/chain/wallet-txs', require('./middleware/auth').auth, require('./middleware/auth').role('admin'), async (req, res) => {
+  try {
+    const cov    = require('./services/covalent');
+    const ethers = require('ethers');
+    if (!process.env.PRIVATE_KEY) return res.json({ txs: [], note: 'PRIVATE_KEY nicht gesetzt' });
+    const wallet = new ethers.Wallet(process.env.PRIVATE_KEY).address;
+    const txs    = await cov.getWalletTransactions(wallet, parseInt(req.query.limit) || 25);
+    res.json({ txs, walletAddress: wallet });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/chain/tx/:hash – TX-Status via Covalent
+app.get('/api/chain/tx/:hash', require('./middleware/auth').auth, require('./middleware/auth').role('admin'), async (req, res) => {
+  try {
+    const cov = require('./services/covalent');
+    const tx  = await cov.getTransaction(req.params.hash);
+    if (!tx) return res.status(404).json({ error: 'TX nicht gefunden' });
+    res.json({ tx });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+
 
 
 // POST /api/admin/bulk-email – E-Mail an alle Erzeuger senden
