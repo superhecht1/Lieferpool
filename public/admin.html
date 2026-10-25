@@ -1004,6 +1004,19 @@
               </select>
             </div>
           </div>
+          <div class="grid2">
+            <div class="form-group">
+              <label class="form-label">Liefertag</label>
+              <select class="form-control" id="apc-liefertag"><option value="">– offen –</option><option>Montag</option><option>Dienstag</option><option>Mittwoch</option><option>Donnerstag</option><option>Freitag</option><option>Samstag</option></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Zeitfenster von / bis</label>
+              <div style="display:flex;gap:.4rem">
+                <input class="form-control" type="time" id="apc-zeit-von" value="06:30">
+                <input class="form-control" type="time" id="apc-zeit-bis" value="09:00">
+              </div>
+            </div>
+          </div>
           <button class="btn btn-primary" id="btn-admin-pool-create">Pool erstellen</button>
         </div>
       </div>
@@ -1094,6 +1107,32 @@
     </div>
 
   </main>
+</div>
+
+<!-- POOL BEARBEITEN -->
+<div class="modal-overlay" id="pool-edit-modal" style="display:none">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-head"><div class="modal-title">Pool bearbeiten</div><button class="modal-close" aria-label="Schließen" onclick="document.getElementById('pool-edit-modal').style.display='none'">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="pe-id">
+      <div class="form-group"><label class="form-label">Produkt</label><input class="form-control" id="pe-produkt"></div>
+      <div class="grid2">
+        <div class="form-group"><label class="form-label">Preis pro Einheit (€)</label><input class="form-control" type="number" step="0.01" id="pe-preis"></div>
+        <div class="form-group"><label class="form-label">Zielmenge</label><input class="form-control" type="number" step="0.1" id="pe-menge"></div>
+      </div>
+      <div class="grid2">
+        <div class="form-group"><label class="form-label">Lieferwoche</label><input class="form-control" id="pe-lieferwoche"></div>
+        <div class="form-group"><label class="form-label">Deadline</label><input class="form-control" type="date" id="pe-deadline"></div>
+      </div>
+      <div class="grid2">
+        <div class="form-group"><label class="form-label">Liefertag</label><select class="form-control" id="pe-liefertag"><option value="">– offen –</option><option>Montag</option><option>Dienstag</option><option>Mittwoch</option><option>Donnerstag</option><option>Freitag</option><option>Samstag</option></select></div>
+        <div class="form-group"><label class="form-label">Zeitfenster von / bis</label>
+          <div style="display:flex;gap:.4rem"><input class="form-control" type="time" id="pe-zeit-von"><input class="form-control" type="time" id="pe-zeit-bis"></div></div>
+      </div>
+      <div id="pool-edit-result"></div>
+      <div class="modal-actions"><button class="btn btn-primary" id="btn-pe-save">Speichern</button></div>
+    </div>
+  </div>
 </div>
 
 <script src="api.js"></script>
@@ -2926,7 +2965,7 @@ async function loadPoolsAlle(page = 1) {
             <td>${statusBadge(p.status)}</td>
             <td><div style="display:flex;gap:.35rem">
               <button class="btn btn-sm" data-action="pool-detail" data-id="${p.id}">Details</button>
-              <button class="btn btn-sm" data-action="pool-edit" data-id="${p.id}" data-produkt="${p.produkt}" data-preis="${p.preis_pro_einheit}" data-menge="${p.menge_ziel}" data-deadline="${p.deadline?.split('T')[0]||''}" data-lieferwoche="${p.lieferwoche}" title="Bearbeiten">✏</button>
+              <button class="btn btn-sm" data-action="pool-edit" data-id="${p.id}" data-produkt="${p.produkt}" data-preis="${p.preis_pro_einheit}" data-menge="${p.menge_ziel}" data-deadline="${p.deadline?.split('T')[0]||''}" data-lieferwoche="${esc(p.lieferwoche||'')}" data-liefertag="${esc(p.liefertag||'')}" data-zvon="${esc(String(p.zeitfenster_von||'06:30').slice(0,5))}" data-zbis="${esc(String(p.zeitfenster_bis||'09:00').slice(0,5))}" title="Bearbeiten">✏</button>
               ${p.status==='offen'?`<button class="btn btn-sm" data-action="pool-deadline" data-id="${p.id}" data-deadline="${p.deadline?.split('T')[0]||''}">⏱ Deadline</button>`:''}
               ${p.status==='offen'?`<button class="btn btn-sm" data-action="pool-close" data-id="${p.id}">Schließen</button>`:''}
               ${['offen','geschlossen'].includes(p.status)?`<button class="btn btn-sm btn-danger" data-action="pool-abort" data-id="${p.id}">Abbrechen</button>`:''}
@@ -2975,6 +3014,9 @@ async function loadPoolsAlle(page = 1) {
         document.getElementById('pe-menge').value      = btn.dataset.menge;
         document.getElementById('pe-deadline').value   = btn.dataset.deadline;
         document.getElementById('pe-lieferwoche').value= btn.dataset.lieferwoche;
+        document.getElementById('pe-liefertag').value  = btn.dataset.liefertag || '';
+        document.getElementById('pe-zeit-von').value   = btn.dataset.zvon || '06:30';
+        document.getElementById('pe-zeit-bis').value   = btn.dataset.zbis || '09:00';
         document.getElementById('pool-edit-result').innerHTML = '';
         document.getElementById('pool-edit-modal').style.display = 'flex';
         return;
@@ -3849,7 +3891,10 @@ document.getElementById('btn-admin-pool-create')?.addEventListener('click', asyn
     const r = await fetch('/api/pools',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+Auth.getToken()},
-      body:JSON.stringify({produkt,caterer_id,menge_ziel,preis_pro_einheit:preis,lieferwoche,deadline,region,qualitaet_stufe:qualitaet})
+      body:JSON.stringify({produkt,caterer_id,menge_ziel,preis_pro_einheit:preis,lieferwoche,deadline,region,qualitaet_stufe:qualitaet,
+        liefertag:document.getElementById('apc-liefertag').value||null,
+        zeitfenster_von:document.getElementById('apc-zeit-von').value||'06:30',
+        zeitfenster_bis:document.getElementById('apc-zeit-bis').value||'09:00'})
     }).then(r=>r.json());
     if (r.error) throw new Error(r.error);
     setHTML('admin-pool-create-result',`<div class="alert alert-success">✓ Pool "${r.pool?.produkt||produkt}" erstellt</div>`);
@@ -3949,7 +3994,10 @@ document.getElementById('btn-pe-save')?.addEventListener('click', async () => {
     const r = await fetch('/api/pools/'+id+'/edit',{
       method:'PUT',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+Auth.getToken()},
-      body:JSON.stringify({produkt, preis_pro_einheit:preis, menge_ziel, deadline, lieferwoche}),
+      body:JSON.stringify({produkt, preis_pro_einheit:preis, menge_ziel, deadline, lieferwoche,
+        liefertag:document.getElementById('pe-liefertag').value,
+        zeitfenster_von:document.getElementById('pe-zeit-von').value,
+        zeitfenster_bis:document.getElementById('pe-zeit-bis').value}),
     }).then(r=>r.json());
     if(r.error) throw new Error(r.error);
     toast('Pool aktualisiert');
