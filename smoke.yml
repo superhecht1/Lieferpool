@@ -1,0 +1,42 @@
+name: Smoke-Test (Live)
+
+# Manuell starten: GitHub -> Actions -> "Smoke-Test (Live)" -> Run workflow
+on:
+  workflow_dispatch:
+    inputs:
+      app_url:
+        description: 'URL der App'
+        default: 'https://lieferpool.onrender.com'
+        required: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --omit=dev --no-audit --no-fund
+      # Render-Starter schläft ggf. ein: aufwecken und bis zu 2 Min. warten
+      - name: App aufwecken
+        run: |
+          for i in $(seq 1 12); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "${{ inputs.app_url }}/login" || true)
+            echo "Versuch $i: HTTP $code"
+            [ "$code" = "200" ] && exit 0
+            sleep 10
+          done
+          exit 1
+      - name: Smoke-Test
+        run: npm run test:smoke
+        env:
+          APP_URL: ${{ inputs.app_url }}
+          TEST_ADMIN_EMAIL: ${{ secrets.TEST_ADMIN_EMAIL }}
+          TEST_ADMIN_PASSWORD: ${{ secrets.TEST_ADMIN_PASSWORD }}
+          TEST_ADMIN_TOTP: ${{ secrets.TEST_ADMIN_TOTP }}
+          TEST_CATERER_EMAIL: ${{ secrets.TEST_CATERER_EMAIL }}
+          TEST_CATERER_PASSWORD: ${{ secrets.TEST_CATERER_PASSWORD }}
+          TEST_ERZEUGER_EMAIL: ${{ secrets.TEST_ERZEUGER_EMAIL }}
+          TEST_ERZEUGER_PASSWORD: ${{ secrets.TEST_ERZEUGER_PASSWORD }}
