@@ -520,11 +520,14 @@ renderHeader('overview', NAV, (v) => { showView(v); loadView(v); });
 // QR-Code Deeplink: /lieferung/<qr>
 (function() {
   const parts = window.location.pathname.split('/');
-  if (parts[1] === 'lieferung' && parts[2]) {
+  let code = null;
+  if (parts[1] === 'lieferung' && parts[2]) code = parts[2];
+  else { try { code = new URLSearchParams(location.search).get('qr'); } catch {} }
+  if (code && /^[A-Za-z0-9_-]{1,64}$/.test(code)) {
     setTimeout(() => {
       showView('wareneingang'); loadView('wareneingang');
       const inp = document.getElementById('qr-input');
-      if (inp) { inp.value = parts[2].toUpperCase(); scanQR && scanQR(); }
+      if (inp) { inp.value = code.toUpperCase(); scanQR && scanQR(); }
     }, 400);
   }
 })();
