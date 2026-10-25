@@ -1,8 +1,13 @@
-# Update 5 – Offline-Modus Fahrer
-Dateien: public/fahrer.html, public/sw-fahrer.js (Cache v4). Keine Migration, kein Backend-Update.
+# Update 6 – Saisonplanung, Warengruppen, CSV, PWA-Hinweis
+Keine Migration, keine neuen Umgebungsvariablen.
 
-- Touren und geöffnete Tour werden auf dem Gerät gespeichert (IndexedDB) – Tour einmal mit Netz öffnen.
-- Ohne Netz: Stopp bestätigen/überspringen, Tour starten/beenden -> Warteschlange, Anzeige im roten Banner.
-- Sobald Netz da ist (oder per Tipp auf das Banner, sonst alle 60 s): automatische Übertragung in Reihenfolge.
-- GPS-Tracking pausiert ohne Netz (keine Nachlieferung).
-- Vom Server abgelehnte Aktionen werden verworfen und gemeldet.
+Ablage (public/ -> Projekt public/, backend/src/ -> Projekt src/):
+- public/app.js, admin.html, caterer.html, erzeuger.html, sw.js, sw-caterer.js, sw-erzeuger.js (Cache v4)
+- src/routes/kennzahlen.js (+ /warengruppen, exportiert SAISON), saisonplan.js (neu), abrechnung.js (+ /csv)
+- src/server.js (Route /api/saisonplan)
+
+Neu:
+- Saison-Karte (Admin/Caterer: Übersicht, Erzeuger: Pools-Ansicht): jetzt/bald, Ganzjahreskalender; Admin zusätzlich Vorschläge für Pools mit Bedarf ohne offenen Pool.
+- Caterer, Nachhaltigkeit: Warengruppen-Auswertung (kg-Anteile, pflanzlicher Anteil; Zuordnung nach Produktname, Näherung). KEINE DGE-Konformitätsaussage.
+- Caterer, Lieferscheine: Monatsabrechnung auch als CSV (Excel/Buchhaltung; Semikolon, Dezimalkomma). Kein DATEV-Format.
+- Installationshinweis (Android/Chrome-Button, iOS-Anleitung) auf den Rollenseiten, einmal wegklickbar.

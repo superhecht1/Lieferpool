@@ -73,6 +73,7 @@
       <!-- Reihe 2: Finanz-Kennzahlen -->
       <div class="grid4" style="margin-bottom:1.5rem" id="metrics-row2"></div>
       <div id="ov-extra"></div>
+      <div id="saison-karte" style="margin-bottom:1rem"></div>
 
       <!-- Reihe 3: Drei Spalten -->
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1rem" class="overview-grid3">
@@ -1758,6 +1759,7 @@ async function loadOverview() {
   const caterer      = catRes.caterer || [];
   const lieferungen  = liefRes.lieferungen || [];
 
+  renderSaisonKarte('saison-karte');
   renderOverviewExtras('ov-extra', poolsList, [
     ...(pendingZerts.length ? [{ tone:'amber', text: `${pendingZerts.length} Zertifikat(e) warten auf Prüfung` }] : []),
     ...(alerts.length ? [{ tone:'red', text: `${alerts.length} Lager-Warnung(en)` }] : []),

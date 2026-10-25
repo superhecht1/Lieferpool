@@ -19,6 +19,7 @@
     <div id="view-overview" class="view">
       <div class="grid4" style="margin-bottom:1rem" id="cat-metrics"></div>
       <div id="ov-extra"></div>
+      <div id="saison-karte" style="margin-bottom:1rem"></div>
       <div class="grid2">
         <div class="card">
           <div class="card-title">Meine Pools – Klicken für Details</div>
@@ -378,6 +379,7 @@
           <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
             <input type="month" class="form-control" id="abr-monat" style="width:150px;padding:5px 8px">
             <button class="btn btn-sm" id="abr-pdf">⬇ Monatsabrechnung (PDF)</button>
+            <button class="btn btn-sm" id="abr-csv">⬇ CSV</button>
           </div>
           <div style="display:flex;gap:.5rem">
             <select class="form-control" id="cat-lief-filter" style="width:140px;padding:5px 8px">
@@ -410,6 +412,7 @@
             
           </div>
         </div>
+        <div id="warengruppen-karte" style="margin-top:1rem"></div>
         <div id="nh-rings" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:.75rem;margin-top:1rem"></div>
         <div id="nh-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.75rem;margin-top:1rem"></div>
         <div style="position:relative;height:220px;margin-top:1.25rem"><canvas id="chart-nh"></canvas></div>
@@ -595,6 +598,7 @@ async function loadNachhaltigkeit() {
 
     const bioFarbe = g.bio_quote_kg === null ? '' : (g.bio_quote_kg >= d.ziele.bio_prozent ? 'var(--green)' : '#c6922a');
     setHTML('nh-rings', nhRings(g, d.ziele));
+    renderWarengruppen('warengruppen-karte');
     setHTML('nh-kpis',
       nhTile('Bio-Quote (Menge)', g.bio_quote_kg, '%', `Ziel ${d.ziele.bio_prozent} % · Wert ${g.bio_quote_eur ?? '–'} %`, bioFarbe) +
       nhTile('Regionalquote', g.regional_quote_kg, '%', `≤ ${d.ziele.regional_radius_km} km · Datenabdeckung ${g.daten_abdeckung_regional ?? '–'} %`) +
@@ -723,6 +727,7 @@ async function loadOverview() {
     `);
 
     renderOverviewExtras('ov-extra', meinePools);
+    renderSaisonKarte('saison-karte');
     document.getElementById('btn-goto-neu')?.addEventListener('click', () => { showView('pool-neu'); loadView('pool-neu'); });
 
     // Letzte Lieferungen
@@ -1525,6 +1530,13 @@ function dlPrint(path) {
 // ── Monatsabrechnung ───────────────────────────────────────────
 (function () {
   const m = document.getElementById('abr-monat'); if (m) m.value = new Date().toISOString().slice(0, 7);
+  document.getElementById('abr-csv')?.addEventListener('click', async () => {
+    try {
+      const r = await fetch('/api/abrechnung/csv?monat=' + encodeURIComponent(m.value), { headers: { 'Authorization': 'Bearer ' + Auth.getToken() } });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Fehler ' + r.status);
+      const a = document.createElement('a'); a.href = URL.createObjectURL(await r.blob()); a.download = 'lieferabrechnung_' + m.value + '.csv'; a.click();
+    } catch (e) { toast(e.message, 'error'); }
+  });
   document.getElementById('abr-pdf')?.addEventListener('click', async () => {
     try {
       const r = await fetch('/api/abrechnung/pdf?monat=' + encodeURIComponent(m.value), { headers: { 'Authorization': 'Bearer ' + Auth.getToken() } });

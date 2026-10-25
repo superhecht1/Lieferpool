@@ -685,3 +685,75 @@ async function openNotifSettings() {
     } catch { msg.textContent = 'Speichern fehlgeschlagen.'; }
   };
 }
+
+
+/* ── Saisonplanung (Karte) ─────────────────────────────── */
+async function renderSaisonKarte(elId) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  try {
+    const r = await fetch('/api/saisonplan', { headers: { 'Authorization': 'Bearer ' + Auth.getToken() } });
+    if (!r.ok) throw new Error();
+    const d = await r.json();
+    const M = ['J','F','M','A','M','J','J','A','S','O','N','D'];
+    const chip = (k, bg) => `<span style="display:inline-block;padding:3px 10px;margin:2px 4px 2px 0;border-radius:999px;font-size:12px;background:${bg};color:var(--text)">${esc(k.produkt)}</span>`;
+    const jetzt = d.kalender.filter(k => k.status === 'jetzt' || k.status === 'endet_bald');
+    const bald  = d.kalender.filter(k => k.status === 'bald');
+    const grid = d.kalender.map(k => `<div style="display:grid;grid-template-columns:110px repeat(12,1fr);gap:2px;align-items:center;font-size:11px;margin-top:3px">
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(k.produkt)}</span>
+      ${M.map((_, i) => `<span style="height:10px;border-radius:2px;background:${k.monate.includes(i + 1) ? 'var(--green)' : 'var(--bg3)'};${i + 1 === d.monat ? 'outline:1px solid var(--text);' : ''}"></span>`).join('')}
+    </div>`).join('');
+    const chancen = (d.chancen || []).length
+      ? `<div style="margin-top:12px"><div style="font-size:12px;color:var(--text3);margin-bottom:4px">Vorschläge für neue Pools</div>` +
+        d.chancen.slice(0, 6).map(c => `<div style="padding:7px 0;border-top:1px solid var(--border);font-size:13px">${esc(c.hinweis)}</div>`).join('') + '</div>' : '';
+    el.innerHTML = `<div class="card"><div class="card-title">Saison im ${esc(d.monatsname)}</div>
+      <div style="font-size:12px;color:var(--text3);margin:2px 0 4px">Jetzt regional verfügbar</div>
+      <div>${jetzt.map(k => chip(k, k.status === 'endet_bald' ? 'var(--amber-bg, var(--bg3))' : 'var(--green-bg, var(--bg3))')).join('') || '<span style="font-size:13px;color:var(--text3)">–</span>'}</div>
+      <div style="font-size:12px;color:var(--text3);margin:10px 0 4px">Beginnt in den nächsten 2 Monaten</div>
+      <div>${bald.map(k => chip(k, 'var(--bg3)')).join('') || '<span style="font-size:13px;color:var(--text3)">–</span>'}</div>
+      ${chancen}
+      <details style="margin-top:12px"><summary style="cursor:pointer;font-size:13px">Ganzjahreskalender</summary>
+        <div style="display:grid;grid-template-columns:110px repeat(12,1fr);gap:2px;font-size:10px;color:var(--text3);margin-top:8px"><span></span>${M.map(x => `<span style="text-align:center">${x}</span>`).join('')}</div>${grid}</details>
+      <div style="font-size:11px;color:var(--text3);margin-top:8px">Freiland, NRW, Näherungswerte.</div></div>`;
+  } catch { el.innerHTML = ''; }
+}
+
+/* ── Warengruppen-Auswertung (Karte) ───────────────────── */
+async function renderWarengruppen(elId, query) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  try {
+    const r = await fetch('/api/kennzahlen/warengruppen' + (query ? '?' + query : ''), { headers: { 'Authorization': 'Bearer ' + Auth.getToken() } });
+    if (!r.ok) throw new Error();
+    const d = await r.json();
+    if (d.leer || !d.gruppen || !d.gruppen.length) { el.innerHTML = `<div class="card"><div class="card-title">Warengruppen</div><div style="font-size:13px;color:var(--text3)">Noch keine bestätigten Wareneingänge im Zeitraum.</div></div>`; return; }
+    const bars = d.gruppen.map(g => `<div style="margin-top:8px"><div style="display:flex;justify-content:space-between;font-size:13px"><span>${esc(g.name)}</span><span style="color:var(--text3)">${String(g.kg).replace('.', ',')} kg · ${String(g.anteil).replace('.', ',')} %</span></div>
+      <div style="height:8px;border-radius:4px;background:var(--bg3);margin-top:3px"><div style="height:8px;border-radius:4px;background:var(--green);width:${Math.min(100, g.anteil || 0)}%"></div></div></div>`).join('');
+    el.innerHTML = `<div class="card"><div class="card-title">Warengruppen</div>
+      <div style="font-size:13px">Pflanzlicher Anteil: <strong>${d.pflanzlich_anteil === null ? '–' : String(d.pflanzlich_anteil).replace('.', ',') + ' %'}</strong> der Menge</div>
+      ${bars}<div style="font-size:11px;color:var(--text3);margin-top:10px">${esc(d.hinweis)}</div></div>`;
+  } catch { el.innerHTML = ''; }
+}
+
+/* ── PWA-Installationshinweis ──────────────────────────── */
+(function () {
+  if (!/^\/(admin|caterer|erzeuger|fahrer)(\.html)?\/?$/.test(location.pathname)) return;
+  if (matchMedia('(display-mode: standalone)').matches || navigator.standalone) return;
+  try { if (localStorage.getItem('lp_pwa_hint') === '1') return; } catch {}
+  let deferred = null;
+  function zeige(text, mitKnopf) {
+    if (document.getElementById('pwa-hint')) return;
+    const b = document.createElement('div');
+    b.id = 'pwa-hint';
+    b.style.cssText = 'position:fixed;left:12px;right:12px;bottom:76px;z-index:300;background:var(--bg2,#fff);color:var(--text);border:1px solid var(--border);border-radius:14px;padding:12px 14px;display:flex;gap:10px;align-items:center;box-shadow:0 8px 28px rgba(0,0,0,.25);font-size:13px;max-width:520px;margin:0 auto';
+    b.innerHTML = `<span style="flex:1">${text}</span>` + (mitKnopf ? '<button class="btn btn-sm" id="pwa-yes">Installieren</button>' : '') + '<button class="btn btn-sm" id="pwa-no" aria-label="Schließen">✕</button>';
+    document.body.appendChild(b);
+    const zu = () => { b.remove(); try { localStorage.setItem('lp_pwa_hint', '1'); } catch {} };
+    document.getElementById('pwa-no').onclick = zu;
+    const y = document.getElementById('pwa-yes');
+    if (y) y.onclick = async () => { if (deferred) { deferred.prompt(); await deferred.userChoice.catch(() => {}); deferred = null; } zu(); };
+  }
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferred = e; setTimeout(() => zeige('📲 Als App auf dem Startbildschirm installieren?', true), 4000); });
+  if (/iPhone|iPad|iPod/.test(navigator.userAgent) && !/CriOS|FxiOS/.test(navigator.userAgent))
+    setTimeout(() => zeige('📲 Als App nutzen: in Safari auf „Teilen“ tippen, dann „Zum Home-Bildschirm“.', false), 6000);
+})();

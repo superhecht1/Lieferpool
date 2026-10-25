@@ -18,6 +18,7 @@
     <!-- POOLS -->
     <div id="view-pools" class="view">
       <div class="grid4" style="margin-bottom:1rem" id="metrics-pools"></div>
+      <div id="saison-karte" style="margin-bottom:1rem"></div>
       <div class="grid2">
         <div class="card">
           <div class="card-title">Offene Lieferpools</div>
@@ -879,6 +880,7 @@ document.getElementById('btn-dsgvo-delete-confirm')?.addEventListener('click', a
 });
 // ── INIT ──────────────────────────────────────────────────────
 loadPools();
+renderSaisonKarte('saison-karte');
 </script>
 
 <script>

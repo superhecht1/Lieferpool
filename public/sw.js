@@ -1,6 +1,6 @@
 // sw.js – LieferPool Service Worker (Push Notifications)
 
-const CACHE_NAME = 'lieferpool-v3';
+const CACHE_NAME = 'lieferpool-v4';
 
 self.addEventListener('install', e => {
   self.skipWaiting();
