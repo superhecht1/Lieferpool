@@ -295,6 +295,7 @@ router.post('/', auth, role('admin'), async (req, res) => {
     `, [datum, typ, fahrer_id||null, fahrzeug_id||null, startzeit||null, notiz||null, req.user.id]);
 
     if (fahrer_id) {
+      db.query(`UPDATE touren SET logistikpartner_id = (SELECT logistikpartner_id FROM fahrer_profile WHERE user_id=$2) WHERE id=$1`, [tour.id, fahrer_id]).catch(() => {});
       sendPushToFahrer(fahrer_id, {
         title: '🚲 Neue Tour zugewiesen',
         body: `${typ} · ${datum} · ${startzeit ? startzeit.slice(0,5)+' Uhr' : ''}`,
@@ -321,6 +322,7 @@ router.put('/:id', auth, role('admin'), async (req, res) => {
     `, [fahrer_id, fahrzeug_id, startzeit, notiz, status, req.params.id]);
     if (!tour) return res.status(404).json({ error: 'Nicht gefunden' });
     if (tour.fahrer_id && String(tour.fahrer_id) !== String(alt?.fahrer_id)) {
+      db.query(`UPDATE touren SET logistikpartner_id = (SELECT logistikpartner_id FROM fahrer_profile WHERE user_id=$2) WHERE id=$1`, [tour.id, tour.fahrer_id]).catch(() => {});
       sendPushToFahrer(tour.fahrer_id, {
         title: '🚲 Neue Tour zugewiesen',
         body: `${tour.typ||'Tour'} · ${tour.datum||''} · ${tour.startzeit ? String(tour.startzeit).slice(0,5)+' Uhr' : ''}`,

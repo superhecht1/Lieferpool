@@ -535,6 +535,7 @@
 
       <div class="card" style="margin-bottom:1.25rem">
         <div class="card-title">🗓 Saisonkalender-Warnungen (Bedarfsplanung)</div>
+        <div id="nh-lieferanten" style="margin-top:1rem"></div>
         <div id="nh-saison"></div>
       </div>
 
@@ -818,6 +819,43 @@
           <button class="btn btn-primary" id="btn-change-pw">Passwort ändern</button>
         </div>
 
+      </div>
+    </div>
+
+    <!-- LOGISTIKPARTNER / LIEFERANTENTYP -->
+    <div id="view-logistik" class="view" style="display:none">
+      <div class="card">
+        <div class="section-hdr"><span class="section-title">🚚 Logistikpartner (z. B. Großhändler als Fahrdienst)</span><button class="btn btn-sm" id="btn-reload-lg">↻</button></div>
+        <div style="display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:.75rem">
+          <div><label class="form-label">Name</label><input class="form-control" id="lg-name" style="width:200px"></div>
+          <div><label class="form-label">Typ</label><select class="form-control" id="lg-typ" style="width:140px"><option value="grosshandel">Großhandel</option><option value="spedition">Spedition</option><option value="sonstige">Sonstige</option></select></div>
+          <div><label class="form-label">E-Mail</label><input class="form-control" id="lg-mail" type="email" style="width:200px"></div>
+          <div><label class="form-label">USt-IdNr.</label><input class="form-control" id="lg-ust" style="width:140px"></div>
+          <div><label class="form-label">€ je Tour</label><input class="form-control" id="lg-tour" type="number" min="0" step="0.5" value="0" style="width:100px"></div>
+          <div><label class="form-label">€ je Stopp</label><input class="form-control" id="lg-stopp" type="number" min="0" step="0.5" value="0" style="width:100px"></div>
+          <button class="btn btn-primary" id="btn-lg-neu">Partner anlegen</button>
+        </div>
+        <div id="lg-partner"><div class="spinner"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">👤 Fahrer einem Partner zuordnen</div>
+        <p style="font-size:12px;color:var(--text3);margin:0 0 .5rem">Fahrer des Partners legst du wie gewohnt unter „Fahrer" an und ordnest sie hier zu. Neue Touren werden dem Partner des Fahrers zugerechnet.</p>
+        <div id="lg-fahrer"></div>
+      </div>
+      <div class="card">
+        <div class="section-hdr"><span class="section-title">📑 Leistungsnachweis</span>
+          <div style="display:flex;gap:.5rem;align-items:center">
+            <input type="month" class="form-control" id="lg-monat" style="width:150px;padding:5px 8px">
+            <button class="btn btn-sm" id="btn-lg-leist">Anzeigen</button>
+            <button class="btn btn-sm" id="btn-lg-csv">⬇ CSV</button>
+          </div>
+        </div>
+        <div id="lg-leist"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">🌾 Lieferantentyp (Hof oder Großhandel)</div>
+        <p style="font-size:12px;color:var(--text3);margin:0 0 .5rem">Großhändler als Lieferant werden in den Kennzahlen getrennt von regionalen Höfen ausgewiesen.</p>
+        <div id="lg-lieferanten"></div>
       </div>
     </div>
 
@@ -1182,6 +1220,7 @@ const NAV = [
   { id: 'audit',          label: '🔍 Audit-Log'  },
   { id: 'settings',       label: '⚙ Einstellungen'},
   { id: 'pfand',          label: '🧺 Pfand'},
+  { id: 'logistik',       label: '🚚 Partner'},
   { id: 'rechnungen',     label: '🧾 Rechnungen'},
   { id: 'einladungen',    label: '✉ Einladungen'},
   { id: 'vorlagen',       label: '🔄 Vorlagen'},
@@ -1263,6 +1302,7 @@ async function loadNachhaltigkeit() {
     const d = await (await nhFetch('/api/kennzahlen?' + nhQuery())).json();
     if (d.leer) { setHTML('nh-kpis', '<div>Kein Caterer-Profil vorhanden.</div>'); return; }
     const g = d.gesamt;
+    setHTML('nh-lieferanten', lieferantenTypHtml(d));
 
     const sel = document.getElementById('nh-caterer');
     if (sel && sel.options.length <= 1) d.caterer.forEach(c => sel.add(new Option(c.name, c.id)));
@@ -1787,6 +1827,7 @@ async function loadView(v) {
   if (v === 'audit')          loadAuditLog();
   if (v === 'settings')       loadSettings();
   if (v === 'pfand')          loadPfand();
+  if (v === 'logistik')       loadLogistik();
   if (v === 'rechnungen')     { loadRechnungen(); loadCatRech(); }
   if (v === 'einladungen')    loadEinladungen();
   if (v === 'vorlagen')       loadVorlagen();
@@ -3617,6 +3658,54 @@ document.addEventListener('click', e => {
     if (r) r.style.display = 'none';
   }
 });
+
+// ── LOGISTIKPARTNER ───────────────────────────────────────
+async function lgApi(path, opt) {
+  const r = await fetch('/api/logistik' + path, Object.assign({ headers: { 'Content-Type': 'application/json' } }, opt));
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || 'Fehler');
+  return d;
+}
+async function loadLogistik() {
+  const m = document.getElementById('lg-monat'); if (m && !m.value) m.value = new Date().toISOString().slice(0, 7);
+  try {
+    const [{ partner }, { fahrer }, { lieferanten }] = await Promise.all([lgApi('/partner'), lgApi('/fahrer'), lgApi('/lieferanten')]);
+    setHTML('lg-partner', partner.length ? `<table class="tbl"><thead><tr><th>Name</th><th>Typ</th><th>€/Tour</th><th>€/Stopp</th><th>Fahrer</th><th>Aktiv</th></tr></thead><tbody>${partner.map(p => `<tr>
+      <td style="font-weight:500">${esc(p.name)}</td><td class="pool-meta">${esc(p.typ)}</td><td>${parseFloat(p.satz_pro_tour).toFixed(2)}</td><td>${parseFloat(p.satz_pro_stopp).toFixed(2)}</td>
+      <td>${esc(p.fahrer_anzahl)}</td><td><button class="btn btn-sm" onclick="lgAktiv(${jsq(p.id)},${p.aktiv ? 'false' : 'true'})">${p.aktiv ? 'aktiv ✓' : 'inaktiv'}</button></td></tr>`).join('')}</tbody></table>`
+      : '<p style="color:var(--text3);font-size:13px">Noch kein Partner angelegt</p>');
+    const opts = sel => '<option value="">— kein Partner (eigener Fahrer) —</option>' + partner.filter(p => p.aktiv || p.id === sel).map(p => `<option value="${esc(p.id)}"${p.id === sel ? ' selected' : ''}>${esc(p.name)}</option>`).join('');
+    setHTML('lg-fahrer', fahrer.length ? `<table class="tbl"><thead><tr><th>Fahrer</th><th>E-Mail</th><th>Partner</th></tr></thead><tbody>${fahrer.map(f => `<tr>
+      <td>${esc(f.name)}</td><td class="pool-meta">${esc(f.email)}</td>
+      <td><select class="form-control" style="padding:4px 8px" onchange="lgFahrer(${jsq(f.id)},this.value)">${opts(f.logistikpartner_id)}</select></td></tr>`).join('')}</tbody></table>`
+      : '<p style="color:var(--text3);font-size:13px">Keine Fahrer</p>');
+    setHTML('lg-lieferanten', lieferanten.length ? `<table class="tbl"><thead><tr><th>Betrieb</th><th>Typ</th></tr></thead><tbody>${lieferanten.map(l => `<tr>
+      <td>${esc(l.betrieb_name)}</td><td><select class="form-control" style="padding:4px 8px;width:180px" onchange="lgTyp(${jsq(l.id)},this.value)">
+      <option value="hof"${l.betriebs_typ === 'hof' ? ' selected' : ''}>Hof / Erzeuger</option><option value="grosshandel"${l.betriebs_typ === 'grosshandel' ? ' selected' : ''}>Großhandel</option></select></td></tr>`).join('')}</tbody></table>`
+      : '<p style="color:var(--text3);font-size:13px">Keine Betriebe</p>');
+  } catch (err) { setHTML('lg-partner', `<div class="alert alert-error">${esc(err.message)}</div>`); }
+}
+async function lgAktiv(id, aktiv) { try { await lgApi('/partner/' + encodeURIComponent(id), { method: 'PUT', body: JSON.stringify({ aktiv }) }); loadLogistik(); } catch (e) { toast(e.message, 'error'); } }
+async function lgFahrer(id, pid) { try { await lgApi('/fahrer/' + encodeURIComponent(id), { method: 'PUT', body: JSON.stringify({ logistikpartner_id: pid || null }) }); toast('Zuordnung gespeichert'); loadLogistik(); } catch (e) { toast(e.message, 'error'); } }
+async function lgTyp(id, typ) { try { await lgApi('/lieferanten/' + encodeURIComponent(id), { method: 'PUT', body: JSON.stringify({ betriebs_typ: typ }) }); toast('Gespeichert'); } catch (e) { toast(e.message, 'error'); } }
+document.getElementById('btn-reload-lg')?.addEventListener('click', loadLogistik);
+document.getElementById('btn-lg-neu')?.addEventListener('click', async () => {
+  const body = { name: document.getElementById('lg-name').value, typ: document.getElementById('lg-typ').value, kontakt_email: document.getElementById('lg-mail').value,
+    ust_id: document.getElementById('lg-ust').value, satz_pro_tour: document.getElementById('lg-tour').value, satz_pro_stopp: document.getElementById('lg-stopp').value };
+  try { await lgApi('/partner', { method: 'POST', body: JSON.stringify(body) }); toast('Partner angelegt'); ['lg-name','lg-mail','lg-ust'].forEach(i => { document.getElementById(i).value = ''; }); loadLogistik(); }
+  catch (e) { toast(e.message, 'error'); }
+});
+document.getElementById('btn-lg-leist')?.addEventListener('click', async () => {
+  const m = document.getElementById('lg-monat').value;
+  try {
+    const d = await lgApi('/leistungen?monat=' + encodeURIComponent(m));
+    setHTML('lg-leist', d.partner.length ? `<table class="tbl"><thead><tr><th>Partner</th><th>Touren</th><th>Stopps</th><th>Betrag netto</th></tr></thead><tbody>${d.partner.map(p => `<tr>
+      <td style="font-weight:500">${esc(p.partner)}</td><td>${esc(p.touren)}</td><td>${esc(p.stopps)}</td><td style="font-weight:600">${p.betrag.toFixed(2)} €</td></tr>`).join('')}</tbody></table>
+      <div style="font-size:11px;color:var(--text3);margin-top:6px">Nur abgeschlossene Touren; Betrag = € je Tour + € je erledigtem Stopp, netto. Grundlage für die Rechnung des Partners.</div>`
+      : '<p style="color:var(--text3);font-size:13px">Keine abgeschlossenen Partner-Touren in diesem Monat</p>');
+  } catch (e) { setHTML('lg-leist', `<div class="alert alert-error">${esc(e.message)}</div>`); }
+});
+document.getElementById('btn-lg-csv')?.addEventListener('click', () => window.open('/api/logistik/leistungen?format=csv&monat=' + encodeURIComponent(document.getElementById('lg-monat').value), '_blank'));
 
 // ── RECHNUNGEN AN CATERER ─────────────────────────────────
 async function crechApi(path, opt) {

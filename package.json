@@ -4,7 +4,7 @@
   "description": "Virtuelle Lieferkooperative – Food Hub Köln",
   "main": "server.js",
   "scripts": {
-    "start": "node scripts/migrate_fix14.js; node scripts/migrate_fix13.js; node scripts/migrate_fix12.js; node scripts/migrate_fix11.js; node src/server.js",
+    "start": "node scripts/migrate_fix15.js; node scripts/migrate_fix14.js; node scripts/migrate_fix13.js; node scripts/migrate_fix12.js; node scripts/migrate_fix11.js; node src/server.js",
     "dev": "nodemon src/server.js",
     "migrate": "node scripts/migrate.js",
     "migrate:hub": "node scripts/migrate_hub.js",

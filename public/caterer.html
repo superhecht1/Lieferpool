@@ -459,6 +459,7 @@
 
       <div class="card" style="margin-bottom:1.25rem">
         <div class="card-title">🗓 Saisonkalender-Warnungen (Bedarfsplanung)</div>
+        <div id="nh-lieferanten" style="margin-top:1rem"></div>
         <div id="nh-saison"></div>
       </div>
 
@@ -639,6 +640,7 @@ async function loadNachhaltigkeit() {
     const d = await (await nhFetch('/api/kennzahlen?' + nhQuery())).json();
     if (d.leer) { setHTML('nh-kpis', '<div>Kein Caterer-Profil vorhanden.</div>'); return; }
     const g = d.gesamt;
+    setHTML('nh-lieferanten', lieferantenTypHtml(d));
 
     const sel = document.getElementById('nh-caterer');
     if (sel && sel.options.length <= 1) d.caterer.forEach(c => sel.add(new Option(c.name, c.id)));

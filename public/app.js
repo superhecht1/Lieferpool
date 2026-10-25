@@ -750,6 +750,18 @@ async function renderWarengruppen(elId, query) {
   } catch { el.innerHTML = ''; }
 }
 
+/* ── Kennzahlen nach Lieferantentyp (Hof / Großhandel) ─── */
+function lieferantenTypHtml(d) {
+  const l = d && d.lieferanten_typ;
+  if (!l || !l.length) return '';
+  const name = { hof: 'Regionale Höfe', grosshandel: 'Großhandel' };
+  const q = v => v === null || v === undefined ? '–' : String(v).replace('.', ',') + ' %';
+  return `<div class="card"><div class="card-title">Nach Lieferantentyp</div>
+    <table class="tbl"><thead><tr><th>Typ</th><th>Menge (kg)</th><th>Regionalquote</th><th>Bio-Anteil</th><th>Ø Transportweg</th></tr></thead><tbody>${l.map(x =>
+      `<tr><td>${esc(name[x.typ] || x.typ)}</td><td>${esc(String(x.kg).replace('.', ','))}</td><td>${q(x.regional_quote_kg)}</td><td>${q(x.bio_quote_kg)}</td><td>${x.avg_transport_km === null ? '–' : esc(String(x.avg_transport_km).replace('.', ',')) + ' km'}</td></tr>`).join('')}</tbody></table>
+    <div style="font-size:11px;color:var(--text3);margin-top:8px">Großhandelsware wird getrennt ausgewiesen, damit die Regionalquote der Höfe nachvollziehbar bleibt.</div></div>`;
+}
+
 /* ── PWA-Installationshinweis ──────────────────────────── */
 (function () {
   if (!/^\/(admin|caterer|erzeuger|fahrer)(\.html)?\/?$/.test(location.pathname)) return;

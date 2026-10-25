@@ -57,7 +57,7 @@ async function berechne({ von, bis, catererId }) {
            c.firma_name, c.region AS c_region, c.lat AS c_lat, c.lon AS c_lon,
            cm.erzeuger_id, cm.menge AS zusage,
            SUM(cm.menge) OVER (PARTITION BY l.id) AS zusage_summe,
-           e.betrieb_name, e.region AS e_region, e.lat AS e_lat, e.lon AS e_lon,
+           e.betrieb_name, e.betriebs_typ, e.region AS e_region, e.lat AS e_lat, e.lon AS e_lon,
            EXISTS (
              SELECT 1 FROM zertifikate z
              WHERE z.erzeuger_id = e.id AND z.status = 'verified'
@@ -85,7 +85,7 @@ async function berechne({ von, bis, catererId }) {
 
   const sum = () => ({ kg: 0, eur: 0, beirat_kg: 0, bio_kg: 0, bio_eur: 0, reg_kg: 0, reg_eur: 0,
                        reg_bekannt_kg: 0, tkm: 0, km_gewichtet: 0, km_kg: 0 });
-  const gesamt = sum(), proCat = {}, proProd = {}, proErz = {}, proMonat = {};
+  const gesamt = sum(), proCat = {}, proProd = {}, proErz = {}, proMonat = {}, proTyp = {};
 
   for (const r of rows) {
     const share = num(r.zusage_summe) > 0 ? num(r.zusage) / num(r.zusage_summe) : 0;
@@ -120,6 +120,7 @@ async function berechne({ von, bis, catererId }) {
     add(gesamt);
     add(proCat[r.caterer_id] ||= Object.assign(sum(), { name: r.firma_name || '–', id: r.caterer_id }));
     add(proProd[r.produkt]   ||= Object.assign(sum(), { name: r.produkt }));
+    add(proTyp[r.betriebs_typ || 'hof'] ||= Object.assign(sum(), { typ: r.betriebs_typ || 'hof' }));
     add(proErz[r.erzeuger_id]||= Object.assign(sum(), { name: r.betrieb_name || '–', bio: r.bio,
                                   hat_koord: eLat !== null }));
     const mk = String(r.datum instanceof Date ? r.datum.toISOString() : r.datum).slice(0, 7);
@@ -187,6 +188,7 @@ async function berechne({ von, bis, catererId }) {
     caterer: liste(proCat),
     produkte: liste(proProd),
     erzeuger: liste(proErz),
+    lieferanten_typ: liste(proTyp),
     monate: Object.values(proMonat).map(fin).sort((a, b) => a.monat.localeCompare(b.monat)),
   };
 }
