@@ -17,6 +17,7 @@
     <!-- ÜBERSICHT -->
     <div id="view-overview" class="view">
       <div class="grid4" style="margin-bottom:1rem" id="cat-metrics"></div>
+      <div id="ov-extra"></div>
       <div class="grid2">
         <div class="card">
           <div class="card-title">Meine Pools – Klicken für Details</div>
@@ -690,10 +691,10 @@ async function loadOverview() {
     const volumen     = meinePools.reduce((s,p) => s + parseFloat(p.menge_committed||0), 0);
 
     setHTML('cat-metrics', `
-      <div class="metric"><div class="metric-label">Offene Pools</div><div class="metric-val amber">${offen}</div></div>
-      <div class="metric"><div class="metric-label">Geschlossen</div><div class="metric-val green">${geschlossen}</div></div>
-      <div class="metric"><div class="metric-label">Geliefert</div><div class="metric-val">${geliefert}</div></div>
-      <div class="metric"><div class="metric-label">Volumen (kg)</div><div class="metric-val">${Math.round(volumen)}</div></div>
+      <div class="metric"><div class="metric-label">Offene Pools</div><div class="metric-val amber">${offen}</div>${sparkline(meinePools.filter(p=>p.status==='offen').map(p=>p.menge_ziel?p.menge_committed/p.menge_ziel*100:0),'var(--amber)')}</div>
+      <div class="metric"><div class="metric-label">Geschlossen</div><div class="metric-val green">${geschlossen}</div>${sparkline(meinePools.filter(p=>p.status==='geschlossen').map(p=>p.menge_committed))}</div>
+      <div class="metric"><div class="metric-label">Geliefert</div><div class="metric-val">${geliefert}</div>${sparkline(meinePools.filter(p=>p.status==='geliefert').map(p=>p.menge_committed),'var(--text2)')}</div>
+      <div class="metric"><div class="metric-label">Volumen (kg)</div><div class="metric-val">${Math.round(volumen)}</div>${sparkline([...meinePools].reverse().map(p => p.menge_committed))}</div>
     `);
 
     setHTML('cat-pools-list', meinePools.length ? meinePools.slice(0,6).map(p => `
@@ -716,6 +717,7 @@ async function loadOverview() {
       </div>
     `);
 
+    renderOverviewExtras('ov-extra', meinePools);
     document.getElementById('btn-goto-neu')?.addEventListener('click', () => { showView('pool-neu'); loadView('pool-neu'); });
 
     // Letzte Lieferungen

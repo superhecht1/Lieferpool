@@ -132,14 +132,14 @@ function renderHeader(activeView, navItems, onNav) {
     <button class="hamburger" id="hamburger-btn" aria-label="Menü">
       <span></span><span></span><span></span>
     </button>
-    <div class="logo">Liefer<span>Pool</span></div>
+    <div class="logo"><span class="logo-mark"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12c0-4 3-7 7-7 0 4-3 7-7 7z"/><path d="M19 12c0 4-3 7-7 7 0-4 3-7 7-7z"/></svg></span><span class="logo-text">Liefer<b>Pool</b></span></div>
     <nav class="nav" id="main-nav">${navHTML(navItems, activeView)}</nav>
     ${userBlock}
     <button class="hdr-mobile-out btn-logout-m" type="button">Abmelden</button>
 
     <div class="nav-mobile-overlay" id="nav-overlay"></div>
     <div class="nav-mobile-panel" id="nav-panel">
-      <div class="logo" style="padding-bottom:.75rem">Liefer<span>Pool</span></div>
+      <div class="logo" style="padding-bottom:.75rem"><span class="logo-mark"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12c0-4 3-7 7-7 0 4-3 7-7 7z"/><path d="M19 12c0 4-3 7-7 7 0-4 3-7 7-7z"/></svg></span><span class="logo-text">Liefer<b>Pool</b></span></div>
       ${navHTML(navItems, activeView)}
       ${userBlock}
     </div>
@@ -592,4 +592,48 @@ function nhRings(g, z) {
   return ring('Bio', bio, `Ziel ${z.bio_prozent} %`, bio !== null && bio >= z.bio_prozent)
        + ring('Regional', reg, `≤ ${z.regional_radius_km} km`, reg !== null && reg >= 50)
        + ring('Abfall', ab, 'niedriger ist besser', ab !== null && ab <= 10);
+}
+
+// ── Übersicht: Sparkline, Wochenleiste, „Braucht Aufmerksamkeit" ──
+function sparkline(vals, color) {
+  const v = (vals || []).map(Number).filter(n => isFinite(n));
+  if (v.length < 2) return '';
+  const w = 120, h = 30, max = Math.max(...v), min = Math.min(...v), span = (max - min) || 1;
+  const pts = v.map((n, i) => `${(i / (v.length - 1) * w).toFixed(1)},${(h - 3 - (n - min) / span * (h - 6)).toFixed(1)}`).join(' ');
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="30" preserveAspectRatio="none" aria-hidden="true" style="display:block;margin-top:6px"><polyline points="${pts}" fill="none" stroke="${color || 'var(--green)'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/></svg>`;
+}
+
+function renderOverviewExtras(elId, pools, extra) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  pools = Array.isArray(pools) ? pools : [];
+  const offen = pools.filter(p => p.status === 'offen');
+  const tage = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
+  const kurz = { Montag:'Mo', Dienstag:'Di', Mittwoch:'Mi', Donnerstag:'Do', Freitag:'Fr', Samstag:'Sa' };
+  const spalten = tage.map(t => {
+    const ps = offen.filter(p => p.liefertag === t);
+    return `<div style="flex:1;min-width:92px;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:10px 12px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.08em;color:var(--text3)">${kurz[t]}</div>
+      ${ps.length ? ps.map(p => `<div style="font-size:12px;margin-top:6px;line-height:1.3"><strong>${esc(p.produkt)}</strong><br><span style="color:var(--text3)">${esc(p.zeitfenster_von||'')}${p.zeitfenster_von?'–':''}${esc(p.zeitfenster_bis||'')}</span></div>`).join('')
+                 : '<div style="font-size:12px;margin-top:6px;color:var(--text3)">–</div>'}
+    </div>`;
+  }).join('');
+
+  const items = [];
+  const heute = new Date(); heute.setHours(0, 0, 0, 0);
+  offen.forEach(p => {
+    const ziel = parseFloat(p.menge_ziel || 0), ist = parseFloat(p.menge_committed || 0);
+    const pct = ziel ? Math.round(ist / ziel * 100) : 0;
+    const tageBis = p.deadline ? Math.ceil((new Date(p.deadline) - heute) / 86400000) : null;
+    if (pct >= 100) items.push({ tone: 'green', text: `${p.produkt}: Ziel erreicht (${pct} %) – Pool kann geschlossen werden` });
+    else if (tageBis !== null && tageBis <= 3) items.push({ tone: tageBis < 0 ? 'red' : 'amber', text: `${p.produkt}: Deadline ${tageBis < 0 ? 'überschritten' : tageBis === 0 ? 'heute' : 'in ' + tageBis + ' Tag(en)'} – erst ${pct} % gefüllt` });
+  });
+  (extra || []).forEach(x => items.push(x));
+  const col = { green: 'var(--green)', amber: 'var(--amber)', red: 'var(--red)' };
+  const liste = items.length ? items.slice(0, 8).map(i => `<div style="display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--border)"><span style="width:8px;height:8px;border-radius:50%;background:${col[i.tone]||col.amber};margin-top:7px;flex-shrink:0"></span><span style="font-size:13px">${esc(i.text)}</span></div>`).join('')
+    : '<div style="font-size:13px;color:var(--text3)">Alles im grünen Bereich.</div>';
+
+  el.innerHTML = `
+    <div class="card"><div class="card-title">Liefertage dieser Woche</div><div style="display:flex;gap:8px;overflow-x:auto">${spalten}</div></div>
+    <div class="card"><div class="card-title">Braucht Aufmerksamkeit</div>${liste}</div>`;
 }
