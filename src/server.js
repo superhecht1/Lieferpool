@@ -137,6 +137,7 @@ app.get('/fahrer', (req, res) => {
 
 app.use('/api/contact',      require('./routes/contact'));
 app.use('/api/admin/2fa',    require('./routes/admin-2fa'));
+app.use('/api/admin/users',  require('./routes/admin-users'));
 app.use('/api/dsgvo',        require('./routes/dsgvo'));
 app.use('/api/pfand',        require('./routes/pfand'));
 app.use('/api/rechnungen',   require('./routes/rechnungen'));

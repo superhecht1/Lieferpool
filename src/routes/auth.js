@@ -101,6 +101,8 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error:'Ungültige Anmeldedaten' });
     }
 
+    // deaktivierte Konten (Admin → Nutzer) dürfen sich nicht anmelden
+    try { const { rows:[ak] } = await db.query(`SELECT COALESCE(aktiv,TRUE) AS aktiv FROM users WHERE id=$1`,[user.id]); if (ak && ak.aktiv === false) return res.status(403).json({ error:'Konto deaktiviert – bitte den Betreiber kontaktieren' }); } catch {}
     // Erfolg loggen + alte Fehlversuche löschen
     try { await db.query(`DELETE FROM login_attempts WHERE email=$1`,[emailLower]); } catch {}
     // 2FA-Check für Admin
@@ -126,6 +128,7 @@ router.post('/refresh', async (req, res) => {
       [hashToken(refreshToken)]
     );
     if (!rt) return res.status(401).json({ error:'Ungültiger oder abgelaufener Refresh-Token' });
+    try { const { rows:[ak] } = await db.query(`SELECT COALESCE(aktiv,TRUE) AS aktiv FROM users WHERE id=$1`,[rt.user_id]); if (ak && ak.aktiv === false) { await db.query(`DELETE FROM refresh_tokens WHERE user_id=$1`,[rt.user_id]); return res.status(403).json({ error:'Konto deaktiviert' }); } } catch {}
     const newToken   = signToken({ id:rt.user_id, email:rt.email, role:rt.role, name:rt.name });
     const newRefresh = makeRefreshToken();
     await db.query(`UPDATE refresh_tokens SET token_hash=$1,expires_at=$2 WHERE id=$3`,

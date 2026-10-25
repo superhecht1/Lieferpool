@@ -823,7 +823,7 @@
     </div>
 
     <!-- LOGISTIKPARTNER / LIEFERANTENTYP -->
-    <div id="view-logistik" class="view" style="display:none">
+    <div id="view-partner" class="view" style="display:none">
       <div class="card">
         <div class="section-hdr"><span class="section-title">🚚 Logistikpartner (z. B. Großhändler als Fahrdienst)</span><button class="btn btn-sm" id="btn-reload-lg">↻</button></div>
         <div style="display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:.75rem">
@@ -956,6 +956,18 @@
         <div id="crech-vorschau" style="font-size:12px;color:var(--text3);margin-bottom:.75rem"></div>
         <div id="crech-einnahmen" style="font-size:13px;background:var(--bg2,#f5f5f0);border-radius:8px;padding:.6rem .8rem;margin-bottom:.75rem"></div>
         <div id="crech-list"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- NUTZER -->
+    <div id="view-nutzer" class="view" style="display:none">
+      <div class="card">
+        <div class="section-hdr"><span class="section-title">👥 Nutzer verwalten</span><button class="btn btn-sm" id="btn-reload-nutzer">↻</button></div>
+        <div style="display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:.75rem">
+          <div><label class="form-label">Suche</label><input class="form-control" id="nutzer-q" placeholder="Name, E-Mail, Betrieb" style="width:240px"></div>
+          <div><label class="form-label">Rolle</label><select class="form-control" id="nutzer-rolle" style="width:140px"><option value="">alle</option><option value="erzeuger">Erzeuger</option><option value="caterer">Caterer</option><option value="fahrer">Fahrer</option><option value="admin">Admin</option></select></div>
+        </div>
+        <div id="nutzer-list"><div class="spinner"></div></div>
       </div>
     </div>
 
@@ -1218,10 +1230,11 @@ const NAV = [
   { id: 'pools-alle',    label: 'Pools'        },
   { id: 'tracking',      label: '📡 Tracking'  },
   { id: 'fahrer-mgmt',   label: 'Fahrer'       },
+  { id: 'nutzer',        label: '👥 Nutzer'    },
   { id: 'audit',          label: '🔍 Audit-Log'  },
   { id: 'settings',       label: '⚙ Einstellungen'},
   { id: 'pfand',          label: '🧺 Pfand'},
-  { id: 'logistik',       label: '🚚 Partner'},
+  { id: 'partner',         label: '🚚 Partner'},
   { id: 'rechnungen',     label: '🧾 Rechnungen'},
   { id: 'einladungen',    label: '✉ Einladungen'},
   { id: 'vorlagen',       label: '🔄 Vorlagen'},
@@ -1825,10 +1838,11 @@ async function loadView(v) {
   if (v === 'pools-alle')    loadPoolsAlle();
   if (v === 'tracking')      loadTracking();
   if (v === 'fahrer-mgmt')   loadFahrerMgmt();
+  if (v === 'nutzer')        loadNutzer();
   if (v === 'audit')          loadAuditLog();
   if (v === 'settings')       loadSettings();
   if (v === 'pfand')          loadPfand();
-  if (v === 'logistik')       loadLogistik();
+  if (v === 'partner')        loadPartner();
   if (v === 'rechnungen')     { loadRechnungen(); loadCatRech(); }
   if (v === 'einladungen')    loadEinladungen();
   if (v === 'vorlagen')       loadVorlagen();
@@ -3667,7 +3681,7 @@ async function lgApi(path, opt) {
   if (!r.ok) throw new Error(d.error || 'Fehler');
   return d;
 }
-async function loadLogistik() {
+async function loadPartner() {
   const m = document.getElementById('lg-monat'); if (m && !m.value) m.value = new Date().toISOString().slice(0, 7);
   try {
     const [{ partner }, { fahrer }, { lieferanten }] = await Promise.all([lgApi('/partner'), lgApi('/fahrer'), lgApi('/lieferanten')]);
@@ -3686,14 +3700,14 @@ async function loadLogistik() {
       : '<p style="color:var(--text3);font-size:13px">Keine Betriebe</p>');
   } catch (err) { setHTML('lg-partner', `<div class="alert alert-error">${esc(err.message)}</div>`); }
 }
-async function lgAktiv(id, aktiv) { try { await lgApi('/partner/' + encodeURIComponent(id), { method: 'PUT', body: JSON.stringify({ aktiv }) }); loadLogistik(); } catch (e) { toast(e.message, 'error'); } }
-async function lgFahrer(id, pid) { try { await lgApi('/fahrer/' + encodeURIComponent(id), { method: 'PUT', body: JSON.stringify({ logistikpartner_id: pid || null }) }); toast('Zuordnung gespeichert'); loadLogistik(); } catch (e) { toast(e.message, 'error'); } }
+async function lgAktiv(id, aktiv) { try { await lgApi('/partner/' + encodeURIComponent(id), { method: 'PUT', body: JSON.stringify({ aktiv }) }); loadPartner(); } catch (e) { toast(e.message, 'error'); } }
+async function lgFahrer(id, pid) { try { await lgApi('/fahrer/' + encodeURIComponent(id), { method: 'PUT', body: JSON.stringify({ logistikpartner_id: pid || null }) }); toast('Zuordnung gespeichert'); loadPartner(); } catch (e) { toast(e.message, 'error'); } }
 async function lgTyp(id, typ) { try { await lgApi('/lieferanten/' + encodeURIComponent(id), { method: 'PUT', body: JSON.stringify({ betriebs_typ: typ }) }); toast('Gespeichert'); } catch (e) { toast(e.message, 'error'); } }
-document.getElementById('btn-reload-lg')?.addEventListener('click', loadLogistik);
+document.getElementById('btn-reload-lg')?.addEventListener('click', loadPartner);
 document.getElementById('btn-lg-neu')?.addEventListener('click', async () => {
   const body = { name: document.getElementById('lg-name').value, typ: document.getElementById('lg-typ').value, kontakt_email: document.getElementById('lg-mail').value,
     ust_id: document.getElementById('lg-ust').value, satz_pro_tour: document.getElementById('lg-tour').value, satz_pro_stopp: document.getElementById('lg-stopp').value };
-  try { await lgApi('/partner', { method: 'POST', body: JSON.stringify(body) }); toast('Partner angelegt'); ['lg-name','lg-mail','lg-ust'].forEach(i => { document.getElementById(i).value = ''; }); loadLogistik(); }
+  try { await lgApi('/partner', { method: 'POST', body: JSON.stringify(body) }); toast('Partner angelegt'); ['lg-name','lg-mail','lg-ust'].forEach(i => { document.getElementById(i).value = ''; }); loadPartner(); }
   catch (e) { toast(e.message, 'error'); }
 });
 document.getElementById('btn-lg-leist')?.addEventListener('click', async () => {
@@ -3765,6 +3779,69 @@ async function crechBezahlt(id) { try { await crechApi('/' + encodeURIComponent(
 async function crechStorno(id) {
   if (!confirm('Rechnung stornieren? Es wird eine Stornorechnung erzeugt, die Lieferungen werden wieder abrechenbar.')) return;
   try { const d = await crechApi('/' + encodeURIComponent(id) + '/stornieren', { method: 'POST', body: '{}' }); toast('Storno ' + d.storno_nr); loadCatRech(); } catch (e) { toast(e.message, 'error'); }
+}
+
+// ── NUTZERVERWALTUNG ───────────────────────────────────────
+async function nutzerApi(path, opt) {
+  const r = await fetch('/api/admin/users' + path, Object.assign({ headers: { 'Content-Type': 'application/json' } }, opt));
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || 'Fehler');
+  return d;
+}
+const NUTZER_FELD = { betrieb_name: 'Betrieb', firma_name: 'Firma', region: 'Region', adresse: 'Straße', plz: 'PLZ', ort: 'Ort', telefon: 'Telefon',
+  website: 'Website', beschreibung: 'Beschreibung', ust_id: 'USt-IdNr.', bank_name: 'Bank' };
+async function loadNutzer() {
+  try {
+    const q = document.getElementById('nutzer-q')?.value.trim() || '', rolle = document.getElementById('nutzer-rolle')?.value || '';
+    const { nutzer } = await nutzerApi('/?q=' + encodeURIComponent(q) + '&rolle=' + encodeURIComponent(rolle));
+    setHTML('nutzer-list', nutzer.length ? `<table class="tbl"><thead><tr><th>Name</th><th>E-Mail</th><th>Rolle</th><th>Betrieb</th><th>Status</th><th></th></tr></thead><tbody>${nutzer.map(u => `<tr>
+      <td>${esc(u.name)}</td><td class="pool-meta">${esc(u.email)}</td><td>${esc(u.role)}</td><td class="pool-meta">${esc(u.betrieb || '—')}</td>
+      <td>${u.aktiv ? '<span class="badge badge-green">aktiv</span>' : '<span class="badge badge-gray">deaktiviert</span>'}</td>
+      <td><button class="btn btn-sm" onclick="nutzerEdit(${jsq(u.id)})">Bearbeiten</button></td></tr>`).join('')}</tbody></table>`
+      : '<p style="color:var(--text3);font-size:13px">Keine Nutzer gefunden</p>');
+  } catch (e) { setHTML('nutzer-list', `<div class="alert alert-error">${esc(e.message)}</div>`); }
+}
+document.getElementById('btn-reload-nutzer')?.addEventListener('click', loadNutzer);
+document.getElementById('nutzer-rolle')?.addEventListener('change', loadNutzer);
+{ let t; document.getElementById('nutzer-q')?.addEventListener('input', () => { clearTimeout(t); t = setTimeout(loadNutzer, 300); }); }
+async function nutzerEdit(id) {
+  let d;
+  try { d = await nutzerApi('/' + encodeURIComponent(id)); } catch (e) { return toast(e.message, 'error'); }
+  const u = d.nutzer, ov = document.createElement('div');
+  ov.className = 'modal-overlay';
+  const feld = f => `<div style="margin-bottom:.5rem"><label class="form-label">${esc(NUTZER_FELD[f] || f)}</label>${f === 'beschreibung'
+    ? `<textarea class="form-control" data-p="${esc(f)}" rows="2">${esc(d.profil?.[f] ?? '')}</textarea>`
+    : `<input class="form-control" data-p="${esc(f)}" value="${esc(d.profil?.[f] ?? '')}">`}</div>`;
+  ov.innerHTML = `<div class="modal" style="max-width:600px">
+    <div class="modal-head"><div class="modal-title">Nutzer bearbeiten · ${esc(u.role)}</div><button class="modal-close" aria-label="Schließen">✕</button></div>
+    <div class="modal-body">
+      <div style="margin-bottom:.5rem"><label class="form-label">Name</label><input class="form-control" id="nu-name" value="${esc(u.name)}"></div>
+      <div style="margin-bottom:.5rem"><label class="form-label">E-Mail</label><input class="form-control" id="nu-email" value="${esc(u.email)}"></div>
+      <label style="display:flex;gap:.5rem;align-items:center;margin:.5rem 0 1rem;font-size:13px"><input type="checkbox" id="nu-aktiv" ${u.aktiv ? 'checked' : ''}> Konto aktiv (deaktivierte Nutzer können sich nicht anmelden)</label>
+      ${d.profil_felder.length ? '<div style="font-weight:600;font-size:13px;margin-bottom:.4rem">Stammdaten</div>' + d.profil_felder.map(feld).join('')
+        + `<div style="margin-bottom:.5rem"><label class="form-label">IBAN neu setzen ${d.profil?.iban_gesetzt ? '(hinterlegt – leer lassen = unverändert)' : '(nicht hinterlegt)'}</label><input class="form-control" id="nu-iban" autocomplete="off"></div>` : ''}
+      <div id="nu-msg"></div>
+      <div class="modal-actions"><button class="btn btn-primary" id="nu-save">Speichern</button><button class="btn" id="nu-pw">Temporäres Passwort setzen</button></div>
+    </div></div>`;
+  document.body.appendChild(ov);
+  const close = () => ov.remove(), msg = h => { ov.querySelector('#nu-msg').innerHTML = h; };
+  ov.querySelector('.modal-close').onclick = close;
+  ov.addEventListener('click', e => { if (e.target === ov) close(); });
+  ov.querySelector('#nu-save').onclick = async () => {
+    const profil = {}; ov.querySelectorAll('[data-p]').forEach(i => { profil[i.dataset.p] = i.value; });
+    const iban = ov.querySelector('#nu-iban')?.value.trim(); if (iban) profil.iban = iban;
+    try {
+      await nutzerApi('/' + encodeURIComponent(id), { method: 'PUT', body: JSON.stringify({ name: ov.querySelector('#nu-name').value, email: ov.querySelector('#nu-email').value,
+        aktiv: ov.querySelector('#nu-aktiv').checked, profil: d.profil_felder.length ? profil : undefined }) });
+      toast('Gespeichert'); close(); loadNutzer();
+    } catch (e) { msg(`<div class="alert alert-error">${esc(e.message)}</div>`); }
+  };
+  ov.querySelector('#nu-pw').onclick = async () => {
+    if (!confirm('Neues temporäres Passwort setzen? Das alte Passwort und alle Sitzungen dieses Nutzers werden ungültig.')) return;
+    try { const r = await nutzerApi('/' + encodeURIComponent(id) + '/passwort', { method: 'POST', body: '{}' });
+      msg(`<div class="alert alert-info">Temporäres Passwort (nur jetzt sichtbar): <code style="user-select:all">${esc(r.passwort)}</code><br>Bitte sicher übermitteln; der Nutzer sollte es nach dem Login ändern.</div>`); }
+    catch (e) { msg(`<div class="alert alert-error">${esc(e.message)}</div>`); }
+  };
 }
 
 // ── RECHNUNGEN ─────────────────────────────────────────────────
