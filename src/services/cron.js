@@ -36,6 +36,22 @@ async function checkFaelligeAuszahlungen() {
   } catch (err) { console.error('[cron] AZ-Check:', err.message); }
 }
 
+// DSGVO: Aufbewahrungsfristen durchsetzen (täglich)
+async function datenschutzBereinigung() {
+  const jobs = [
+    [`UPDATE audit_log SET ip=NULL, user_agent=NULL WHERE created_at < NOW() - INTERVAL '90 days' AND (ip IS NOT NULL OR user_agent IS NOT NULL)`, 'IP/User-Agent im Audit-Log entfernt'],
+    [`DELETE FROM audit_log WHERE created_at < NOW() - INTERVAL '2 years'`, 'alte Audit-Einträge gelöscht'],
+    [`DELETE FROM fahrer_position WHERE created_at < NOW() - INTERVAL '30 days'`, 'alte GPS-Positionen gelöscht'],
+    [`DELETE FROM fahrer_position_live WHERE updated_at < NOW() - INTERVAL '1 day'`, 'veraltete Live-Positionen gelöscht'],
+  ];
+  for (const [sql, label] of jobs) {
+    try {
+      const { rowCount } = await db.query(sql);
+      if (rowCount > 0) console.log(`[cron] DSGVO: ${rowCount} ${label}`);
+    } catch (err) { console.warn('[cron] DSGVO-Bereinigung:', err.message); }
+  }
+}
+
 async function cleanupTokens() {
   try { await db.query(`DELETE FROM refresh_tokens WHERE expires_at<NOW()`); }
   catch (err) { console.error('[cron] Token-Cleanup:', err.message); }
@@ -130,6 +146,8 @@ function start() {
 
   // Alle 24h: Token cleanup
   setInterval(cleanupTokens, 24 * 60 * 60 * 1000);
+  setInterval(datenschutzBereinigung, 24 * 60 * 60 * 1000);
+  setTimeout(datenschutzBereinigung, 60 * 1000);
 
   // Täglich 06:00: Tagescheck + Monitoring
   const { dailyCheck } = require('../routes/monitoring');
