@@ -29,6 +29,7 @@
     "deploy:mumbai": "npx hardhat run scripts/deploy-hardhat.js --network mumbai",
     "migrate:fix11": "node scripts/migrate_fix11.js",
     "test:smoke": "node tests/smoke.test.js",
+    "security": "node scripts/security-check.js",
     "migrate:fix12": "node scripts/migrate_fix12.js"
   },
   "dependencies": {
