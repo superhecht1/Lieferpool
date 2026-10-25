@@ -33,12 +33,12 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc:    ["'self'"],
-      scriptSrc:     ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://js.stripe.com'],
+      scriptSrc:     ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://js.stripe.com', 'https://unpkg.com'],
       scriptSrcAttr: ["'unsafe-inline'"],
-      styleSrc:      ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net'],
+      styleSrc:      ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net', 'https://unpkg.com'],
       fontSrc:       ["'self'", 'https://fonts.gstatic.com', 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net'],
       connectSrc:    ["'self'", 'https://api.stripe.com', 'https://cdn.jsdelivr.net', 'https://fonts.googleapis.com', 'https://*.tile.openstreetmap.org', 'https://fonts.gstatic.com', 'https://api.qrserver.com'],
-      imgSrc:        ["'self'", 'data:', 'blob:', 'https://*.tile.openstreetmap.org', 'https://api.qrserver.com'],
+      imgSrc:        ["'self'", 'data:', 'blob:', 'https://*.tile.openstreetmap.org', 'https://api.qrserver.com', 'https://unpkg.com'],
       frameSrc:      ["'self'", 'https://js.stripe.com'],
       objectSrc:     ["'none'"],
       baseUri:       ["'self'"],
@@ -94,6 +94,7 @@ app.use('/api/caterer',      require('./routes/caterer'));
 app.use('/api/lieferungen',  require('./routes/lieferungen'));
 app.use('/api/lager',        require('./routes/lager'));
 app.use('/api/bedarf',       require('./routes/bedarf'));
+app.use('/api/kennzahlen',   require('./routes/kennzahlen'));
 app.use('/api/touren',       require('./routes/touren'));
 app.use('/api/fahrzeuge',    require('./routes/fahrzeuge'));
 app.use('/api/auszahlungen', require('./routes/auszahlungen'));

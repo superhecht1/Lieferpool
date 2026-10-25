@@ -120,4 +120,41 @@ router.get('/', auth, role('admin'), async (req, res) => {
   }
 });
 
+
+router.get('/csv', async (req, res) => {
+  // Token-Auth via Query-Parameter (für direkten Download-Link)
+  const { auth: authMw, role: roleMw } = require('./auth');
+  const token = req.query.token;
+  if (token) {
+    const jwt = require('jsonwebtoken');
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      if (decoded.role !== 'admin') return res.status(403).json({ error: 'Kein Zugriff' });
+    } catch { return res.status(401).json({ error: 'Ungültiger Token' }); }
+  } else { return res.status(401).json({ error: 'Token erforderlich' }); }
+
+  try {
+    const { action } = req.query;
+    const params = action ? [action] : [];
+    const where  = action ? 'WHERE al.action=$1' : '';
+    const { rows } = await db.query(`
+      SELECT al.created_at, u.name, u.email, u.role, al.action, al.details, al.ip
+      FROM audit_log al LEFT JOIN users u ON u.id=al.user_id
+      ${where} ORDER BY al.created_at DESC LIMIT 5000
+    `, params);
+
+    const headers = ['Zeitstempel','Name','E-Mail','Rolle','Aktion','Details','IP'];
+    const rows_csv = rows.map(r => [
+      new Date(r.created_at).toLocaleString('de-DE'),
+      r.name||'', r.email||'', r.role||'', r.action,
+      r.details ? JSON.stringify(r.details) : '', r.ip||'',
+    ].map(v=>`"${String(v).replace(/"/g,'""')}"`).join(';'));
+
+    const csv = [headers.join(';'), ...rows_csv].join('\n');
+    res.setHeader('Content-Type','text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition',`attachment; filename="audit-${new Date().toISOString().slice(0,10)}.csv"`);
+    res.send('\uFEFF' + csv);
+  } catch(err) { res.status(500).json({ error: err.message }); }
+});
+
 module.exports = { log, auditLog, ACTIONS, router };

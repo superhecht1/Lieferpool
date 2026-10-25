@@ -65,6 +65,21 @@
               <input class="form-control" id="pf-lieferwoche" placeholder="KW 22/2025">
             </div>
             <div class="form-group">
+              <label class="form-label">Liefertag (empfohlen Mo/Mi/Fr)</label>
+              <select class="form-control" id="pf-liefertag">
+                <option value="">– offen –</option>
+                <option>Montag</option><option>Mittwoch</option><option>Freitag</option>
+                <option>Dienstag</option><option>Donnerstag</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Zeitfenster von / bis</label>
+              <div style="display:flex;gap:.4rem">
+                <input class="form-control" type="time" id="pf-zeit-von" value="06:30">
+                <input class="form-control" type="time" id="pf-zeit-bis" value="09:00">
+              </div>
+            </div>
+            <div class="form-group">
               <label class="form-label">Deadline für Zusagen</label>
               <input class="form-control" type="date" id="pf-deadline">
             </div>
@@ -193,6 +208,11 @@
               <option value="B">B – Gut</option>
               <option value="beide">A oder B</option>
             </select>
+          </div>
+          <div class="form-group">
+            <label style="display:flex;gap:.5rem;align-items:center;font-size:13px">
+              <input type="checkbox" id="bd-umpack"> Umpackservice gewünscht (halbe Gebinde, z. B. Kita)
+            </label>
           </div>
           <button class="btn btn-primary" id="btn-bedarf-create">Bedarf speichern</button>
         </div>
@@ -367,25 +387,6 @@
         <div id="cat-lief-list"><div class="spinner"></div></div>
       </div>
     </div>
-
-    <!-- LIEFERSCHEINE (Caterer) -->
-    <div id="view-lieferscheine" class="view" style="display:none">
-      <div class="card">
-        <div class="section-hdr">
-          <span class="section-title">Meine Lieferscheine</span>
-          <div style="display:flex;gap:.5rem">
-            <select class="form-control" id="cat-lief-filter" style="width:140px;padding:5px 8px">
-              <option value="">Alle Status</option>
-              <option value="erstellt">Erstellt</option>
-              <option value="eingegangen">Eingegangen</option>
-              <option value="abgeschlossen">Abgeschlossen</option>
-            </select>
-            <button class="btn btn-sm" id="btn-reload-cat-lief">↻</button>
-          </div>
-        </div>
-        <div id="cat-lief-list"><div class="spinner"></div></div>
-      </div>
-    </div>
   </main>
 </div>
 
@@ -410,6 +411,7 @@ const NAV = [
   { id: 'lieferscheine',label: '📋 Lieferscheine' },
   { id: 'profil',       label: 'Profil'          },
   { id: 'nachrichten',  label: '💬 Nachrichten'   },
+  { id: 'nachhaltigkeit', label: '🌱 Nachhaltigkeit' },
 ];
 
 renderHeader('overview', NAV, (v) => { showView(v); loadView(v); });
@@ -438,7 +440,150 @@ async function loadView(v) {
   if (v === 'vorlagen')       loadCatererVorlagen();
   if (v === 'lieferscheine')  loadCatLieferscheine();
   if (v === 'nachrichten')    loadCatNachrichten();
+  if (v === 'nachhaltigkeit') loadNachhaltigkeit();
 }
+
+// ── NACHHALTIGKEIT ─────────────────────────────────────────────
+let _nhChart = null;
+function nhQuery() {
+  const p = new URLSearchParams();
+  const v = document.getElementById('nh-von').value, b = document.getElementById('nh-bis').value;
+  const c = document.getElementById('nh-caterer');
+  if (v) p.set('von', v); if (b) p.set('bis', b); if (c && c.value) p.set('caterer_id', c.value);
+  return p.toString();
+}
+async function nhFetch(path, opts = {}) {
+  const res = await fetch(path, { ...opts, headers: { 'Authorization': 'Bearer ' + Auth.getToken(),
+    ...(opts.body ? { 'Content-Type': 'application/json' } : {}) } });
+  if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error(e.error || 'Fehler ' + res.status); }
+  return res;
+}
+async function nhDownload(kind) {
+  try {
+    const res = await nhFetch('/api/kennzahlen/export.' + kind + '?' + nhQuery());
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'nachhaltigkeit.' + kind;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  } catch (err) { toast('Export fehlgeschlagen: ' + err.message, 'error'); }
+}
+function nhTile(label, val, unit, sub, color) {
+  const v = (val === null || val === undefined) ? '–' : fmt(val, 1);
+  return `<div style="border:1px solid var(--border,#ddd);border-radius:10px;padding:.75rem .9rem">
+    <div style="font-size:12px;color:var(--text-muted,#777)">${label}</div>
+    <div style="font-size:24px;font-weight:600;color:${color || 'inherit'}">${v}${val === null || val === undefined ? '' : ' ' + unit}</div>
+    <div style="font-size:11px;color:var(--text-muted,#777)">${sub || ''}</div></div>`;
+}
+function nhTable(rows, cols) {
+  if (!rows.length) return '<div style="color:var(--text-muted,#777);font-size:13px">Keine Daten im Zeitraum.</div>';
+  const n = v => (v === null || v === undefined) ? '–' : fmt(v, 1);
+  return `<div class="tbl-wrap" style="overflow-x:auto"><table class="tbl"><thead><tr>${cols.map(c => `<th>${c[0]}</th>`).join('')}</tr></thead><tbody>` +
+    rows.map(r => `<tr>${cols.map(c => `<td>${c[1] === 'name' ? esc(r.name) : c[1] === 'bio' ? (r.bio ? '✅' : '–') : n(r[c[1]])}</td>`).join('')}</tr>`).join('') +
+    '</tbody></table></div>';
+}
+async function loadNachhaltigkeit() {
+  try {
+    const von = document.getElementById('nh-von'), bis = document.getElementById('nh-bis');
+    if (!von.value) von.value = new Date().getFullYear() + '-01-01';
+    if (!bis.value) bis.value = new Date().toISOString().slice(0, 10);
+    const d = await (await nhFetch('/api/kennzahlen?' + nhQuery())).json();
+    if (d.leer) { setHTML('nh-kpis', '<div>Kein Caterer-Profil vorhanden.</div>'); return; }
+    const g = d.gesamt;
+
+    const sel = document.getElementById('nh-caterer');
+    if (sel && sel.options.length <= 1) d.caterer.forEach(c => sel.add(new Option(c.name, c.id)));
+
+    const bioFarbe = g.bio_quote_kg === null ? '' : (g.bio_quote_kg >= d.ziele.bio_prozent ? '#2e7d3e' : '#c6922a');
+    setHTML('nh-kpis',
+      nhTile('Bio-Quote (Menge)', g.bio_quote_kg, '%', `Ziel ${d.ziele.bio_prozent} % · Wert ${g.bio_quote_eur ?? '–'} %`, bioFarbe) +
+      nhTile('Regionalquote', g.regional_quote_kg, '%', `≤ ${d.ziele.regional_radius_km} km · Datenabdeckung ${g.daten_abdeckung_regional ?? '–'} %`) +
+      nhTile('Ø Transportweg', g.avg_transport_km, 'km', `${fmt(g.tkm, 1)} tkm`) +
+      nhTile('Beirat-geprüft', g.beirat_quote_kg, '%', `Bio + Beirat ${g.bio_plus_beirat_quote_kg ?? '–'} %`) +
+      nhTile('Abfallquote', g.abfall_quote, '%', `Entsorgt ${fmt(g.abfall_entsorgt, 1)} kg · Verbraucht ${fmt(g.abfall_verbraucht, 1)} kg`) +
+      nhTile('Weitergabe Restware', g.weitergabe_quote, '%', `${fmt(g.abfall_weitergegeben, 1)} kg an Tafel/Foodsharing u. a.`) +
+      nhTile('Lieferabweichung', g.lieferabweichung_quote, '%', 'bestellt vs. geliefert') +
+      nhTile('Ausschuss', g.ausschuss_quote, '%', 'Qualität „abgelehnt“') +
+      nhTile('Gelieferte Menge', g.kg, 'kg', `${fmt(g.eur, 0)} € Wareneinsatz`));
+
+    const hint = [];
+    if (g.daten_abdeckung_regional !== null && g.daten_abdeckung_regional < 100)
+      hint.push('Für einen Teil der Erzeuger fehlen Koordinaten – Regionalquote und Transportweg sind dort nicht enthalten.');
+    if (g.abfall_quote === null) hint.push('Noch keine Abfall-/Verbrauchsmeldungen im Zeitraum.');
+    setHTML('nh-hinweis', hint.join(' '));
+
+    const canvas = document.getElementById('chart-nh');
+    if (canvas && window.Chart) {
+      if (_nhChart) _nhChart.destroy();
+      _nhChart = new Chart(canvas.getContext('2d'), {
+        type: 'line',
+        data: { labels: d.monate.map(m => m.monat), datasets: [
+          { label: 'Bio %',      data: d.monate.map(m => m.bio_quote_kg),      borderColor: '#2e7d3e', tension: .3 },
+          { label: 'Regional %', data: d.monate.map(m => m.regional_quote_kg), borderColor: '#2b6cb0', tension: .3 },
+          { label: 'Abfall %',   data: d.monate.map(m => m.abfall_quote),      borderColor: '#c0392b', tension: .3 },
+          { label: 'Ziel Bio',   data: d.monate.map(() => d.ziele.bio_prozent), borderColor: '#999', borderDash: [5, 4], pointRadius: 0 },
+        ] },
+        options: { responsive: true, maintainAspectRatio: false, spanGaps: true,
+                   scales: { y: { min: 0, max: 100, title: { display: true, text: '%' } } } },
+      });
+    }
+
+    setHTML('nh-tab-caterer', nhTable(d.caterer, [['Abnehmer','name'],['kg','kg'],['Bio %','bio_quote_kg'],['Regional %','regional_quote_kg'],['Ø km','avg_transport_km'],['Abfall %','abfall_quote']]));
+    setHTML('nh-tab-produkte', nhTable(d.produkte, [['Produkt','name'],['kg','kg'],['Bio %','bio_quote_kg'],['Regional %','regional_quote_kg'],['Ø km','avg_transport_km'],['tkm','tkm']]));
+    setHTML('nh-tab-erzeuger', nhTable(d.erzeuger, [['Erzeuger','name'],['Bio-zertifiziert','bio'],['kg','kg'],['Regional %','regional_quote_kg'],['Ø km','avg_transport_km']]));
+
+    const s = await (await nhFetch('/api/kennzahlen/saison-warnungen')).json();
+    setHTML('nh-saison', s.warnungen.length
+      ? '<ul style="margin:0;padding-left:1.1rem">' + s.warnungen.map(w =>
+          `<li>${w.firma_name ? '<b>' + esc(w.firma_name) + ':</b> ' : ''}${esc(w.hinweis)}</li>`).join('') + '</ul>'
+      : '<div style="color:var(--text-muted,#777);font-size:13px">Keine Produkte außerhalb der Saison in den aktiven Bedarfsprognosen.</div>');
+
+    await loadNhAbfall();
+  } catch (err) { showAlert('alerts', 'error', err.message); }
+}
+async function loadNhAbfall() {
+  const { meldungen } = await (await nhFetch('/api/kennzahlen/abfall')).json();
+  setHTML('nh-abfall-liste', meldungen.length
+    ? `<div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Datum</th><th>Caterer</th><th>Produkt</th><th>Verbraucht kg</th><th>Entsorgt kg</th><th>Weitergegeben kg</th><th>Grund</th><th></th></tr></thead><tbody>` +
+      meldungen.map(m => `<tr><td>${String(m.datum).slice(0, 10)}</td><td>${esc(m.firma_name || '')}</td><td>${esc(m.produkt || '')}</td><td>${fmt(m.menge_verbraucht, 1)}</td><td>${fmt(m.menge_entsorgt, 1)}</td><td>${fmt(m.menge_weitergegeben, 1)}${m.weitergegeben_an ? ' (' + esc(m.weitergegeben_an) + ')' : ''}</td><td>${esc(m.grund || '')}</td><td><button class="btn btn-sm" onclick="nhAbfallLoeschen('${m.id}')">✕</button></td></tr>`).join('') +
+      '</tbody></table></div>'
+    : '<div style="color:var(--text-muted,#777);font-size:13px">Noch keine Meldungen.</div>');
+}
+async function nhAbfallLoeschen(id) {
+  if (!confirm('Meldung löschen?')) return;
+  try { await nhFetch('/api/kennzahlen/abfall/' + id, { method: 'DELETE' }); loadNachhaltigkeit(); }
+  catch (err) { toast(err.message, 'error'); }
+}
+document.addEventListener('click', async (e) => {
+  const id = e.target.id;
+  if (id === 'nh-laden') loadNachhaltigkeit();
+  if (id === 'nh-xlsx')  nhDownload('xlsx');
+  if (id === 'nh-pdf')   nhDownload('pdf');
+  if (id === 'nh-geocode') {
+    e.target.disabled = true; e.target.textContent = 'Läuft…';
+    try {
+      const r = await (await nhFetch('/api/kennzahlen/geocode', { method: 'POST' })).json();
+      toast(`Koordinaten: ${r.erzeuger} Erzeuger, ${r.caterer} Caterer, ${r.fehlgeschlagen} nicht gefunden`);
+      loadNachhaltigkeit();
+    } catch (err) { toast(err.message, 'error'); }
+    e.target.disabled = false; e.target.textContent = '📍 Koordinaten ermitteln';
+  }
+  if (id === 'nh-a-speichern') {
+    try {
+      await nhFetch('/api/kennzahlen/abfall', { method: 'POST', body: JSON.stringify({
+        produkt: document.getElementById('nh-a-produkt').value,
+        datum: document.getElementById('nh-a-datum').value || undefined,
+        menge_verbraucht: document.getElementById('nh-a-verbraucht').value || 0,
+        menge_entsorgt: document.getElementById('nh-a-entsorgt').value || 0,
+        menge_weitergegeben: document.getElementById('nh-a-weiter').value || 0,
+        weitergegeben_an: document.getElementById('nh-a-weiter-an').value || undefined,
+        grund: document.getElementById('nh-a-grund').value }) });
+      ['produkt','verbraucht','entsorgt','weiter','grund'].forEach(k => document.getElementById('nh-a-' + k).value = '');
+      toast('Gemeldet'); loadNachhaltigkeit();
+    } catch (err) { toast(err.message, 'error'); }
+  }
+});
 
 // ── ÜBERSICHT ─────────────────────────────────────────────────
 async function loadOverview() {
@@ -567,6 +712,9 @@ document.getElementById('btn-create-pool')?.addEventListener('click', async () =
     const { pool } = await api.createPool({
       produkt, einheit, menge_ziel, preis_pro_einheit: preis,
       lieferwoche, deadline, region, qualitaet_stufe,
+      liefertag: document.getElementById('pf-liefertag').value || null,
+      zeitfenster_von: document.getElementById('pf-zeit-von').value || '06:30',
+      zeitfenster_bis: document.getElementById('pf-zeit-bis').value || '09:00',
     });
 
     setHTML('pool-create-result', `
@@ -732,12 +880,13 @@ async function loadBedarf() {
     const { prognosen } = await api.getBedarfPrognosen();
     setHTML('bedarf-list', prognosen?.length ? `
       <table class="tbl">
-        <thead><tr><th>Produkt</th><th>Bedarf/Woche</th><th>Qualität</th><th></th></tr></thead>
+        <thead><tr><th>Produkt</th><th>Bedarf/Woche</th><th>Qualität</th><th>Umpack</th><th></th></tr></thead>
         <tbody>${prognosen.map(b => `
           <tr>
             <td style="font-weight:500">${b.produkt}</td>
             <td style="font-family:'DM Mono',monospace">${fmt(b.menge_pro_woche,0)} ${b.einheit}</td>
             <td><span class="badge badge-gray">${b.qualitaet_praeferenz}</span></td>
+            <td>${b.umpack ? '📦' : ''}</td>
             <td><button class="btn btn-sm btn-danger" data-action="del-bedarf" data-id="${b.id}">✕</button></td>
           </tr>`).join('')}
         </tbody>
@@ -762,13 +911,20 @@ document.getElementById('btn-bedarf-create')?.addEventListener('click', async ()
   if (!produkt || !menge) return showAlert('alerts', 'error', 'Produkt und Menge erforderlich');
   btn.disabled = true;
   try {
-    await api.createBedarfPrognose({ produkt, menge_pro_woche: menge, einheit, qualitaet_praeferenz: qualitaet });
-    setHTML('bedarf-create-result', '<div class="alert alert-success">✓ Gespeichert</div>');
+    await api.createBedarfPrognose({ produkt, menge_pro_woche: menge, einheit, qualitaet_praeferenz: qualitaet,
+                                     umpack: document.getElementById('bd-umpack')?.checked || false });
+    let saisonHinweis = '';
+    try {
+      const sr = await (await fetch('/api/kennzahlen/saison?produkt=' + encodeURIComponent(produkt),
+        { headers: { 'Authorization': 'Bearer ' + Auth.getToken() } })).json();
+      if (sr && sr.in_saison === false) saisonHinweis = `<div class="alert alert-error" style="margin-top:.5rem">🗓 ${esc(produkt)} hat aktuell keine regionale Freilandsaison (Saison: ${sr.monate}). Lieferung nur über Zukauf/Import möglich.</div>`;
+    } catch (_) {}
+    setHTML('bedarf-create-result', '<div class="alert alert-success">✓ Gespeichert</div>' + saisonHinweis);
     document.getElementById('bd-produkt').value = '';
     document.getElementById('bd-menge').value   = '';
     btn.disabled = false;
     loadBedarf();
-    setTimeout(() => setHTML('bedarf-create-result', ''), 3000);
+    setTimeout(() => setHTML('bedarf-create-result', ''), saisonHinweis ? 9000 : 3000);
   } catch (err) {
     btn.disabled = false; showAlert('alerts', 'error', err.message);
   }
@@ -1109,6 +1265,66 @@ loadOverview();
 
 
     <!-- NACHRICHTEN (CATERER) -->
+    <!-- NACHHALTIGKEIT -->
+    <div id="view-nachhaltigkeit" class="view" style="display:none">
+      <div class="card" style="margin-bottom:1.25rem">
+        <div class="section-hdr">
+          <span class="section-title">🌱 Nachhaltigkeits-Kennzahlen</span>
+          <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+            <input type="date" class="form-control" id="nh-von" style="width:150px;padding:4px 8px">
+            <span>–</span>
+            <input type="date" class="form-control" id="nh-bis" style="width:150px;padding:4px 8px">
+            
+            <button class="btn btn-sm" id="nh-laden">Laden</button>
+            <button class="btn btn-sm" id="nh-xlsx">⬇ XLSX</button>
+            <button class="btn btn-sm" id="nh-pdf">⬇ PDF</button>
+            
+          </div>
+        </div>
+        <div id="nh-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.75rem;margin-top:1rem"></div>
+        <div style="position:relative;height:220px;margin-top:1.25rem"><canvas id="chart-nh"></canvas></div>
+        <div id="nh-hinweis" style="font-size:12px;color:var(--text-muted,#777);margin-top:.75rem"></div>
+      </div>
+
+      <div class="card" style="margin-bottom:1.25rem">
+        <div class="card-title">🗓 Saisonkalender-Warnungen (Bedarfsplanung)</div>
+        <div id="nh-saison"></div>
+      </div>
+
+      <div class="card" style="margin-bottom:1.25rem">
+        <div class="card-title">Abnehmer</div>
+        <div id="nh-tab-caterer"></div>
+      </div>
+      <div class="card" style="margin-bottom:1.25rem">
+        <div class="card-title">Produkte</div>
+        <div id="nh-tab-produkte"></div>
+      </div>
+      <div class="card" style="margin-bottom:1.25rem">
+        <div class="card-title">Erzeuger</div>
+        <div id="nh-tab-erzeuger"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">♻ Verbrauch &amp; Abfall</div>
+                <div id="nh-abfall-result"></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.5rem;margin-bottom:1rem">
+          <input class="form-control" id="nh-a-produkt" placeholder="Produkt (optional)">
+          <input class="form-control" id="nh-a-datum" type="date">
+          <input class="form-control" id="nh-a-verbraucht" type="number" min="0" step="0.1" placeholder="Verbraucht (kg)">
+          <input class="form-control" id="nh-a-entsorgt" type="number" min="0" step="0.1" placeholder="Entsorgt (kg)">
+          <input class="form-control" id="nh-a-weiter" type="number" min="0" step="0.1" placeholder="Weitergegeben (kg)">
+          <select class="form-control" id="nh-a-weiter-an">
+            <option value="">Weitergabe an …</option>
+            <option>Tafel</option><option>Foodsharing</option><option>Eigenes Café/Restaurant</option><option>Kompost/Landwirt</option>
+          </select>
+          <input class="form-control" id="nh-a-grund" placeholder="Grund (z. B. Überproduktion)">
+          <button class="btn btn-primary" id="nh-a-speichern">Melden</button>
+        </div>
+
+        <div id="nh-abfall-liste"></div>
+      </div>
+    </div>
+
     <div id="view-nachrichten" class="view" style="display:none">
       <div class="grid2" style="align-items:flex-start">
         <div class="card">

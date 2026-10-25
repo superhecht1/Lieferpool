@@ -90,10 +90,17 @@ router.get('/:id', auth, async (req, res) => {
 router.post('/', auth, role('caterer', 'admin'), async (req, res) => {
   const { produkt, einheit='kg', menge_ziel, preis_pro_einheit,
           lieferwoche, deadline, region='NRW', qualitaet_stufe='A',
-          platform_fee_pct=1.0 } = req.body;
+          platform_fee_pct=1.0, liefertag=null, zeitfenster_von='06:30', zeitfenster_bis='09:00' } = req.body;
 
   if (!produkt || !menge_ziel || !preis_pro_einheit || !lieferwoche || !deadline) {
     return res.status(400).json({ error: 'Pflichtfelder fehlen' });
+  }
+
+  const TAGE = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
+  if (liefertag && !TAGE.includes(liefertag)) return res.status(400).json({ error: 'Liefertag ungültig' });
+  const hhmm = /^([01]\d|2[0-3]):[0-5]\d$/;
+  if (!hhmm.test(zeitfenster_von) || !hhmm.test(zeitfenster_bis) || zeitfenster_von >= zeitfenster_bis) {
+    return res.status(400).json({ error: 'Zeitfenster ungültig (HH:MM, von < bis)' });
   }
 
   try {
@@ -110,10 +117,10 @@ router.post('/', auth, role('caterer', 'admin'), async (req, res) => {
 
     const { rows: [pool] } = await db.query(`
       INSERT INTO pools (caterer_id, produkt, einheit, menge_ziel, preis_pro_einheit,
-        lieferwoche, deadline, region, qualitaet_stufe, platform_fee_pct)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *
+        lieferwoche, deadline, region, qualitaet_stufe, platform_fee_pct, liefertag, zeitfenster_von, zeitfenster_bis)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) RETURNING *
     `, [caterer_id, produkt, einheit, menge_ziel, preis_pro_einheit,
-        lieferwoche, deadline, region, qualitaet_stufe, platform_fee_pct]);
+        lieferwoche, deadline, region, qualitaet_stufe, platform_fee_pct, liefertag, zeitfenster_von, zeitfenster_bis]);
 
     const { txHash, blockNr } = await chain.createPool(pool.id, {
       produkt, menge_ziel, preis: preis_pro_einheit, deadline,

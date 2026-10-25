@@ -70,7 +70,7 @@ router.get('/aggregiert', auth, role('admin'), async (req, res) => {
 
 // POST /api/bedarf
 router.post('/', auth, role('caterer'), async (req, res) => {
-  const { produkt, menge_pro_woche, einheit='kg', qualitaet_praeferenz='A' } = req.body;
+  const { produkt, menge_pro_woche, einheit='kg', qualitaet_praeferenz='A', umpack=false } = req.body;
   if (!produkt || !menge_pro_woche) {
     return res.status(400).json({ error: 'produkt und menge_pro_woche erforderlich' });
   }
@@ -79,9 +79,9 @@ router.post('/', auth, role('caterer'), async (req, res) => {
     if (!catId) return res.status(400).json({ error: 'Caterer-Profil fehlt' });
 
     const { rows: [b] } = await db.query(`
-      INSERT INTO bedarf_prognosen (caterer_id, produkt, menge_pro_woche, einheit, qualitaet_praeferenz)
-      VALUES ($1,$2,$3,$4,$5) RETURNING *
-    `, [catId, produkt, menge_pro_woche, einheit, qualitaet_praeferenz]);
+      INSERT INTO bedarf_prognosen (caterer_id, produkt, menge_pro_woche, einheit, qualitaet_praeferenz, umpack)
+      VALUES ($1,$2,$3,$4,$5,$6) RETURNING *
+    `, [catId, produkt, menge_pro_woche, einheit, qualitaet_praeferenz, !!umpack]);
 
     res.status(201).json({ prognose: b });
   } catch (err) {
