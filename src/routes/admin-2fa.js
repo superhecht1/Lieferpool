@@ -81,23 +81,4 @@ router.post('/disable', auth, role('admin'), async (req, res) => {
   }
 });
 
-// POST /api/admin/2fa/check – 2FA-Code beim Login prüfen
-router.post('/check', async (req, res) => {
-  const { userId, code } = req.body;
-  if (!userId || !code) return res.status(400).json({ error: 'userId und code erforderlich' });
-  try {
-    const { rows:[user] } = await db.query(
-      `SELECT totp_secret, totp_enabled FROM users WHERE id=$1 AND role='admin'`, [userId]
-    );
-    if (!user?.totp_enabled) return res.json({ valid: true, required: false });
-
-    const valid = authenticator.check(code.replace(/\s/g,''), user.totp_secret);
-    if (!valid) return res.status(400).json({ error: 'Ungültiger 2FA-Code', valid: false });
-
-    res.json({ valid: true });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 module.exports = router;

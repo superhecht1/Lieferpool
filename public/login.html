@@ -155,6 +155,15 @@ document.getElementById('btn-login').addEventListener('click', async () => {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Login fehlgeschlagen');
 
+    if (data.requires2fa) {
+      window.__pendingToken = data.pendingToken;
+      document.getElementById('tab-login').parentElement.style.display = 'none';
+      document.getElementById('2fa-box').style.display = 'block';
+      document.getElementById('totp-code').focus();
+      btn.textContent = 'Anmelden'; btn.disabled = false;
+      return;
+    }
+
     localStorage.setItem('lp_token', data.token);
     localStorage.setItem('lp_user',  JSON.stringify(data.user));
 
@@ -323,23 +332,15 @@ document.getElementById('btn-verify-2fa')?.addEventListener('click', async () =>
   btn.disabled=true; btn.textContent='Prüfe...';
 
   try {
-    const res = await fetch('/api/admin/2fa/check', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ userId: window.__userId, code })
+    const res = await fetch('/api/auth/2fa-complete', {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+window.__pendingToken},
+      body: JSON.stringify({ code })
     });
     const data = await res.json();
-    if (!res.ok || !data.valid) throw new Error(data.error || 'Ungültiger Code');
-
-    // Code OK → vollständiges Token austauschen
-    const tokenRes = await fetch('/api/auth/2fa-complete', {
-      method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+window.__pendingToken},
-      body: JSON.stringify({ userId: window.__userId })
-    });
-    const tokenData = await tokenRes.json();
-    if (!tokenRes.ok) throw new Error(tokenData.error);
-
-    Auth.setToken(tokenData.token, tokenData.refreshToken);
-    window.location.href = '/admin';
+    if (!res.ok) throw new Error(data.error || 'Ungültiger Code');
+    localStorage.setItem('lp_token', data.token);
+    localStorage.setItem('lp_user', JSON.stringify(data.user));
+    window.location.href = data.redirect || '/admin';
   } catch(err) {
     errEl.textContent = err.message; errEl.style.display='block';
     btn.disabled=false; btn.textContent='Bestätigen';

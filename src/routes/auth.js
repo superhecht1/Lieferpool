@@ -5,6 +5,12 @@ const db       = require('../db');
 const { signToken, auth, role } = require('../middleware/auth');
 
 const router = express.Router();
+const jwt = require('jsonwebtoken');
+const { authenticator } = require('otplib');
+// 2FA-Zwischentoken mit eigenem Secret: wird von der normalen auth-Middleware NICHT akzeptiert
+const PENDING_SECRET = (process.env.JWT_SECRET || '') + ':2fa-pending';
+const twofaFails = new Map(); // userId -> { n, until }
+
 const REDIRECT = { admin:'/admin', erzeuger:'/erzeuger', caterer:'/caterer', fahrer:'/fahrer' };
 
 function makeRefreshToken() { return crypto.randomBytes(32).toString('hex'); }
@@ -66,7 +72,12 @@ router.post('/login', async (req, res) => {
       }
     } catch {} // Tabelle noch nicht vorhanden → ignorieren
 
-    const { rows:[user] } = await db.query(`SELECT id,email,password,role,name FROM users WHERE email=$1`,[emailLower]);
+    let user;
+    try {
+      ({ rows:[user] } = await db.query(`SELECT id,email,password,role,name,totp_enabled FROM users WHERE email=$1`,[emailLower]));
+    } catch { // Spalte totp_enabled fehlt (migrate_security nicht gelaufen)
+      ({ rows:[user] } = await db.query(`SELECT id,email,password,role,name FROM users WHERE email=$1`,[emailLower]));
+    }
 
     if (!user || !await bcrypt.compare(password, user.password)) {
       // Fehlversuch loggen
@@ -78,8 +89,8 @@ router.post('/login', async (req, res) => {
     try { await db.query(`DELETE FROM login_attempts WHERE email=$1`,[emailLower]); } catch {}
     // 2FA-Check für Admin
     if (user.role === 'admin' && user.totp_enabled) {
-      const pendingToken = signToken({ id:user.id, role:user.role, pending2fa:true }, '5m');
-      return res.json({ requires2fa:true, pendingToken, userId:user.id });
+      const pendingToken = jwt.sign({ id:user.id, pending2fa:true }, PENDING_SECRET, { expiresIn:'5m' });
+      return res.json({ requires2fa:true, pendingToken });
     }
 
     const token        = signToken({ id:user.id, email:user.email, role:user.role, name:user.name });
@@ -319,76 +330,42 @@ router.post('/reset-password/confirm', async (req, res) => {
 });
 
 
-// POST /api/auth/2fa-complete – Nach 2FA-Verifikation volles Token ausstellen
+// POST /api/auth/2fa-complete – Code prüfen und erst dann das volle Token ausstellen
 router.post('/2fa-complete', async (req, res) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) return res.status(401).json({ error: 'Kein Token' });
+  const authHeader = req.headers.authorization || '';
+  const code = String(req.body?.code || '').replace(/\s/g, '');
+  if (!authHeader.startsWith('Bearer ')) return res.status(401).json({ error: 'Kein Token' });
+  if (!/^\d{6}$/.test(code)) return res.status(400).json({ error: '6-stelligen Code eingeben' });
+
+  let pending;
+  try {
+    pending = jwt.verify(authHeader.split(' ')[1], PENDING_SECRET);
+    if (!pending.pending2fa) throw new Error('kein pending');
+  } catch { return res.status(401).json({ error: 'Anmeldung abgelaufen – bitte neu einloggen' }); }
+
+  const f = twofaFails.get(pending.id);
+  if (f && f.n >= 5 && f.until > Date.now()) {
+    return res.status(429).json({ error: 'Zu viele Fehlversuche – 5 Minuten warten' });
+  }
 
   try {
-    const jwt = require('jsonwebtoken');
-    const pending = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET);
-    if (!pending.pending2fa) return res.status(400).json({ error: 'Kein pending 2FA' });
-
     const { rows:[user] } = await db.query(
-      `SELECT id, email, role, name FROM users WHERE id=$1`, [pending.id]
-    );
-    if (!user) return res.status(401).json({ error: 'Nutzer nicht gefunden' });
+      `SELECT id, email, role, name, totp_secret, totp_enabled FROM users WHERE id=$1 AND role='admin'`, [pending.id]);
+    if (!user || !user.totp_enabled || !user.totp_secret) return res.status(401).json({ error: 'Nutzer nicht gefunden' });
+
+    if (!authenticator.check(code, user.totp_secret)) {
+      const n = (f && f.until > Date.now() ? f.n : 0) + 1;
+      twofaFails.set(pending.id, { n, until: Date.now() + 5 * 60 * 1000 });
+      return res.status(401).json({ error: 'Ungültiger 2FA-Code' });
+    }
+    twofaFails.delete(pending.id);
 
     const token        = signToken({ id:user.id, email:user.email, role:user.role, name:user.name });
     const refreshToken = await createRefreshToken(user.id);
-    res.json({ token, refreshToken, user, redirect:'/admin' });
+    res.json({ token, refreshToken, user:{ id:user.id, email:user.email, role:user.role, name:user.name }, redirect:'/admin' });
   } catch (err) {
-    res.status(401).json({ error: 'Token ungültig' });
-  }
-});
-
-
-// PUT /api/auth/fahrer/:id – Fahrer bearbeiten (Admin)
-router.put('/fahrer/:id', auth, role('admin'), async (req, res) => {
-  const { name, email, password, lizenzklasse, aktiv } = req.body;
-  try {
-    // User updaten
-    const updates = [];
-    const vals    = [];
-    if (name)  { updates.push(`name=$${vals.push(name)}`); }
-    if (email) { updates.push(`email=$${vals.push(email.toLowerCase())}`); }
-    if (password && password.length >= 8) {
-      const hash = await bcrypt.hash(password, 10);
-      updates.push(`password=$${vals.push(hash)}`);
-    }
-    if (updates.length) {
-      vals.push(req.params.id);
-      await db.query(`UPDATE users SET ${updates.join(',')} WHERE id=$${vals.length} AND role='fahrer'`, vals);
-    }
-
-    // Profil updaten
-    await db.query(`
-      INSERT INTO fahrer_profile (user_id, lizenzklasse, aktiv)
-      VALUES ($1, $2, $3)
-      ON CONFLICT (user_id) DO UPDATE SET
-        lizenzklasse = EXCLUDED.lizenzklasse,
-        aktiv        = EXCLUDED.aktiv
-    `, [req.params.id, lizenzklasse || 'B', aktiv !== false]);
-
-    res.json({ message: 'Fahrer aktualisiert' });
-  } catch (err) {
-    console.error('[fahrer PUT]', err.message);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// DELETE /api/auth/fahrer/:id – Fahrer löschen (Admin)
-router.delete('/fahrer/:id', auth, role('admin'), async (req, res) => {
-  try {
-    // Touren-Zuweisung aufheben
-    await db.query(`UPDATE touren SET fahrer_id=NULL WHERE fahrer_id=$1`, [req.params.id]);
-    // Profil + User löschen
-    await db.query(`DELETE FROM fahrer_profile WHERE user_id=$1`, [req.params.id]);
-    await db.query(`DELETE FROM users WHERE id=$1 AND role='fahrer'`, [req.params.id]);
-    res.json({ message: 'Fahrer gelöscht' });
-  } catch (err) {
-    console.error('[fahrer DELETE]', err.message);
-    res.status(500).json({ error: err.message });
+    console.error('[2fa-complete]', err.message);
+    res.status(500).json({ error: '2FA-Prüfung fehlgeschlagen' });
   }
 });
 
