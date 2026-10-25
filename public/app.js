@@ -131,6 +131,7 @@ function renderHeader(activeView, navItems, onNav) {
         <button class="btn-theme" type="button"></button>
         <button class="btn-logout" type="button">Abmelden</button>
       </div>
+      <button class="btn-notif" type="button" style="background:none;border:0;color:var(--text2);font:inherit;font-size:13px;text-align:left;cursor:pointer;padding:4px 0">🔔 Benachrichtigungen</button>
     </div>`;
 
   hdr.innerHTML = `
@@ -183,6 +184,7 @@ function renderHeader(activeView, navItems, onNav) {
   };
   hdr.querySelectorAll('.btn-logout, .btn-logout-m').forEach(b => b.addEventListener('click', logout));
   hdr.querySelectorAll('.btn-theme').forEach(b => b.addEventListener('click', toggleTheme));
+  hdr.querySelectorAll('.btn-notif').forEach(b => b.addEventListener('click', () => { closePanel(); openNotifSettings(); }));
   applyTheme(getTheme());
 }
 
@@ -650,4 +652,36 @@ function renderOverviewExtras(elId, pools, extra) {
   el.innerHTML = `
     <div class="card"><div class="card-title">Liefertage dieser Woche</div><div style="display:flex;gap:8px;overflow-x:auto">${spalten}</div></div>
     <div class="card"><div class="card-title">Braucht Aufmerksamkeit</div>${liste}</div>`;
+}
+
+
+// ── Benachrichtigungen (Einstellungen) ─────────────────────────
+async function openNotifSettings() {
+  const hdrs = { 'Authorization': 'Bearer ' + Auth.getToken(), 'Content-Type': 'application/json' };
+  let pref = { email_erinnerungen: true, push_erinnerungen: true };
+  try { const r = await fetch('/api/benachrichtigungen/einstellungen', { headers: hdrs }); if (r.ok) pref = await r.json(); } catch {}
+  const ov = document.createElement('div');
+  ov.className = 'modal-overlay';
+  ov.innerHTML = `<div class="modal" style="max-width:440px">
+    <div class="modal-head"><div class="modal-title">🔔 Benachrichtigungen</div><button class="modal-close" aria-label="Schließen">✕</button></div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text2);margin-bottom:1rem">Erinnerungen, z. B. wenn die Deadline eines Pools naht oder morgen eine Lieferung ansteht.</p>
+      <label style="display:flex;gap:10px;align-items:center;margin-bottom:.75rem"><input type="checkbox" id="np-mail" ${pref.email_erinnerungen ? 'checked' : ''}> Per E-Mail</label>
+      <label style="display:flex;gap:10px;align-items:center;margin-bottom:1rem"><input type="checkbox" id="np-push" ${pref.push_erinnerungen ? 'checked' : ''}> Als Push-Nachricht (falls im Browser erlaubt)</label>
+      <div id="np-msg" style="font-size:12px;color:var(--text3);min-height:18px"></div>
+      <div class="modal-actions"><button class="btn btn-primary" id="np-save">Speichern</button></div>
+    </div></div>`;
+  document.body.appendChild(ov);
+  const close = () => ov.remove();
+  ov.querySelector('.modal-close').onclick = close;
+  ov.addEventListener('click', e => { if (e.target === ov) close(); });
+  ov.querySelector('#np-save').onclick = async () => {
+    const msg = ov.querySelector('#np-msg');
+    try {
+      const r = await fetch('/api/benachrichtigungen/einstellungen', { method: 'PUT', headers: hdrs,
+        body: JSON.stringify({ email_erinnerungen: ov.querySelector('#np-mail').checked, push_erinnerungen: ov.querySelector('#np-push').checked }) });
+      if (!r.ok) throw new Error();
+      msg.textContent = 'Gespeichert.'; setTimeout(close, 700);
+    } catch { msg.textContent = 'Speichern fehlgeschlagen.'; }
+  };
 }

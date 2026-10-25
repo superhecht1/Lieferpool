@@ -3,6 +3,7 @@
  * Erzeuger bekommen ordnungsgemäße Abrechnungsbelege nach deutschem Recht
  */
 const express = require('express');
+const { decrypt } = require('../services/fieldcrypto');
 const router  = express.Router();
 const db      = require('../db');
 const { auth, role } = require('../middleware/auth');
@@ -63,6 +64,7 @@ router.post('/erstellen', auth, role('admin'), async (req, res) => {
     `, [auszahlung_id]);
 
     if (!az) return res.status(404).json({ error: 'Auszahlung nicht gefunden' });
+    az.iban = decrypt(az.iban);
 
     // Doppelt prüfen
     const { rows:[exists] } = await db.query(

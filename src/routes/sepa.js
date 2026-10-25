@@ -10,6 +10,7 @@
  */
 
 const express = require('express');
+const { decrypt } = require('../services/fieldcrypto');
 const db      = require('../db');
 const { auth, role } = require('../middleware/auth');
 
@@ -52,7 +53,7 @@ function generatePain001(payments, msgId) {
         </Cdtr>
         <CdtrAcct>
           <Id>
-            <IBAN>${xmlEscape(p.iban.replace(/\s/g,''))}</IBAN>
+            <IBAN>${xmlEscape(decrypt(p.iban).replace(/\s/g,''))}</IBAN>
           </Id>
         </CdtrAcct>
         <RmtInf>

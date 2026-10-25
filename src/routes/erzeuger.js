@@ -5,6 +5,7 @@ const { validateUpload } = require('../middleware/upload-validate');
 const chain   = require('../services/chain');
 const email   = require('../services/email');
 const crypto  = require('crypto');
+const { encrypt, decrypt } = require('../services/fieldcrypto');
 
 const router = express.Router();
 
@@ -43,11 +44,12 @@ router.get('/me', auth, role('erzeuger'), async (req, res) => {
 // PUT /api/erzeuger/me
 router.put('/me', auth, role('erzeuger'), async (req, res) => {
   const {
-    betrieb_name, region, iban, bank_name,
+    betrieb_name, region, bank_name,
     adresse, plz, ort, telefon, website,
     beschreibung, sortiment, max_kapazitaet,
     betriebsgroesse, ust_id, gruendungsjahr,
   } = req.body;
+  const iban = encrypt(req.body.iban);
   try {
     const { rows: [e] } = await db.query(`
       UPDATE erzeuger SET
@@ -262,7 +264,7 @@ router.get('/export/csv', auth, role('admin'), async (req, res) => {
     const headers = ['Betrieb','E-Mail','Region','Adresse','PLZ','Ort','Telefon','IBAN','USt-ID','Sortiment','Kapazität (kg/Wo)','Commitments','Ausgezahlt (€)','Mitglied seit'];
     const rows_csv = rows.map(r => [
       r.betrieb_name, r.email, r.region||'', r.adresse||'', r.plz||'', r.ort||'',
-      r.telefon||'', r.iban||'', r.ust_id||'', r.sortiment||'', r.max_kapazitaet||'',
+      r.telefon||'', decrypt(r.iban)||'', r.ust_id||'', r.sortiment||'', r.max_kapazitaet||'',
       r.commitments, r.ausgezahlt_gesamt, r.created_at,
     ].map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(';'));
 

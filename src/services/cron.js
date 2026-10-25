@@ -147,6 +147,8 @@ function start() {
   // Alle 24h: Token cleanup
   setInterval(cleanupTokens, 24 * 60 * 60 * 1000);
   setInterval(datenschutzBereinigung, 24 * 60 * 60 * 1000);
+  setInterval(() => require('./erinnerungen').run(), 60 * 60 * 1000);
+  setTimeout(() => require('./erinnerungen').run(), 2 * 60 * 1000);
   setTimeout(datenschutzBereinigung, 60 * 1000);
 
   // Täglich 06:00: Tagescheck + Monitoring

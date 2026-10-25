@@ -1,4 +1,5 @@
 const express = require('express');
+const { decrypt } = require('../services/fieldcrypto');
 const db      = require('../db');
 const { auth, role } = require('../middleware/auth');
 
@@ -307,7 +308,7 @@ router.get('/abrechnung/:erzeuger_id', auth, role('admin', 'erzeuger'), async (r
   </div>
 </div>
 <h1>${e.betrieb_name}</h1>
-<div class="betrieb">${e.email} · Region: ${e.region}${e.iban ? ' · IBAN: ' + e.iban : ''}</div>
+<div class="betrieb">${e.email} · Region: ${e.region}${e.iban ? ' · IBAN: ' + decrypt(e.iban) : ''}</div>
 <div class="summary">
   <div class="sum-box">
     <div class="sum-label">Gesamt Netto</div>

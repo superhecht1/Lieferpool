@@ -65,6 +65,7 @@ app.use(cors({
 }));
 
 app.use(express.json({ limit: '10mb' }));
+app.use('/api', require('./services/fieldcrypto').jsonDecryptMiddleware);
 
 // ── Input Sanitization ─────────────────────────────────────────
 const { sanitizeBody } = require('./middleware/sanitize');
@@ -95,6 +96,7 @@ app.use('/api/lieferungen',  require('./routes/lieferungen'));
 app.use('/api/lager',        require('./routes/lager'));
 app.use('/api/bedarf',       require('./routes/bedarf'));
 app.use('/api/kennzahlen',   require('./routes/kennzahlen'));
+app.use('/api/benachrichtigungen', require('./routes/benachrichtigungen'));
 app.use('/api/touren',       require('./routes/touren'));
 app.use('/api/fahrzeuge',    require('./routes/fahrzeuge'));
 app.use('/api/auszahlungen', require('./routes/auszahlungen'));
@@ -332,8 +334,11 @@ app.use((err, req, res, next) => {
   const reqId = req.id || '?';
   console.error(`[${reqId}] Unhandled:`, err.message);
   if (err.message?.includes('CORS')) return res.status(403).json({ error: err.message });
+  require('./services/alerts').alertAdmin('Serverfehler 500 – ' + req.method + ' ' + req.path, err, { requestId: reqId, user: req.user?.id });
   res.status(500).json({ error: 'Interner Fehler', requestId: reqId });
 });
+
+require('./services/alerts').install();
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

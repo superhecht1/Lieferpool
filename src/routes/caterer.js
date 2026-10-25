@@ -1,6 +1,7 @@
 const express = require('express');
 const db      = require('../db');
 const { auth, role } = require('../middleware/auth');
+const { encrypt, decrypt } = require('../services/fieldcrypto');
 
 const router = express.Router();
 
@@ -32,8 +33,9 @@ router.put('/me', auth, role('caterer'), async (req, res) => {
   const {
     firma_name, region, adresse, plz, ort, telefon, website,
     beschreibung, ust_id, kuechen_typ, kuechen_kapazitaet,
-    anz_plaetze, bank_name, iban, gruendungsjahr,
+    anz_plaetze, bank_name, gruendungsjahr,
   } = req.body;
+  const iban = encrypt(req.body.iban);
   try {
     const { rows: [c] } = await db.query(`
       UPDATE caterer SET
