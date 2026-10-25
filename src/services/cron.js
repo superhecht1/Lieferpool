@@ -148,6 +148,8 @@ function start() {
   setInterval(cleanupTokens, 24 * 60 * 60 * 1000);
   setInterval(datenschutzBereinigung, 24 * 60 * 60 * 1000);
   setInterval(() => require('./erinnerungen').run(), 60 * 60 * 1000);
+  setInterval(() => require('./vorlagenJob').createDuePools(), 6 * 60 * 60 * 1000);
+  setTimeout(() => require('./vorlagenJob').createDuePools(), 3 * 60 * 1000);
   setTimeout(() => require('./erinnerungen').run(), 2 * 60 * 1000);
   setTimeout(datenschutzBereinigung, 60 * 1000);
 

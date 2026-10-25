@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Unsere Wirkung – LieferPool</title>
+  <meta name="description" content="Anonyme Kennzahlen unserer regionalen Lieferkooperative: Bio-Anteil, Regionalität, Abfall.">
+  <link rel="stylesheet" href="/style.css">
+  <script>try{var t=localStorage.getItem('lp_theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+  <style>
+    .wk{max-width:960px;margin:0 auto;padding:3rem 1.25rem 4rem}
+    .wk h1{font-family:'Bricolage Grotesque',sans-serif;font-size:clamp(2rem,5vw,3rem);letter-spacing:-.02em;line-height:1.1;margin:.5rem 0 .75rem}
+    .wk .lead{color:var(--text2);max-width:560px;font-size:16px;margin-bottom:2rem}
+    .wk-rings{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:1rem;margin-bottom:1.25rem}
+    .wk-ring{display:flex;align-items:center;gap:16px;background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:18px 20px}
+    .wk-ring b{font-family:'Bricolage Grotesque',sans-serif;font-size:18px;display:block}
+    .wk-ring span{font-size:13px;color:var(--text3)}
+    .wk-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem}
+    .wk-kpi{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:18px 20px}
+    .wk-kpi .v{font-family:'Bricolage Grotesque',sans-serif;font-size:32px;font-weight:700;letter-spacing:-.02em}
+    .wk-kpi .l{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3)}
+    .wk-note{font-size:12px;color:var(--text3);margin-top:1.5rem;line-height:1.6}
+    .wk-foot{margin-top:2.5rem;font-size:13px;display:flex;gap:1.25rem;flex-wrap:wrap}
+  </style>
+</head>
+<body>
+<div class="wk">
+  <a href="/" style="font-size:13px">← Startseite</a>
+  <h1>Unsere Wirkung</h1>
+  <p class="lead">Regionale Lebensmittel, kurze Wege, wenig Abfall. Diese Zahlen kommen live aus unserer Lieferkooperative. Sie sind zusammengefasst und enthalten keine Namen oder Einzelwerte.</p>
+  <div class="wk-rings" id="rings"></div>
+  <div class="wk-kpis" id="kpis"></div>
+  <p class="wk-note" id="note">Lade Zahlen …</p>
+  <div class="wk-foot"><a href="/impressum">Impressum</a><a href="/datenschutz">Datenschutz</a><a href="/agb">Nutzungsbedingungen</a></div>
+</div>
+<script>
+(async function () {
+  var fmt = function (v, d) { return v === null || v === undefined ? '–' : Number(v).toLocaleString('de-DE', { maximumFractionDigits: d == null ? 0 : d }); };
+  function ring(label, val, sub, good) {
+    var v = (val === null || val === undefined) ? null : Math.max(0, Math.min(100, Number(val)));
+    var C = 2 * Math.PI * 42, off = v === null ? C : C * (1 - v / 100);
+    return '<div class="wk-ring"><svg width="96" height="96" viewBox="0 0 100 100" aria-hidden="true">' +
+      '<circle cx="50" cy="50" r="42" fill="none" stroke="var(--border2)" stroke-width="9"/>' +
+      '<circle cx="50" cy="50" r="42" fill="none" stroke="' + (good ? 'var(--green)' : 'var(--amber)') + '" stroke-width="9" stroke-linecap="round" stroke-dasharray="' + C.toFixed(1) + '" stroke-dashoffset="' + off.toFixed(1) + '" transform="rotate(-90 50 50)"/>' +
+      '<text x="50" y="56" text-anchor="middle" font-family="Bricolage Grotesque,sans-serif" font-weight="700" font-size="22" fill="var(--text)">' + (v === null ? '–' : fmt(v) + '%') + '</text></svg>' +
+      '<div><b>' + label + '</b><span>' + sub + '</span></div></div>';
+  }
+  function kpi(l, v, u) { return '<div class="wk-kpi"><div class="l">' + l + '</div><div class="v">' + v + (u ? ' <span style="font-size:15px;color:var(--text3);font-weight:500">' + u + '</span>' : '') + '</div></div>'; }
+  try {
+    var r = await fetch('/api/public/wirkung');
+    if (!r.ok) throw new Error();
+    var d = await r.json();
+    document.getElementById('rings').innerHTML =
+      ring('Bio', d.bio_quote, 'Ziel ' + d.ziele.bio_prozent + ' %', d.bio_quote !== null && d.bio_quote >= d.ziele.bio_prozent) +
+      ring('Regional', d.regional_quote, 'innerhalb ' + d.ziele.regional_radius_km + ' km', d.regional_quote !== null && d.regional_quote >= 50) +
+      ring('Abfall', d.abfall_quote, 'niedriger ist besser', d.abfall_quote !== null && d.abfall_quote <= 10);
+    document.getElementById('kpis').innerHTML =
+      kpi('Geliefert ' + d.jahr, fmt(d.kg), 'kg') +
+      kpi('Ø Transportweg', fmt(d.avg_transport_km, 1), 'km') +
+      kpi('Erzeugerbetriebe', d.erzeuger === null ? '–' : fmt(d.erzeuger), '') +
+      kpi('Abnehmer', d.caterer === null ? '–' : fmt(d.caterer), '');
+    document.getElementById('note').textContent = 'Stand: ' + new Date(d.stand).toLocaleDateString('de-DE') + ' · Zeitraum: ' + d.jahr + ' bis heute · Bio = verifizierte Bio-Zertifikate, Regional = Luftlinie Erzeuger–Abnehmer, Abfall laut Meldungen der Abnehmer. Kleine Zahlen (unter 3) werden nicht einzeln angezeigt.';
+  } catch (e) {
+    document.getElementById('note').textContent = 'Die Zahlen sind derzeit nicht öffentlich verfügbar.';
+  }
+})();
+</script>
+</body>
+</html>

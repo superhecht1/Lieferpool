@@ -97,6 +97,7 @@ app.use('/api/lager',        require('./routes/lager'));
 app.use('/api/bedarf',       require('./routes/bedarf'));
 app.use('/api/kennzahlen',   require('./routes/kennzahlen'));
 app.use('/api/benachrichtigungen', require('./routes/benachrichtigungen'));
+app.use('/api/public', require('./routes/public'));
 app.use('/api/touren',       require('./routes/touren'));
 app.use('/api/fahrzeuge',    require('./routes/fahrzeuge'));
 app.use('/api/auszahlungen', require('./routes/auszahlungen'));
@@ -313,7 +314,7 @@ app.use(express.static(PUBLIC_DIR, {
 app.get('/sitemap.xml', (_, res) => res.sendFile(path.join(PUBLIC_DIR, 'sitemap.xml')));
 app.get('/robots.txt',  (_, res) => res.type('text/plain').sendFile(path.join(PUBLIC_DIR, 'robots.txt')));
 
-['login','erzeuger','caterer','admin','fahrer','impressum','datenschutz','agb','register','reset-password'].forEach(p => {
+['login','erzeuger','caterer','admin','fahrer','impressum','datenschutz','agb','register','reset-password','wirkung'].forEach(p => {
   app.get('/' + p, (_, res) => res.sendFile(path.join(PUBLIC_DIR, p + '.html')));
 });
 app.get('/', (_, res) => res.sendFile(path.join(PUBLIC_DIR, 'index.html')));

@@ -398,7 +398,7 @@ router.get('/export.pdf', auth, role('admin', 'caterer'), async (req, res) => {
 
     const kpi = [
       ['Bio-Quote (Menge)', f(g.bio_quote_kg) + ' %', `Ziel ${d.ziele.bio_prozent} % · + Beirat ${f(g.beirat_quote_kg)} %`],
-      ['Regionalquote', f(g.regional_quote_kg) + ' %', `≤ ${d.ziele.regional_radius_km} km`],
+      ['Regionalquote', f(g.regional_quote_kg) + ' %', `max. ${d.ziele.regional_radius_km} km`],
       ['Abfallquote', f(g.abfall_quote) + ' %', 'laut Meldungen'],
       ['Ø Transportweg', f(g.avg_transport_km) + ' km', `${f(g.tkm)} tkm`],
       ['Gelieferte Menge', f(g.kg) + ' kg', `${f(g.eur)} € Wareneinsatz`],
@@ -414,9 +414,61 @@ router.get('/export.pdf', auth, role('admin', 'caterer'), async (req, res) => {
     });
     doc.y = y + 150; doc.x = 50;
 
+    // Zielerreichung
+    const ziel = [
+      ['Bio-Anteil (Menge)', g.bio_quote_kg, `mind. ${d.ziele.bio_prozent} %`, g.bio_quote_kg !== null && g.bio_quote_kg >= d.ziele.bio_prozent],
+      ['Regionalanteil', g.regional_quote_kg, 'mind. 50 %', g.regional_quote_kg !== null && g.regional_quote_kg >= 50],
+      ['Abfallquote', g.abfall_quote, 'max. 10 %', g.abfall_quote !== null && g.abfall_quote <= 10],
+    ];
+    doc.fontSize(12).fillColor('#000').text('Zielerreichung').moveDown(.3);
+    ziel.forEach(z => {
+      const yy = doc.y;
+      doc.circle(56, yy + 6, 4).fill(z[1] === null ? '#bbb' : (z[3] ? '#2e7d3e' : '#c6922a'));
+      doc.fillColor('#000').fontSize(9).text(`${z[0]}: ${f(z[1])} %  (Ziel ${z[2]})`, 68, yy, { width: 470 });
+      doc.y = yy + 15;
+    });
+    doc.x = 50; doc.moveDown(.8);
+
+    // Verlaufsdiagramm (Bio / Regional / Abfall je Monat)
+    if (d.monate && d.monate.length >= 2) {
+      if (doc.y > 560) doc.addPage();
+      doc.fontSize(12).fillColor('#000').text('Verlauf je Monat').moveDown(.4);
+      const cx = 70, cy = doc.y + 4, cw = 460, ch = 110;
+      doc.rect(cx, cy, cw, ch).strokeColor('#cfd8cf').stroke();
+      [0, 25, 50, 75, 100].forEach(p => {
+        const yy = cy + ch - (p / 100) * ch;
+        doc.moveTo(cx, yy).lineTo(cx + cw, yy).strokeColor('#eee').stroke();
+        doc.fontSize(7).fillColor('#888').text(p + '%', 40, yy - 3, { width: 26, align: 'right', lineBreak: false });
+      });
+      const n = d.monate.length;
+      const serien = [['bio_quote_kg', '#2e7d3e', 'Bio'], ['regional_quote_kg', '#2b6cb0', 'Regional'], ['abfall_quote', '#c0392b', 'Abfall']];
+      serien.forEach(([key, col]) => {
+        let started = false;
+        d.monate.forEach((m, i) => {
+          const v = m[key]; if (v === null || v === undefined) { started = false; return; }
+          const px = cx + (n === 1 ? cw / 2 : (i / (n - 1)) * cw), py = cy + ch - Math.max(0, Math.min(100, v)) / 100 * ch;
+          if (!started) { doc.moveTo(px, py); started = true; } else doc.lineTo(px, py);
+        });
+        doc.lineWidth(1.5).strokeColor(col).stroke();
+        d.monate.forEach((m, i) => {
+          const v = m[key]; if (v === null || v === undefined) return;
+          doc.circle(cx + (n === 1 ? cw / 2 : (i / (n - 1)) * cw), cy + ch - Math.max(0, Math.min(100, v)) / 100 * ch, 2).fill(col);
+        });
+      });
+      doc.lineWidth(1);
+      d.monate.forEach((m, i) => {
+        if (n > 12 && i % 2) return;
+        doc.fontSize(7).fillColor('#666').text(String(m.monat).slice(2), cx + (n === 1 ? cw / 2 : (i / (n - 1)) * cw) - 14, cy + ch + 4, { width: 28, align: 'center', lineBreak: false });
+      });
+      let lx = cx;
+      serien.forEach(([, col, name]) => { doc.rect(lx, cy + ch + 20, 8, 8).fill(col); doc.fillColor('#333').fontSize(8).text(name, lx + 12, cy + ch + 20, { lineBreak: false }); lx += 80; });
+      doc.x = 50; doc.y = cy + ch + 42;
+    }
+
     const tabelle = (titel, spalten, zeilen) => {
       if (doc.y > 680) doc.addPage();
-      doc.fontSize(12).fillColor('#000').text(titel).moveDown(.4);
+      doc.x = 50;
+      doc.fontSize(12).fillColor('#000').text(titel, 50, doc.y).moveDown(.4);
       const w = (495) / spalten.length;
       const row = (cells, bold) => {
         if (doc.y > 760) doc.addPage();
@@ -438,7 +490,7 @@ router.get('/export.pdf', auth, role('admin', 'caterer'), async (req, res) => {
 
     doc.fontSize(8).fillColor('#666').text(
       'Methodik: Bio = verifiziertes Zertifikat (Bio, Demeter, Naturland) zum Lieferdatum; Mengen anteilig nach Zusagen. ' +
-      `Regional = Luftlinie Erzeuger–Abnehmer ≤ ${d.ziele.regional_radius_km} km. Transportweg = Luftlinie Erzeuger→Hub→Abnehmer (Näherung). ` +
+      `Regional = Luftlinie Erzeuger–Abnehmer max. ${d.ziele.regional_radius_km} km. Transportweg = Luftlinie Erzeuger→Hub→Abnehmer (Näherung). ` +
       'Abfallquote basiert auf Meldungen der Abnehmer. Quoten in kg beziehen sich nur auf Positionen in kg.',
       50, doc.y, { width: 495 });
     doc.end();
@@ -449,3 +501,4 @@ router.get('/export.pdf', auth, role('admin', 'caterer'), async (req, res) => {
 });
 
 module.exports = router;
+module.exports.berechne = berechne;

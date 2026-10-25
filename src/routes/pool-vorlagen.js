@@ -85,22 +85,10 @@ router.post('/:id/erstellen', auth, role('caterer','admin'), async (req, res) =>
     `, [req.params.id]);
     if (!v) return res.status(404).json({ error: 'Vorlage nicht gefunden' });
 
-    // Nächste KW berechnen
-    const heute     = new Date();
-    const naechste  = new Date(heute);
-    naechste.setDate(heute.getDate() + (7 - heute.getDay() + v.wochentag) % 7 || 7);
-    const kw        = getKW(naechste);
-    const lieferwoche = `${naechste.getFullYear()}-KW${String(kw).padStart(2,'0')}`;
-
-    // Deadline setzen
-    const deadline  = new Date(naechste);
-    deadline.setDate(deadline.getDate() - (v.deadline_tage||3));
-
-    const { rows:[pool] } = await db.query(`
-      INSERT INTO pools (caterer_id, produkt, menge_ziel, preis_pro_einheit, lieferwoche, deadline, notiz, status)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,'offen') RETURNING *
-    `, [v.cat_id, v.produkt, v.menge_ziel, v.preis_pro_einheit, lieferwoche, deadline.toISOString(), v.notiz||null]);
-
+    const r = await require('../services/vorlagenJob').poolAusVorlage(v);
+    if (!r.pool) return res.status(409).json({ error: r.grund === 'existiert'
+      ? `Für ${r.lieferwoche} gibt es diesen Pool schon` : 'Die Deadline für den nächsten Liefertermin ist bereits vorbei' });
+    const pool = r.pool, lieferwoche = r.lieferwoche;
     res.status(201).json({ pool, message: `Pool für ${lieferwoche} erstellt` });
   } catch(err) { res.status(500).json({ error: err.message }); }
 });
