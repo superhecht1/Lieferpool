@@ -69,6 +69,52 @@ async function kontoBuchen(catererId, kistenDelta, betragDelta) {
     [catererId, kistenDelta, betragDelta]);
 }
 
+/** Kistenkonto Erzeuger: positiv = Kisten beim Erzeuger. delta>0 leer abgegeben, delta<0 voll mitgenommen. */
+async function bucheErzeugerKisten({ erzeugerId, delta, notiz, userId, quelle = 'Admin' }) {
+  delta = parseInt(delta);
+  if (!erzeugerId || !Number.isInteger(delta) || delta === 0) { const e = new Error('Ungültige Buchung'); e.status = 400; throw e; }
+  const preis = parseFloat(process.env.PFAND_PRO_KISTE) || 3.00;
+  await db.query(`INSERT INTO pfand_bewegungen (entity_type, entity_id, bewegung_typ, kisten_anzahl, pfand_betrag, notiz, created_by)
+                  VALUES ('erzeuger',$1,$2,$3,$4,$5,$6)`,
+    [erzeugerId, delta > 0 ? 'leer_abgegeben' : 'voll_mitgenommen', Math.abs(delta), Math.abs(delta) * preis,
+     [quelle, notiz].filter(Boolean).join(': ') || null, userId || null]);
+  await db.query(`INSERT INTO pfand_konten (entity_type, entity_id, kisten_saldo, pfand_saldo) VALUES ('erzeuger',$1,$2,$3)
+                  ON CONFLICT (entity_type, entity_id) DO UPDATE
+                  SET kisten_saldo = pfand_konten.kisten_saldo + $2, pfand_saldo = pfand_konten.pfand_saldo + $3, updated_at = NOW()`,
+    [erzeugerId, delta, delta * preis]);
+}
+
+// GET /api/pfand/erzeuger-mein – Erzeuger: eigenes Kistenkonto
+router.get('/erzeuger-mein', auth, role('erzeuger'), async (req, res) => {
+  try {
+    const { rows: [e] } = await db.query(`SELECT id FROM erzeuger WHERE user_id=$1`, [req.user.id]);
+    if (!e) return res.status(404).json({ error: 'Kein Erzeuger-Profil' });
+    const [k, v] = await Promise.all([
+      db.query(`SELECT kisten_saldo, pfand_saldo FROM pfand_konten WHERE entity_type='erzeuger' AND entity_id=$1`, [e.id]),
+      db.query(`SELECT created_at, bewegung_typ, kisten_anzahl, notiz FROM pfand_bewegungen
+                WHERE entity_type='erzeuger' AND entity_id=$1 ORDER BY created_at DESC LIMIT 50`, [e.id]),
+    ]);
+    res.json({ konto: k.rows[0] || { kisten_saldo: 0, pfand_saldo: 0 }, verlauf: v.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/pfand/erzeuger-konten – Admin: alle Erzeuger-Kistenkonten
+router.get('/erzeuger-konten', auth, role('admin'), async (req, res) => {
+  try {
+    const { rows } = await db.query(`SELECT e.id, e.betrieb_name, k.kisten_saldo, k.pfand_saldo
+      FROM pfand_konten k JOIN erzeuger e ON e.id=k.entity_id WHERE k.entity_type='erzeuger' ORDER BY k.kisten_saldo DESC`);
+    res.json({ konten: rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/pfand/erzeuger-buchung – Admin: Korrektur/Direktbuchung (kisten >0 an Erzeuger gegeben, <0 zurückgenommen)
+router.post('/erzeuger-buchung', auth, role('admin'), async (req, res) => {
+  try {
+    await bucheErzeugerKisten({ erzeugerId: req.body.erzeuger_id, delta: req.body.kisten, notiz: req.body.notiz, userId: req.user.id, quelle: 'Admin' });
+    res.json({ message: 'Gebucht' });
+  } catch (err) { res.status(err.status || 500).json({ error: err.message }); }
+});
+
 /** Ausgabe beim Anlegen einer Lieferung (aus lieferungen.js) */
 async function bucheAusgabe({ lieferungId, catererId, kisten, preis, userId }) {
   if (!catererId || !(kisten > 0)) return;
@@ -257,3 +303,4 @@ router.get('/export-csv', auth, role('admin'), async (req, res) => {
 module.exports = router;
 router.bucheRueckgabe = bucheRueckgabe;
 router.bucheAusgabe = bucheAusgabe;
+router.bucheErzeugerKisten = bucheErzeugerKisten;

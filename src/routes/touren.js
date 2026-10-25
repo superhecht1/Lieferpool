@@ -161,10 +161,12 @@ router.get('/meine/alle', auth, role('fahrer'), async (req, res) => {
 router.post('/:id/stopps/:stoppId/bestaetigen', auth, role('fahrer'), async (req, res) => {
   const { menge_geliefert, notiz, foto } = req.body;
   const kisten = Math.max(0, parseInt(req.body.pfand_kisten_abgeholt) || 0);
+  const leerAb = Math.max(0, Math.min(500, parseInt(req.body.kisten_leer_abgegeben) || 0));
+  const vollMit = Math.max(0, Math.min(500, parseInt(req.body.kisten_voll_mitgenommen) || 0));
   try {
     // Nur eigener Stopp einer eigenen Tour; Vorzustand für idempotentes Pfand-Buchen (Offline-Queue kann doppelt senden)
     const { rows: [alt] } = await db.query(`
-      SELECT ts.status, ts.lieferung_id FROM tour_stopps ts JOIN touren t ON t.id = ts.tour_id
+      SELECT ts.status, ts.lieferung_id, ts.typ, ts.erzeuger_id FROM tour_stopps ts JOIN touren t ON t.id = ts.tour_id
       WHERE ts.id=$1 AND ts.tour_id=$2 AND t.fahrer_id=$3`, [req.params.stoppId, req.params.id, req.user.id]);
     if (!alt) return res.status(404).json({ error: 'Stopp nicht gefunden' });
 
@@ -175,9 +177,11 @@ router.post('/:id/stopps/:stoppId/bestaetigen', auth, role('fahrer'), async (req
         notiz          = COALESCE($2, notiz),
         foto_base64    = COALESCE($3, foto_base64),
         pfand_kisten_abgeholt = COALESCE($6, pfand_kisten_abgeholt),
+        kisten_leer_abgegeben = COALESCE($7, kisten_leer_abgegeben),
+        kisten_voll_mitgenommen = COALESCE($8, kisten_voll_mitgenommen),
         bestaetigt_at  = NOW()
       WHERE id=$4 AND tour_id=$5
-    `, [menge_geliefert || null, notiz || null, foto || null, req.params.stoppId, req.params.id, kisten > 0 ? kisten : null]);
+    `, [menge_geliefert || null, notiz || null, foto || null, req.params.stoppId, req.params.id, kisten > 0 ? kisten : null, leerAb > 0 ? leerAb : null, vollMit > 0 ? vollMit : null]);
 
     // Lieferschein-Status aktualisieren falls vorhanden
     await db.query(`
@@ -198,6 +202,14 @@ router.post('/:id/stopps/:stoppId/bestaetigen', auth, role('fahrer'), async (req
           pfand = { kisten: n, offen: r.offen };
         }
       } catch (e) { console.warn('[pfand]', e.message); }
+    }
+    // Kisten beim Erzeuger (Abholstopp): leer abgegeben (+), voll mitgenommen (−) – nur beim ersten Bestätigen
+    if (alt.erzeuger_id && alt.typ === 'abholung' && alt.status !== 'abgeschlossen') {
+      try {
+        const pfandRoute = require('./pfand');
+        if (leerAb > 0)  await pfandRoute.bucheErzeugerKisten({ erzeugerId: alt.erzeuger_id, delta: leerAb,  notiz: 'Tour ' + req.params.id, userId: req.user.id, quelle: 'Fahrer' });
+        if (vollMit > 0) await pfandRoute.bucheErzeugerKisten({ erzeugerId: alt.erzeuger_id, delta: -vollMit, notiz: 'Tour ' + req.params.id, userId: req.user.id, quelle: 'Fahrer' });
+      } catch (e) { console.warn('[pfand/erzeuger]', e.message); }
     }
     res.json({ message: 'Stopp bestätigt', pfand });
   } catch (err) { res.status(500).json({ error: err.message }); }

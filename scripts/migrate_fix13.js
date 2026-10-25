@@ -6,6 +6,8 @@ const db = new Pool({ connectionString: process.env.DATABASE_URL });
   try {
     await c.query(`
       ALTER TABLE tour_stopps ADD COLUMN IF NOT EXISTS pfand_kisten_abgeholt INTEGER;
+      ALTER TABLE tour_stopps ADD COLUMN IF NOT EXISTS kisten_leer_abgegeben INTEGER;
+      ALTER TABLE tour_stopps ADD COLUMN IF NOT EXISTS kisten_voll_mitgenommen INTEGER;
       CREATE TABLE IF NOT EXISTS pfand_konten (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         entity_type VARCHAR(20) NOT NULL, entity_id UUID NOT NULL,

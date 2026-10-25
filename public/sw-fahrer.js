@@ -2,8 +2,8 @@
  * Service Worker – FrischKette Fahrer
  * Nur same-origin Requests werden gecacht.
  */
-const CACHE     = 'frischkette-fahrer-v7';
-const API_CACHE = 'frischkette-fahrer-api-v7';
+const CACHE     = 'frischkette-fahrer-v8';
+const API_CACHE = 'frischkette-fahrer-api-v8';
 
 const STATIC = [
   '/fahrer',
