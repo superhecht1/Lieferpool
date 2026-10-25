@@ -9,7 +9,7 @@
   <style>
     .role-badge-lg {
       display:inline-flex;align-items:center;gap:.5rem;
-      background:var(--green-bg);border:1px solid #b8dfc0;
+      background:var(--green-bg);border:1px solid var(--green-line);
       border-radius:var(--radius);padding:.5rem 1rem;
       font-size:13px;font-weight:600;color:var(--green);
       margin-bottom:1.25rem;
@@ -19,6 +19,7 @@
     .pw-hint { font-size:11px;color:var(--text3);margin-top:4px; }
     .invite-info { background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:.875rem 1rem;margin-bottom:1.25rem;font-size:13px; }
   </style>
+<script>try{var t=localStorage.getItem('lp_theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
 </head>
 <body>
 <div class="login-page">
@@ -163,7 +164,7 @@ document.getElementById('reg-pw')?.addEventListener('input', function() {
   if (/[A-Z]/.test(pw))         s++;
   if (/[0-9]/.test(pw))         s++;
   if (/[^A-Za-z0-9]/.test(pw)) s++;
-  const colors = ['','#c62828','#e65100','#f9a825','#2e7d3e','#1b5e20'];
+  const colors = ['','#e5484d','#f08c3a','#e5b83a','#6cc04a','#2e9e4a'];
   const labels = ['','Sehr schwach','Schwach','Mittel','Stark','Sehr stark'];
   bar.style.width      = (s*20)+'%';
   bar.style.background = colors[s]||'var(--border)';

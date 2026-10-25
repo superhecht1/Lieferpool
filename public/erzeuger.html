@@ -902,7 +902,7 @@ async function loadErzNachrichten() {
 
     const navBtn = document.querySelector('[data-view="nachrichten"]');
     if (navBtn && ungelesen > 0)
-      navBtn.innerHTML = `💬 Nachrichten <span style="background:var(--red);color:#fff;border-radius:9px;padding:1px 6px;font-size:10px;margin-left:4px">${ungelesen}</span>`;
+      navBtn.innerHTML = `💬 Nachrichten <span style="background:var(--red);color:var(--on-accent);border-radius:9px;padding:1px 6px;font-size:10px;margin-left:4px">${ungelesen}</span>`;
 
     setHTML('erz-nachrichten-inbox', nachrichten.length ? nachrichten.map(n => `
       <div style="padding:.875rem 0;border-bottom:1px solid var(--border)">
@@ -951,7 +951,7 @@ document.getElementById('btn-erz-nm-senden')?.addEventListener('click', async ()
     const { count } = await api.getUngelesenCount();
     if (count>0) {
       const nb = document.querySelector('[data-view="nachrichten"]');
-      if (nb) nb.innerHTML += ` <span style="background:var(--red);color:#fff;border-radius:9px;padding:1px 6px;font-size:10px">${count}</span>`;
+      if (nb) nb.innerHTML += ` <span style="background:var(--red);color:var(--on-accent);border-radius:9px;padding:1px 6px;font-size:10px">${count}</span>`;
     }
   } catch {}
 })();

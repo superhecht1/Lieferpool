@@ -3,27 +3,47 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="theme-color" content="#0d1f15">
+  <meta name="theme-color" content="#0d1310">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="manifest" href="/manifest-fahrer.json">
   <title>FrischKette · Fahrer-App</title>
   <script>window.VAPID_PUBLIC_KEY = '[[VAPID_PUBLIC_KEY]]';</script>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230d1f15'/><text y='24' x='4' font-size='22' font-family='monospace' font-weight='bold' fill='%234a9e5c'>F</text></svg>">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
+  <script>try{var t=localStorage.getItem('lp_theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
   <style>
     :root {
-      --green:   #2e7d3e;
-      --green-l: #4a9e5c;
-      --amber:   #c8912a;
-      --forest:  #0d1f15;
-      --bg:      #faf7f0;
-      --bg2:     #ffffff;
-      --border:  #dde0d8;
-      --text:    #171d13;
-      --text2:   #4a5244;
-      --text3:   #8a9a84;
-      --red:     #c62828;
-      --radius:  10px;
+      color-scheme: light;
+      --green:#2a7a37; --green-l:#3a9a4a; --green-bg:#e6f2e4; --green-line:#b8dfc0;
+      --amber:#a86d00; --amber-bg:#fdf1d8; --amber-line:#f0d090;
+      --blue:#1f6fa8; --blue-bg:#e3f1fb;
+      --forest:#ffffff; --bg:#f3f5f0; --bg2:#ffffff; --bg3:#eaeee6;
+      --border:#dfe4da; --text:#16201a; --text2:#43504a; --text3:#76857b;
+      --red:#c0392b; --red-bg:#fdecea; --red-line:#f0b8b0;
+      --on-accent:#ffffff; --radius:14px;
+    }
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --green:#c6f26a; --green-l:#d6f78f; --green-bg:#1d3326; --green-line:#2f4a39;
+      --amber:#ffc17a; --amber-bg:#3b2a14; --amber-line:#5a4120;
+      --blue:#9fd8ff; --blue-bg:#183247;
+      --forest:#101813; --bg:#0d1310; --bg2:#141c18; --bg3:#1a2420;
+      --border:#22302a; --text:#e8efe9; --text2:#b4c4b9; --text3:#8ea496;
+      --red:#ff9a8f; --red-bg:#3a1b18; --red-line:#6a2e29;
+      --on-accent:#0d1310;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        color-scheme: dark;
+        --green:#c6f26a; --green-l:#d6f78f; --green-bg:#1d3326; --green-line:#2f4a39;
+        --amber:#ffc17a; --amber-bg:#3b2a14; --amber-line:#5a4120;
+        --blue:#9fd8ff; --blue-bg:#183247;
+        --forest:#101813; --bg:#0d1310; --bg2:#141c18; --bg3:#1a2420;
+        --border:#22302a; --text:#e8efe9; --text2:#b4c4b9; --text3:#8ea496;
+        --red:#ff9a8f; --red-bg:#3a1b18; --red-line:#6a2e29;
+        --on-accent:#0d1310;
+      }
     }
 
     * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
@@ -34,20 +54,20 @@
 
     /* ── HEADER ── */
     .header {
-      background:var(--forest); color:#fff;
+      background:var(--forest); color:var(--text); border-bottom:1px solid var(--border);
       padding:1rem 1.25rem .875rem;
       display:flex; align-items:center; justify-content:space-between;
       flex-shrink:0;
     }
-    .header-logo { font-size:15px; font-weight:700; letter-spacing:-.01em; }
+    .header-logo { font-family:'Bricolage Grotesque',sans-serif; font-size:17px; font-weight:700; letter-spacing:-.01em; }
     .header-logo span { color:var(--amber); }
     .header-right { display:flex; align-items:center; gap:.75rem; }
     .track-badge {
       font-size:11px; padding:3px 8px; border-radius:20px;
-      background:rgba(74,158,92,.2); color:#4a9e5c; border:1px solid rgba(74,158,92,.3);
+      background:var(--green-bg); color:var(--green); border:1px solid var(--green-line);
       display:flex; align-items:center; gap:.35rem;
     }
-    .track-badge.active { background:rgba(74,158,92,.3); color:#6fcf8c; animation:pulse 2s infinite; }
+    .track-badge.active { background:var(--green-bg); color:var(--green); animation:pulse 2s infinite; }
     @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.6} }
     .track-dot { width:7px; height:7px; border-radius:50%; background:currentColor; }
 
@@ -58,17 +78,17 @@
     .bottom-nav {
       position:sticky; bottom:0;
       background:var(--forest);
-      display:flex; border-top:1px solid rgba(255,255,255,.08);
+      display:flex; border-top:1px solid var(--border);
       padding-bottom:env(safe-area-inset-bottom);
       flex-shrink:0;
     }
     .nav-tab {
       flex:1; display:flex; flex-direction:column; align-items:center;
       gap:.2rem; padding:.6rem .25rem; cursor:pointer;
-      font-size:10px; color:rgba(255,255,255,.4); border:none; background:none;
+      font-size:10px; color:var(--text3); border:none; background:none;
       transition:color .2s; min-height:52px; justify-content:center;
     }
-    .nav-tab.active { color:var(--amber); }
+    .nav-tab.active { color:var(--text); font-weight:600; box-shadow:inset 0 -3px 0 var(--green); }
     .nav-tab .icon { font-size:20px; }
 
     /* ── SCREENS ── */
@@ -77,16 +97,16 @@
 
     /* ── TODAY CARD ── */
     .today-card {
-      background:linear-gradient(135deg, var(--forest) 0%, #1a3a25 100%);
+      background:linear-gradient(135deg, var(--green-bg) 0%, var(--bg2) 75%); border:1px solid var(--green-line);
       border-radius:var(--radius); padding:1.25rem; margin-bottom:1rem;
-      color:#fff;
+      color:var(--text);
     }
-    .today-label { font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:rgba(255,255,255,.45); margin-bottom:.3rem; }
-    .today-date  { font-size:1.4rem; font-weight:600; margin-bottom:.75rem; }
+    .today-label { font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--text3); margin-bottom:.3rem; }
+    .today-date  { font-family:'Bricolage Grotesque',sans-serif; font-size:1.5rem; font-weight:600; margin-bottom:.75rem; }
     .today-stats { display:flex; gap:1.25rem; }
     .today-stat  { text-align:center; }
-    .today-stat-val { font-size:1.6rem; font-weight:700; color:#fff; line-height:1; }
-    .today-stat-lbl { font-size:10px; color:rgba(255,255,255,.45); text-transform:uppercase; letter-spacing:.06em; margin-top:.2rem; }
+    .today-stat-val { font-size:1.6rem; font-weight:700; color:var(--text); line-height:1; font-family:'Bricolage Grotesque',sans-serif; }
+    .today-stat-lbl { font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.06em; margin-top:.2rem; }
 
     /* ── TOUR CARD ── */
     .tour-card {
@@ -101,9 +121,9 @@
       font-size:11px; font-weight:600; text-transform:uppercase;
       letter-spacing:.06em; padding:3px 8px; border-radius:4px;
     }
-    .badge-abholung    { background:#e8f5e9; color:#2e7d3e; }
-    .badge-auslieferung{ background:#e3f2fd; color:#1565c0; }
-    .badge-gemischt    { background:#fff3e0; color:#e65100; }
+    .badge-abholung    { background:var(--green-bg); color:var(--green); }
+    .badge-auslieferung{ background:var(--blue-bg); color:var(--blue); }
+    .badge-gemischt    { background:var(--amber-bg); color:var(--amber); }
     .tour-name  { font-size:1rem; font-weight:600; margin:.35rem 0 .2rem; }
     .tour-meta  { font-size:12px; color:var(--text3); display:flex; flex-wrap:wrap; gap:.5rem; }
     .tour-meta-item { display:flex; align-items:center; gap:.25rem; }
@@ -122,34 +142,34 @@
       display:flex; align-items:center; justify-content:center; gap:.5rem;
       min-height:56px;
     }
-    .btn-start  { background:var(--green); color:#fff; }
-    .btn-start:hover { background:#1b5e20; }
-    .btn-primary{ background:var(--amber); color:#fff; }
-    .btn-primary:hover { background:#b87d1a; }
+    .btn-start  { background:var(--green); color:var(--on-accent); }
+    .btn-start:hover { filter:brightness(1.08); }
+    .btn-primary{ background:var(--green); color:var(--on-accent); }
+    .btn-primary:hover { filter:brightness(1.08); }
     .btn-outline { background:none; border:1.5px solid var(--border); color:var(--text2); }
     .btn-outline:hover { border-color:var(--text3); }
-    .btn-danger { background:#ffebee; color:var(--red); border:1.5px solid #ffcdd2; }
+    .btn-danger { background:var(--red-bg); color:var(--red); border:1.5px solid var(--red-line); }
 
     /* ── ACTIVE TOUR SCREEN ── */
     .progress-header {
-      background:var(--forest); color:#fff; padding:1rem 1.25rem;
+      background:var(--forest); color:var(--text); border-bottom:1px solid var(--border); padding:1rem 1.25rem;
       display:flex; align-items:center; gap:.875rem;
     }
     .progress-circle {
       width:52px; height:52px; border-radius:50%;
-      background:rgba(255,255,255,.1); border:3px solid var(--amber);
+      background:var(--bg3); border:3px solid var(--green);
       display:flex; align-items:center; justify-content:center;
       font-size:15px; font-weight:700; flex-shrink:0;
     }
     .progress-info-title { font-size:14px; font-weight:600; margin-bottom:.15rem; }
-    .progress-info-sub   { font-size:12px; color:rgba(255,255,255,.55); }
+    .progress-info-sub   { font-size:12px; color:var(--text3); }
 
     /* ── STOPP CARD ── */
     .stopp-card {
       border:1px solid var(--border); border-radius:var(--radius);
       margin:0 1.25rem 1rem; overflow:hidden; background:var(--bg2);
     }
-    .stopp-card.current { border-color:var(--amber); box-shadow:0 0 0 3px rgba(200,145,42,.12); }
+    .stopp-card.current { border-color:var(--amber); box-shadow:0 0 0 3px var(--amber-line); }
     .stopp-card.done    { opacity:.65; }
     .stopp-head {
       padding:.875rem 1rem .75rem; display:flex;
@@ -161,9 +181,9 @@
       font-size:13px; font-weight:700;
       background:var(--border); color:var(--text2);
     }
-    .stopp-num.current { background:var(--amber); color:#fff; }
-    .stopp-num.done    { background:var(--green); color:#fff; }
-    .stopp-num.skipped { background:var(--text3); color:#fff; }
+    .stopp-num.current { background:var(--amber); color:var(--on-accent); }
+    .stopp-num.done    { background:var(--green); color:var(--on-accent); }
+    .stopp-num.skipped { background:var(--text3); color:var(--bg); }
     .stopp-name  { font-size:.9rem; font-weight:600; margin-bottom:.2rem; }
     .stopp-addr  { font-size:12px; color:var(--text3); line-height:1.4; }
     .stopp-tags  { display:flex; flex-wrap:wrap; gap:.35rem; margin-top:.4rem; }
@@ -200,20 +220,20 @@
 
     /* ── MAPS BUTTON ── */
     .maps-btn {
-      background:#e8f5e9; color:var(--green); border:1px solid #c8e6c9;
+      background:var(--green-bg); color:var(--green); border:1px solid var(--green-line);
       border-radius:8px; padding:.6rem 1rem; font-size:13px; font-weight:600;
       cursor:pointer; display:flex; align-items:center; gap:.4rem; text-decoration:none;
       justify-content:center;
     }
-    .maps-btn:hover { background:#c8e6c9; }
+    .maps-btn:hover { filter:brightness(1.1); }
 
     /* ── STATUS BADGE ── */
     .sbadge { display:inline-flex; align-items:center; gap:.3rem; font-size:11px; font-weight:600; padding:3px 8px; border-radius:4px; }
-    .sbadge-offen   { background:#f3f4f6; color:#6b7280; }
-    .sbadge-aktiv   { background:#d1fae5; color:#065f46; }
-    .sbadge-pause   { background:#fef3c7; color:#92400e; }
-    .sbadge-done    { background:#d1fae5; color:#065f46; }
-    .sbadge-skip    { background:#fee2e2; color:#991b1b; }
+    .sbadge-offen   { background:var(--bg3); color:var(--text2); }
+    .sbadge-aktiv   { background:var(--green-bg); color:var(--green); }
+    .sbadge-pause   { background:var(--amber-bg); color:var(--amber); }
+    .sbadge-done    { background:var(--green-bg); color:var(--green); }
+    .sbadge-skip    { background:var(--red-bg); color:var(--red); }
 
     /* ── HISTORY ── */
     .hist-card {
@@ -237,7 +257,7 @@
     /* ── TOAST ── */
     #toast {
       position:fixed; bottom:80px; left:50%; transform:translateX(-50%) translateY(20px);
-      background:var(--forest); color:#fff; padding:.625rem 1.25rem; border-radius:20px;
+      background:var(--text); color:var(--bg); padding:.625rem 1.25rem; border-radius:20px;
       font-size:13px; opacity:0; transition:all .3s; z-index:999; white-space:nowrap;
       pointer-events:none;
     }
@@ -245,16 +265,16 @@
 
     /* ── ALERT ── */
     .alert { border-radius:8px; padding:.75rem 1rem; font-size:13px; margin-bottom:.75rem; }
-    .alert-err { background:#ffebee; color:var(--red); border:1px solid #ffcdd2; }
-    .alert-ok  { background:#e8f5e9; color:var(--green); border:1px solid #c8e6c9; }
+    .alert-err { background:var(--red-bg); color:var(--red); border:1px solid var(--red-line); }
+    .alert-ok  { background:var(--green-bg); color:var(--green); border:1px solid var(--green-line); }
 
     /* ── SECTION HEADER ── */
     .sec-hdr { font-size:11px; text-transform:uppercase; letter-spacing:.1em; color:var(--text3); padding:.875rem 1.25rem .4rem; font-weight:600; }
 
     /* ── FORM ── */
     .fld-label { font-size:11px; text-transform:uppercase; letter-spacing:.07em; color:var(--text3); margin-bottom:.3rem; display:block; }
-    .fld-input { width:100%; border:1.5px solid var(--border); border-radius:8px; padding:.65rem .875rem; font-size:14px; outline:none; background:var(--bg2); transition:border-color .2s; }
-    .fld-input:focus { border-color:var(--amber); }
+    .fld-input { width:100%; border:1.5px solid var(--border); border-radius:8px; padding:.65rem .875rem; font-size:14px; outline:none; background:var(--bg2); color:var(--text); font-family:inherit; transition:border-color .2s; }
+    .fld-input:focus { border-color:var(--green); }
   </style>
 </head>
 <body>
@@ -268,7 +288,8 @@
         <div class="track-dot"></div>
         <span id="track-label">GPS aus</span>
       </div>
-      <button onclick="Auth.logout()" style="background:none;border:none;color:rgba(255,255,255,.45);font-size:12px;cursor:pointer;padding:4px 6px;">Abmelden</button>
+      <button id="btn-theme" type="button" aria-label="Design wechseln" style="background:none;border:1px solid var(--border);color:var(--text);font-size:14px;cursor:pointer;min-height:38px;min-width:38px;border-radius:10px">☾</button>
+      <button onclick="Auth.logout()" style="background:none;border:1px solid var(--border);color:var(--text);font:inherit;font-size:13px;font-weight:600;cursor:pointer;min-height:38px;padding:0 12px;border-radius:10px">Abmelden</button>
     </div>
   </header>
 
@@ -307,7 +328,7 @@
     <div class="screen" id="screen-profil">
       <div style="padding:1.25rem">
         <div style="text-align:center;padding:1.5rem 0 1.25rem">
-          <div style="width:64px;height:64px;border-radius:50%;background:var(--forest);color:#fff;font-size:1.5rem;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto .75rem" id="profil-avatar">?</div>
+          <div style="width:64px;height:64px;border-radius:50%;background:var(--green-bg);color:var(--green);font-size:1.5rem;font-weight:700;display:flex;align-items:center;justify-content:center;margin:0 auto .75rem" id="profil-avatar">?</div>
           <div style="font-size:1.1rem;font-weight:600" id="profil-name">—</div>
           <div style="font-size:12px;color:var(--text3)" id="profil-email">—</div>
         </div>
@@ -342,7 +363,7 @@
   </main>
 
   <!-- OFFLINE BANNER -->
-  <div id="offline-banner" style="display:none;background:#c62828;color:#fff;text-align:center;padding:.4rem;font-size:12px;position:sticky;top:56px;z-index:90">
+  <div id="offline-banner" style="display:none;background:var(--red);color:var(--on-accent);text-align:center;padding:.4rem;font-size:12px;position:sticky;top:56px;z-index:90">
     ⚠ Offline — Änderungen werden synchronisiert sobald du wieder online bist
   </div>
 
@@ -359,12 +380,12 @@
       </div>
       <canvas id="scanner-canvas" style="display:none"></canvas>
     </div>
-    <div id="scanner-result" style="background:var(--forest);color:#fff;padding:1rem 1.25rem;text-align:center;font-size:13px;flex-shrink:0">
+    <div id="scanner-result" style="background:var(--forest);color:var(--text);padding:1rem 1.25rem;text-align:center;font-size:13px;flex-shrink:0">
       Kamera auf QR-Code richten...
     </div>
     <div style="background:var(--forest);padding:.75rem 1.25rem;display:flex;gap:.75rem;flex-shrink:0">
       <input class="fld-input" type="text" id="scanner-manual" placeholder="Code manuell eingeben" style="flex:1">
-      <button onclick="manualScan()" style="background:var(--amber);color:#fff;border:none;border-radius:8px;padding:.6rem 1rem;font-size:13px;font-weight:600;cursor:pointer">OK</button>
+      <button onclick="manualScan()" style="background:var(--green);color:var(--on-accent);border:none;border-radius:8px;padding:.6rem 1rem;font-size:13px;font-weight:600;cursor:pointer">OK</button>
     </div>
   </div>
 
@@ -679,7 +700,7 @@ function renderAktiveTour() {
       <div style="flex:1">
         <div class="progress-info-title">${aktiveTour.name || 'Aktive Tour'}</div>
         <div class="progress-info-sub">${pct}% abgeschlossen · ${aktiveTour.startzeit?.slice(0,5)||''} Uhr</div>
-        <div style="height:4px;background:rgba(255,255,255,.15);border-radius:2px;margin-top:.5rem">
+        <div style="height:4px;background:var(--border);border-radius:2px;margin-top:.5rem">
           <div style="height:4px;background:var(--amber);border-radius:2px;width:${pct}%;transition:width .5s"></div>
         </div>
       </div>
@@ -687,7 +708,7 @@ function renderAktiveTour() {
 
   // Notiz
   document.getElementById('tour-notiz-wrap').innerHTML = aktiveTour.notiz
-    ? `<div style="margin:1rem 1.25rem 0;padding:.75rem 1rem;background:#fff8e1;border-radius:8px;border:1px solid #ffe082;font-size:13px;color:#5d4037">📝 ${aktiveTour.notiz}</div>`
+    ? `<div style="margin:1rem 1.25rem 0;padding:.75rem 1rem;background:var(--amber-bg);border-radius:8px;border:1px solid var(--amber-line);font-size:13px;color:var(--amber)">📝 ${aktiveTour.notiz}</div>`
     : '';
 
   // Stopps
@@ -731,7 +752,7 @@ function stoppCard(s, i) {
 
         ${mapsUrl ? `<a href="${mapsUrl}" target="_blank" class="maps-btn">🗺 Navigation starten</a>` : ''}
 
-        ${s.notiz ? `<div style="background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:.6rem .875rem;font-size:12px;color:#5d4037">📝 ${s.notiz}</div>` : ''}
+        ${s.notiz ? `<div style="background:var(--amber-bg);border:1px solid var(--amber-line);border-radius:6px;padding:.6rem .875rem;font-size:12px;color:var(--amber)">📝 ${s.notiz}</div>` : ''}
 
         <div>
           <label class="fld-label">Menge geliefert / abgeholt (kg)</label>
@@ -1107,23 +1128,32 @@ setTimeout(() => {
   if (swRegistration && Notification.permission === 'default') {
     const banner = document.createElement('div');
     banner.id = 'push-ask-banner';
-    banner.style.cssText = 'position:fixed;bottom:70px;left:1rem;right:1rem;background:var(--forest);color:#fff;border-radius:10px;padding:.875rem 1rem;font-size:13px;z-index:200;display:flex;gap:.75rem;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,.3)';
+    banner.style.cssText = 'position:fixed;bottom:70px;left:1rem;right:1rem;background:var(--forest);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:.875rem 1rem;font-size:13px;z-index:200;display:flex;gap:.75rem;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,.3)';
     const txt = document.createElement('span');
     txt.style.flex = '1';
     txt.textContent = '🔔 Push-Benachrichtigungen für neue Touren aktivieren?';
     const btnYes = document.createElement('button');
     btnYes.textContent = 'Aktivieren';
-    btnYes.style.cssText = 'background:var(--amber);color:#fff;border:none;border-radius:6px;padding:.4rem .875rem;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap';
+    btnYes.style.cssText = 'background:var(--green);color:var(--on-accent);border:none;border-radius:6px;padding:.4rem .875rem;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap';
     btnYes.onclick = () => { requestPushPermission(); banner.remove(); };
     const btnNo = document.createElement('button');
     btnNo.textContent = '✕';
-    btnNo.style.cssText = 'background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:1.1rem';
+    btnNo.style.cssText = 'background:none;border:none;color:var(--text3);cursor:pointer;font-size:1.1rem';
     btnNo.onclick = () => banner.remove();
     banner.append(txt, btnYes, btnNo);
     document.body.appendChild(banner);
     setTimeout(() => banner.remove(), 10000);
   }
 }, 3000);
+</script>
+<script>
+(function(){
+  var b=document.getElementById('btn-theme'); if(!b) return;
+  function cur(){var t=document.documentElement.getAttribute('data-theme'); if(t) return t; return matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}
+  function paint(){b.textContent=cur()==='dark'?'☀':'☾';}
+  b.addEventListener('click',function(){var t=cur()==='dark'?'light':'dark';document.documentElement.setAttribute('data-theme',t);try{localStorage.setItem('lp_theme',t)}catch(e){}paint();});
+  paint();
+})();
 </script>
 </body>
 </html>

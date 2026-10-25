@@ -571,3 +571,25 @@ document.addEventListener('click', e => {
 
 // CSS-Variable als Farbwert (für Canvas/Leaflet, die var() nicht auflösen)
 function cv(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+// ── Kennzahl-Ringe (Nachhaltigkeit) ────────────────────────────
+function nhRings(g, z) {
+  const ring = (label, val, sub, good) => {
+    const v = (val === null || val === undefined) ? null : Math.max(0, Math.min(100, Number(val)));
+    const C = 2 * Math.PI * 42, off = v === null ? C : C * (1 - v / 100);
+    const col = good ? 'var(--green)' : 'var(--amber)';
+    return `<div style="display:flex;align-items:center;gap:14px;background:var(--bg3);border:1px solid var(--border);border-radius:16px;padding:14px 16px">
+      <svg width="96" height="96" viewBox="0 0 100 100" aria-hidden="true" style="flex-shrink:0">
+        <circle cx="50" cy="50" r="42" fill="none" stroke="var(--border2)" stroke-width="9"/>
+        <circle cx="50" cy="50" r="42" fill="none" stroke="${col}" stroke-width="9" stroke-linecap="round"
+          stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 50 50)"/>
+        <text x="50" y="56" text-anchor="middle" font-family="'Bricolage Grotesque',sans-serif" font-weight="700" font-size="22" fill="var(--text)">${v === null ? '–' : fmt(v, 0) + '%'}</text>
+      </svg>
+      <div><div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:16px">${label}</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:2px">${sub}</div></div></div>`;
+  };
+  const bio = g.bio_quote_kg, reg = g.regional_quote_kg, ab = g.abfall_quote;
+  return ring('Bio', bio, `Ziel ${z.bio_prozent} %`, bio !== null && bio >= z.bio_prozent)
+       + ring('Regional', reg, `≤ ${z.regional_radius_km} km`, reg !== null && reg >= 50)
+       + ring('Abfall', ab, 'niedriger ist besser', ab !== null && ab <= 10);
+}
