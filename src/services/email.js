@@ -115,7 +115,7 @@ async function sendAuszahlungVeranlasst({ erzeugerEmail, erzeugerName, auszahlun
         <div class="box-row"><span>Gelieferte Menge</span><span>${auszahlung.menge || '—'} kg</span></div>
         <div class="box-row"><span>Brutto</span><span>${parseFloat(auszahlung.brutto).toFixed(2)} €</span></div>
         <div class="box-row"><span>Qualitätsabzug</span><span>−${parseFloat(auszahlung.abzug_qualitaet||0).toFixed(2)} €</span></div>
-        <div class="box-row"><span>Plattformfee (1%)</span><span>−${parseFloat(auszahlung.platform_fee||0).toFixed(2)} €</span></div>
+        <div class="box-row"><span>Plattformfee (${(parseFloat(auszahlung.brutto) > 0 ? parseFloat(auszahlung.platform_fee||0) / parseFloat(auszahlung.brutto) * 100 : 0).toFixed(1).replace('.', ',')} %)</span><span>−${parseFloat(auszahlung.platform_fee||0).toFixed(2)} €</span></div>
         <div class="box-row"><span>Netto (SEPA Instant)</span><span>${parseFloat(auszahlung.netto).toFixed(2)} €</span></div>
       </div>
       <p>Der Betrag wird innerhalb von Sekunden auf dein hinterlegtes Konto überwiesen.</p>

@@ -394,7 +394,7 @@ async function loadPools() {
     ]);
     openPools = pools;
 
-    const feeFaktor = c => 1 - (parseFloat(c.platform_fee_pct ?? 1) || 0) / 100;
+    const feeFaktor = c => 1 - (parseFloat(c.platform_fee_pct ?? 2.5) || 0) / 100;
     const aktive            = me.commitments.filter(c => c.status === 'aktiv');
     const verifZerts        = me.zertifikate.filter(z => z.status === 'verified').length;
     const erwErloes         = aktive.reduce((s, c) => s + parseFloat(c.menge || 0) * parseFloat(c.preis_pro_einheit || 0) * feeFaktor(c), 0);
@@ -462,7 +462,7 @@ async function loadPools() {
         </div>
         <div class="pool-row" style="margin-top:3px">
           <span class="pool-meta">${esc(c.lieferwoche)}${c.liefertag ? ' · ' + esc(c.liefertag) : ''}</span>
-          <span class="pool-meta" style="font-family:'DM Mono',monospace;color:var(--green)">${fmt(c.menge, 0)} kg · ${fmt(c.menge * parseFloat(c.preis_pro_einheit||0) * (1 - (parseFloat(c.platform_fee_pct ?? 1) || 0) / 100))} € erw.</span>
+          <span class="pool-meta" style="font-family:'DM Mono',monospace;color:var(--green)">${fmt(c.menge, 0)} kg · ${fmt(c.menge * parseFloat(c.preis_pro_einheit||0) * (1 - (parseFloat(c.platform_fee_pct ?? 2.5) || 0) / 100))} € erw.</span>
         </div>
         <div id="edit-form-${c.pool_id}" style="display:none;margin-top:.75rem;padding:.75rem;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border)">
           <div style="font-size:11px;color:var(--text3);margin-bottom:.5rem;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.06em">Neue Menge</div>
@@ -506,7 +506,7 @@ async function loadZusagen() {
     setHTML('pool-status-list', pools.length ? pools.map(p => {
       const preis = parseFloat(p.preis_pro_einheit);
       const istBester = preis >= preisPerProdukt[p.produkt];
-      const erloes100 = (100 * preis * (1 - (parseFloat(p.platform_fee_pct ?? 1) || 0) / 100)).toFixed(2);
+      const erloes100 = (100 * preis * (1 - (parseFloat(p.platform_fee_pct ?? 2.5) || 0) / 100)).toFixed(2);
       return `
       <div class="pool-item" data-pool-id="${p.id}">
         <div class="pool-row">
@@ -526,7 +526,7 @@ async function loadZusagen() {
 
     const sel = document.getElementById('commit-pool-sel');
     if (sel) sel.innerHTML = pools.length
-      ? pools.map(p => `<option value="${esc(p.id)}" data-preis="${esc(p.preis_pro_einheit)}" data-fee="${esc(p.platform_fee_pct ?? 1)}">${esc(p.produkt)} (${esc(p.lieferwoche)}) · ${fmt(p.preis_pro_einheit)} €/kg</option>`).join('')
+      ? pools.map(p => `<option value="${esc(p.id)}" data-preis="${esc(p.preis_pro_einheit)}" data-fee="${esc(p.platform_fee_pct ?? 2.5)}">${esc(p.produkt)} (${esc(p.lieferwoche)}) · ${fmt(p.preis_pro_einheit)} €/kg</option>`).join('')
       : '<option>Keine offenen Pools</option>';
     if (window.__preselect && sel) { sel.value = window.__preselect; window.__preselect = null; }
 

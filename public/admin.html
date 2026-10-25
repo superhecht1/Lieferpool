@@ -3739,7 +3739,7 @@ async function crechVorschau() {
   const c = document.getElementById('crech-caterer')?.value, m = document.getElementById('crech-monat')?.value;
   if (!c || !m) return setHTML('crech-vorschau', '');
   try { const v = await crechApi('/vorschau?caterer_id=' + encodeURIComponent(c) + '&monat=' + encodeURIComponent(m));
-    setHTML('crech-vorschau', v.anzahl ? `${v.anzahl} Wareneingänge noch nicht abgerechnet · Netto ${v.netto.toFixed(2)} €` : 'Keine offenen Wareneingänge in diesem Monat'); }
+    setHTML('crech-vorschau', v.anzahl ? `${v.anzahl} Wareneingänge noch nicht abgerechnet · Netto ${v.netto.toFixed(2)} € · Servicegebühr ${(v.gebuehr_prozent ?? 0).toLocaleString('de-DE')} % = ${(v.gebuehr_netto ?? 0).toFixed(2)} € netto` : 'Keine offenen Wareneingänge in diesem Monat'); }
   catch (e) { setHTML('crech-vorschau', esc(e.message)); }
 }
 document.getElementById('crech-caterer')?.addEventListener('change', crechVorschau);

@@ -15,6 +15,7 @@
 const express = require('express');
 const db = require('../db');
 const { auth, role } = require('../middleware/auth');
+const gebuehr = require('../services/gebuehr');
 const router = express.Router();
 
 const r2 = v => Math.round((Number(v) + Number.EPSILON) * 100) / 100;
@@ -46,7 +47,8 @@ router.get('/vorschau', auth, role('admin'), async (req, res) => {
   try {
     const { rows } = await db.query(POS_SQL, [req.query.caterer_id, req.query.monat]);
     const netto = r2(rows.reduce((s, p) => s + r2(p.menge * p.preis), 0));
-    res.json({ anzahl: rows.length, netto });
+    const gp = gebuehr.kuecheProzent();
+    res.json({ anzahl: rows.length, netto, gebuehr_prozent: gp, gebuehr_netto: r2(netto * gp / 100) });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -66,7 +68,11 @@ router.post('/erstellen', auth, role('admin'), async (req, res) => {
     const { rows: pos } = await client.query(POS_SQL, [caterer_id, monat]);
     if (!pos.length) throw Object.assign(new Error('Keine offenen Wareneingänge in diesem Monat'), { status: 409 });
     const zeilen = pos.map(p => ({ ...p, summe: r2(p.menge * p.preis) }));
-    const netto = r2(zeilen.reduce((s, p) => s + p.summe, 0)), mwst = r2(netto * satz / 100), brutto = r2(netto + mwst);
+    const netto = r2(zeilen.reduce((s, p) => s + p.summe, 0)), mwst = r2(netto * satz / 100);
+    // Servicegebühr (Küchenseite): eigene Zeile, eigener Steuersatz, Prozentsatz wird festgeschrieben
+    const gProz = gebuehr.kuecheProzent(), gSatz = gebuehr.kucheMwst();
+    const gNetto = r2(netto * gProz / 100), gMwst = r2(gNetto * gSatz / 100);
+    const brutto = r2(netto + mwst + gNetto + gMwst);
     const jahr = new Date().getFullYear();
     const { rows: [n] } = await client.query(`INSERT INTO rechnungsnummern (jahr, letzte) VALUES ($1,1)
       ON CONFLICT (jahr) DO UPDATE SET letzte = rechnungsnummern.letzte + 1 RETURNING letzte`, [jahr]);
@@ -75,10 +81,11 @@ router.post('/erstellen', auth, role('admin'), async (req, res) => {
     const von = new Date(Math.min(...daten.map(d => +new Date(d)))).toISOString().slice(0, 10);
     const bis = new Date(Math.max(...daten.map(d => +new Date(d)))).toISOString().slice(0, 10);
     const { rows: [re] } = await client.query(`
-      INSERT INTO caterer_rechnungen (rechnungs_nr, caterer_id, monat, leistung_von, leistung_bis, zahlungsziel, mwst_satz, netto, mwst, brutto, empfaenger, created_by)
-      VALUES ($1,$2,$3,$4,$5, CURRENT_DATE + $6::int, $7,$8,$9,$10,$11,$12) RETURNING *`,
+      INSERT INTO caterer_rechnungen (rechnungs_nr, caterer_id, monat, leistung_von, leistung_bis, zahlungsziel, mwst_satz, netto, mwst, brutto, empfaenger, created_by,
+        gebuehr_prozent, gebuehr_netto, gebuehr_mwst_satz, gebuehr_mwst)
+      VALUES ($1,$2,$3,$4,$5, CURRENT_DATE + $6::int, $7,$8,$9,$10,$11,$12,$13,$14,$15,$16) RETURNING *`,
       [nr, caterer_id, monat, von, bis, tage, satz, netto, mwst, brutto,
-       JSON.stringify({ name: cat.firma_name, adresse: cat.adresse, plzort: [cat.plz, cat.ort].filter(Boolean).join(' '), ust_id: cat.ust_id || null }), req.user.id]);
+       JSON.stringify({ name: cat.firma_name, adresse: cat.adresse, plzort: [cat.plz, cat.ort].filter(Boolean).join(' '), ust_id: cat.ust_id || null }), req.user.id, gProz, gNetto, gSatz, gMwst]);
     for (const z of zeilen) await client.query(`INSERT INTO caterer_rechnung_positionen
       (rechnung_id, lieferung_id, lieferschein_nr, datum, produkt, menge, einheit, preis, summe) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
       [re.id, z.lieferung_id, z.lieferschein_nr, z.datum, z.produkt, z.menge, z.einheit || 'kg', z.preis, z.summe]);
@@ -101,7 +108,7 @@ router.get('/', auth, role('admin', 'caterer'), async (req, res) => {
   try {
     const cid = await eigenerCatererId(req);
     const { rows } = await db.query(`
-      SELECT r.id, r.rechnungs_nr, r.typ, r.monat, r.rechnungsdatum, r.zahlungsziel, r.mwst_satz, r.netto, r.mwst, r.brutto, r.status, r.bezahlt_am, c.firma_name
+      SELECT r.id, r.rechnungs_nr, r.typ, r.monat, r.rechnungsdatum, r.zahlungsziel, r.mwst_satz, (r.netto + r.gebuehr_netto) AS netto, (r.mwst + r.gebuehr_mwst) AS mwst, r.brutto, r.status, r.bezahlt_am, c.firma_name
       FROM caterer_rechnungen r JOIN caterer c ON c.id = r.caterer_id
       WHERE ($1::uuid IS NULL OR r.caterer_id = $1) ORDER BY r.created_at DESC LIMIT 200`, [cid]);
     res.json({ rechnungen: rows });
@@ -154,9 +161,13 @@ router.get('/:id/pdf', auth, role('admin', 'caterer'), async (req, res) => {
     pos.forEach(p => row([dat(p.datum), p.lieferschein_nr || '', p.produkt || '',
       `${Number(p.menge).toLocaleString('de-DE', { maximumFractionDigits: 3 })} ${p.einheit || 'kg'}`, eur(p.preis), eur(sg * Number(p.summe))]));
     if (doc.y > 650) doc.addPage();
-    doc.moveDown(.6); doc.moveTo(330, doc.y).lineTo(545, doc.y).strokeColor('#999').stroke(); doc.moveDown(.4);
-    const sum = (k, v, bold) => { const yy = doc.y; doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(10).fillColor('#000').text(k, 330, yy, { width: 120 }); doc.text(eur(v), 450, yy, { width: 95, align: 'right' }); doc.y = yy + 16; };
-    sum('Nettobetrag', re.netto); sum(`Umsatzsteuer ${Number(re.mwst_satz).toLocaleString('de-DE')} %`, re.mwst); sum(storno ? 'Gutschrift brutto' : 'Rechnungsbetrag', re.brutto, true);
+    doc.moveDown(.6); doc.moveTo(280, doc.y).lineTo(545, doc.y).strokeColor('#999').stroke(); doc.moveDown(.4);
+    const sum = (k, v, bold) => { const yy = doc.y; doc.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(10).fillColor('#000').text(k, 280, yy, { width: 170 }); doc.text(eur(v), 450, yy, { width: 95, align: 'right' }); doc.y = yy + 16; };
+    sum('Warenwert netto', re.netto);
+    if (Number(re.gebuehr_netto) !== 0) sum(`Servicegebühr ${Number(re.gebuehr_prozent).toLocaleString('de-DE')} % (netto)`, re.gebuehr_netto);
+    sum(`Umsatzsteuer ${Number(re.mwst_satz).toLocaleString('de-DE')} % auf Ware`, re.mwst);
+    if (Number(re.gebuehr_netto) !== 0) sum(`Umsatzsteuer ${Number(re.gebuehr_mwst_satz).toLocaleString('de-DE')} % auf Gebühr`, re.gebuehr_mwst);
+    sum(storno ? 'Gutschrift brutto' : 'Rechnungsbetrag', re.brutto, true);
     doc.x = 50; doc.moveDown(1).font('Helvetica').fontSize(9).fillColor('#000');
     const W = { width: 495 };
     if (!storno) {
@@ -189,9 +200,11 @@ router.post('/:id/stornieren', auth, role('admin'), async (req, res) => {
     const { rows: [n] } = await client.query(`INSERT INTO rechnungsnummern (jahr, letzte) VALUES ($1,1)
       ON CONFLICT (jahr) DO UPDATE SET letzte = rechnungsnummern.letzte + 1 RETURNING letzte`, [jahr]);
     const nr = `RE-${jahr}-${String(n.letzte).padStart(5, '0')}`;
-    await client.query(`INSERT INTO caterer_rechnungen (rechnungs_nr, typ, caterer_id, monat, leistung_von, leistung_bis, mwst_satz, netto, mwst, brutto, status, bezug_id, empfaenger, created_by)
-      VALUES ($1,'storno',$2,$3,$4,$5,$6,$7,$8,$9,'storniert',$10,$11,$12)`,
-      [nr, o.caterer_id, o.monat, o.leistung_von, o.leistung_bis, o.mwst_satz, -o.netto, -o.mwst, -o.brutto, o.id, JSON.stringify(o.empfaenger), req.user.id]);
+    await client.query(`INSERT INTO caterer_rechnungen (rechnungs_nr, typ, caterer_id, monat, leistung_von, leistung_bis, mwst_satz, netto, mwst, brutto, status, bezug_id, empfaenger, created_by,
+        gebuehr_prozent, gebuehr_netto, gebuehr_mwst_satz, gebuehr_mwst)
+      VALUES ($1,'storno',$2,$3,$4,$5,$6,$7,$8,$9,'storniert',$10,$11,$12,$13,$14,$15,$16)`,
+      [nr, o.caterer_id, o.monat, o.leistung_von, o.leistung_bis, o.mwst_satz, -o.netto, -o.mwst, -o.brutto, o.id, JSON.stringify(o.empfaenger), req.user.id,
+       o.gebuehr_prozent, -o.gebuehr_netto, o.gebuehr_mwst_satz, -o.gebuehr_mwst]);
     await client.query(`UPDATE caterer_rechnungen SET status='storniert' WHERE id=$1`, [o.id]);
     await client.query(`UPDATE caterer_rechnung_positionen SET aktiv=FALSE WHERE rechnung_id=$1`, [o.id]);
     await client.query('COMMIT');

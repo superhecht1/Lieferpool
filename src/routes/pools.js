@@ -90,7 +90,12 @@ router.get('/:id', auth, async (req, res) => {
 router.post('/', auth, role('caterer', 'admin'), async (req, res) => {
   const { produkt, einheit='kg', menge_ziel, preis_pro_einheit,
           lieferwoche, deadline, region='NRW', qualitaet_stufe='A',
-          platform_fee_pct=1.0, liefertag=null, zeitfenster_von='06:30', zeitfenster_bis='09:00' } = req.body;
+          platform_fee_pct: feeBody=undefined, liefertag=null, zeitfenster_von='06:30', zeitfenster_bis='09:00' } = req.body;
+
+  const gebuehr = require('../services/gebuehr');
+  // Gebühr kommt vom Server; nur der Admin darf sie pro Pool abweichend setzen (Caterer nie)
+  const feeBodyNum = parseFloat(String(feeBody ?? '').replace(',', '.'));
+  const platform_fee_pct = (req.user.role === 'admin' && Number.isFinite(feeBodyNum) && feeBodyNum >= 0 && feeBodyNum <= 50) ? feeBodyNum : gebuehr.hofProzent();
 
   if (!produkt || !menge_ziel || !preis_pro_einheit || !lieferwoche || !deadline) {
     return res.status(400).json({ error: 'Pflichtfelder fehlen' });
@@ -407,8 +412,15 @@ router.put('/:id/commit', auth, role('erzeuger'), async (req, res) => {
 
 // PUT /api/pools/:id/edit – Admin bearbeitet Pool (Produkt, Preis, Menge, Deadline)
 router.put('/:id/edit', auth, role('admin'), async (req, res) => {
-  const { produkt, preis_pro_einheit, menge_ziel, deadline, lieferwoche } = req.body;
-  if (!produkt && !preis_pro_einheit && !menge_ziel && !deadline && !lieferwoche) {
+  const { produkt, preis_pro_einheit, menge_ziel, deadline, lieferwoche, liefertag, zeitfenster_von, zeitfenster_bis } = req.body;
+  const TAGE = ['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
+  const hhmm = /^([01]\d|2[0-3]):[0-5]\d$/;
+  const tagGesetzt = liefertag !== undefined;                       // '' = Liefertag entfernen
+  if (tagGesetzt && liefertag && !TAGE.includes(liefertag)) return res.status(400).json({ error: 'Liefertag ungültig' });
+  const zeitGesetzt = !!(zeitfenster_von || zeitfenster_bis);
+  if (zeitGesetzt && (!hhmm.test(zeitfenster_von || '') || !hhmm.test(zeitfenster_bis || '') || zeitfenster_von >= zeitfenster_bis))
+    return res.status(400).json({ error: 'Zeitfenster ungültig (HH:MM, von < bis)' });
+  if (!produkt && !preis_pro_einheit && !menge_ziel && !deadline && !lieferwoche && !tagGesetzt && !zeitGesetzt) {
     return res.status(400).json({ error: 'Mindestens ein Feld erforderlich' });
   }
   try {
@@ -419,10 +431,14 @@ router.put('/:id/edit', auth, role('admin'), async (req, res) => {
         menge_ziel        = COALESCE($3, menge_ziel),
         deadline          = COALESCE($4, deadline),
         lieferwoche       = COALESCE($5, lieferwoche),
+        liefertag         = CASE WHEN $7 THEN $8 ELSE liefertag END,
+        zeitfenster_von   = CASE WHEN $9 THEN $10::time ELSE zeitfenster_von END,
+        zeitfenster_bis   = CASE WHEN $9 THEN $11::time ELSE zeitfenster_bis END,
         updated_at        = NOW()
       WHERE id = $6
       RETURNING *
-    `, [produkt||null, preis_pro_einheit||null, menge_ziel||null, deadline||null, lieferwoche||null, req.params.id]);
+    `, [produkt||null, preis_pro_einheit||null, menge_ziel||null, deadline||null, lieferwoche||null, req.params.id,
+        tagGesetzt, liefertag || null, zeitGesetzt, zeitfenster_von || null, zeitfenster_bis || null]);
     if (!pool) return res.status(404).json({ error: 'Pool nicht gefunden' });
     res.json({ pool, message: 'Pool aktualisiert' });
   } catch (err) {
