@@ -13,6 +13,21 @@ const twofaFails = new Map(); // userId -> { n, until }
 
 const REDIRECT = { admin:'/admin', erzeuger:'/erzeuger', caterer:'/caterer', fahrer:'/fahrer' };
 
+// ── Sitzungs-Cookies (httpOnly, SameSite=Strict) ─────────────
+function setSession(req, res, token, refreshToken) {
+  const base = { httpOnly: true, sameSite: 'strict', secure: !!req.secure };
+  res.cookie('lp_at', token, { ...base, path: '/', maxAge: 7 * 24 * 3600 * 1000 });
+  if (refreshToken) res.cookie('lp_rt', refreshToken, { ...base, path: '/api/auth', maxAge: 30 * 24 * 3600 * 1000 });
+}
+function clearSession(res) {
+  res.clearCookie('lp_at', { path: '/' });
+  res.clearCookie('lp_rt', { path: '/api/auth' });
+}
+const refreshAusAnfrage = req => {
+  const b = req.body && req.body.refreshToken;
+  return (b && b !== 'cookie') ? b : (req.cookies && req.cookies.lp_rt) || '';
+};
+
 function makeRefreshToken() { return crypto.randomBytes(32).toString('hex'); }
 function hashToken(t)       { return crypto.createHash('sha256').update(t).digest('hex'); }
 
@@ -47,6 +62,7 @@ router.post('/register', async (req, res) => {
     }
     const token        = signToken({ id:user.id, email:user.email, role:user.role, name:user.name });
     const refreshToken = await createRefreshToken(user.id);
+    setSession(req, res, token, refreshToken);
     res.status(201).json({ token, refreshToken, user, redirect:REDIRECT[user.role] });
   } catch (err) {
     if (err.code==='23505') return res.status(409).json({ error:'E-Mail bereits registriert' });
@@ -95,13 +111,14 @@ router.post('/login', async (req, res) => {
 
     const token        = signToken({ id:user.id, email:user.email, role:user.role, name:user.name });
     const refreshToken = await createRefreshToken(user.id);
+    setSession(req, res, token, refreshToken);
     res.json({ token, refreshToken, user:{ id:user.id, email:user.email, role:user.role, name:user.name }, redirect:REDIRECT[user.role]||'/' });
   } catch (err) { console.error(err); res.status(500).json({ error:'Login fehlgeschlagen' }); }
 });
 
 // POST /api/auth/refresh
 router.post('/refresh', async (req, res) => {
-  const { refreshToken } = req.body;
+  const refreshToken = refreshAusAnfrage(req);
   if (!refreshToken) return res.status(400).json({ error:'refreshToken erforderlich' });
   try {
     const { rows:[rt] } = await db.query(
@@ -113,15 +130,20 @@ router.post('/refresh', async (req, res) => {
     const newRefresh = makeRefreshToken();
     await db.query(`UPDATE refresh_tokens SET token_hash=$1,expires_at=$2 WHERE id=$3`,
       [hashToken(newRefresh), new Date(Date.now()+30*24*60*60*1000), rt.id]);
+    setSession(req, res, newToken, newRefresh);
     res.json({ token:newToken, refreshToken:newRefresh });
   } catch (err) { console.error(err); res.status(500).json({ error:'Refresh fehlgeschlagen' }); }
 });
 
 // POST /api/auth/logout
-router.post('/logout', auth, async (req, res) => {
-  const { refreshToken } = req.body;
-  if (refreshToken) await db.query(`DELETE FROM refresh_tokens WHERE token_hash=$1`,[hashToken(refreshToken)]).catch(()=>{});
-  await db.query(`DELETE FROM refresh_tokens WHERE user_id=$1`,[req.user.id]).catch(()=>{});
+// Kein auth nötig: auch mit abgelaufenem Access-Token muss sich der Nutzer sicher abmelden können
+router.post('/logout', async (req, res) => {
+  const refreshToken = refreshAusAnfrage(req);
+  if (refreshToken) {
+    // alle Refresh-Tokens des Nutzers widerrufen, zu dem dieser Token gehört
+    await db.query(`DELETE FROM refresh_tokens WHERE user_id=(SELECT user_id FROM refresh_tokens WHERE token_hash=$1)`,[hashToken(refreshToken)]).catch(()=>{});
+  }
+  clearSession(res);
   res.json({ message:'Abgemeldet' });
 });
 
@@ -362,6 +384,7 @@ router.post('/2fa-complete', async (req, res) => {
 
     const token        = signToken({ id:user.id, email:user.email, role:user.role, name:user.name });
     const refreshToken = await createRefreshToken(user.id);
+    setSession(req, res, token, refreshToken);
     res.json({ token, refreshToken, user:{ id:user.id, email:user.email, role:user.role, name:user.name }, redirect:'/admin' });
   } catch (err) {
     console.error('[2fa-complete]', err.message);

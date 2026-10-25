@@ -1,35 +1,41 @@
 /**
  * CSRF-Schutz für FrischKette
- * 
- * Da wir JWT-Auth via Authorization-Header nutzen, ist CSRF für API-Calls
- * inherent sicher. Zusätzlich validieren wir Origin/Referer für
- * state-ändernde Requests als Defense-in-Depth.
+ *
+ * Die Sitzung liegt in einem httpOnly-Cookie (SameSite=Strict). Zusätzlich prüfen wir bei
+ * state-ändernden Requests die Herkunft (Origin/Referer, exakter Vergleich) und Sec-Fetch-Site.
+ * Cookie-authentifizierte Requests ohne erkennbare Herkunft werden abgelehnt.
  */
 const crypto = require('crypto');
 
-const ALLOWED_ORIGINS = (process.env.CORS_ORIGIN || process.env.APP_URL || '')
-  .split(',').map(o => o.trim()).filter(Boolean);
+const originOf = u => { try { return new URL(u).origin; } catch { return ''; } };
+const ALLOWED = new Set(
+  (process.env.CORS_ORIGIN || process.env.APP_URL || '').split(',').map(o => originOf(o.trim())).filter(Boolean)
+);
+const isLocal = o => /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o);
 
-// Origin-Validierung für state-ändernde Requests
 function originCheck(req, res, next) {
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
 
-  const origin  = req.headers['origin']  || '';
-  const referer = req.headers['referer'] || '';
+  const cookieAuthed = !!(req.cookies && req.cookies.lp_at);
+  const self = req.protocol + '://' + req.get('host');
+  const ok = o => !!o && (o === self || ALLOWED.has(o) || isLocal(o));
 
-  // Erlaube nur eigene Origin (oder kein Origin = server-to-server)
-  if (!origin && !referer) return next(); // Server-zu-Server-Calls
+  const origin  = req.headers['origin'] || '';
+  const referer = originOf(req.headers['referer'] || '');
+  const site    = req.headers['sec-fetch-site'] || '';
 
-  const allowed = [...ALLOWED_ORIGINS, 'http://localhost', 'http://127.0.0.1'];
-  const isAllowed = allowed.some(o =>
-    origin.startsWith(o) || referer.startsWith(o)
-  );
-
-  if (origin && !isAllowed) {
-    console.warn(`[csrf] Blocked origin: ${origin} (${req.method} ${req.path})`);
-    return res.status(403).json({ error: 'CSRF: ungültige Origin' });
+  if (origin) {
+    // 'null' (z. B. aus Sandbox/Redirect) und fremde Herkunft blockieren
+    if (!ok(origin)) { console.warn(`[csrf] Blocked origin: ${origin} (${req.method} ${req.path})`); return res.status(403).json({ error: 'CSRF: ungültige Origin' }); }
+    return next();
   }
-
+  if (referer) {
+    if (!ok(referer)) { console.warn(`[csrf] Blocked referer: ${referer} (${req.method} ${req.path})`); return res.status(403).json({ error: 'CSRF: ungültige Herkunft' }); }
+    return next();
+  }
+  // Weder Origin noch Referer: nur ohne Cookie-Sitzung erlaubt (Server-zu-Server, Webhooks, API-Clients)
+  if (cookieAuthed && site !== 'same-origin') return res.status(403).json({ error: 'CSRF: Herkunft fehlt' });
+  if (site === 'cross-site') return res.status(403).json({ error: 'CSRF: Cross-Site-Request' });
   next();
 }
 

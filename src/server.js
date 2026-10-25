@@ -16,6 +16,7 @@ app.use(logger.middleware());
 
 // ── CSRF + Origin Check ─────────────────────────
 const { originCheck, csrfTokenCheck } = require('./middleware/csrf');
+app.use(require('./middleware/cookieauth'));   // Sitzungs-Cookie -> Authorization
 app.use(originCheck);
 app.use(csrfTokenCheck);
 
@@ -99,6 +100,7 @@ app.use('/api/kennzahlen',   require('./routes/kennzahlen'));
 app.use('/api/benachrichtigungen', require('./routes/benachrichtigungen'));
 app.use('/api/public', require('./routes/public'));
 app.use('/api/abrechnung', require('./routes/abrechnung'));
+app.use('/api/saisonplan',  require('./routes/saisonplan'));
 app.use('/api/touren',       require('./routes/touren'));
 app.use('/api/fahrzeuge',    require('./routes/fahrzeuge'));
 app.use('/api/auszahlungen', require('./routes/auszahlungen'));
