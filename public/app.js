@@ -296,7 +296,7 @@ function createPoolSearch(containerId, pools, renderFn) {
 function showAlert(containerId, type, msg) {
   const el = document.getElementById(containerId);
   if (!el) return;
-  el.innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+  el.innerHTML = `<div class="alert alert-${type}">${esc(msg)}</div>`;
   setTimeout(() => { if (el) el.innerHTML = ''; }, 5000);
 }
 function toast(msg, type = 'success') {

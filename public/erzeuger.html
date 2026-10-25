@@ -18,7 +18,7 @@
     <!-- POOLS -->
     <div id="view-pools" class="view">
       <div class="grid4" style="margin-bottom:1rem" id="metrics-pools"></div>
-      <div id="saison-karte" style="margin-bottom:1rem"></div>
+      <div id="erz-woche"></div>
       <div class="grid2">
         <div class="card">
           <div class="card-title">Offene Lieferpools</div>
@@ -29,6 +29,7 @@
           <div id="commitments-list"><div class="spinner"></div></div>
         </div>
       </div>
+      <div id="saison-karte" style="margin-top:1rem"></div>
     </div>
 
     <!-- ZUSAGEN -->
@@ -365,37 +366,64 @@ async function loadPools() {
     ]);
     openPools = pools;
 
-    const aktiveCommitments  = me.commitments.filter(c => c.status === 'aktiv').length;
-    const geliefertCount     = me.commitments.filter(c => c.status === 'geliefert').length;
-    const verifZerts         = me.zertifikate.filter(z => z.status === 'verified').length;
-    const gesamtErloes       = me.auszahlungen?.reduce((s, a) => s + parseFloat(a.netto || 0), 0) || 0;
+    const feeFaktor = c => 1 - (parseFloat(c.platform_fee_pct ?? 1) || 0) / 100;
+    const aktive            = me.commitments.filter(c => c.status === 'aktiv');
+    const verifZerts        = me.zertifikate.filter(z => z.status === 'verified').length;
+    const erwErloes         = aktive.reduce((s, c) => s + parseFloat(c.menge || 0) * parseFloat(c.preis_pro_einheit || 0) * feeFaktor(c), 0);
+    const tageIdx = { Montag:1, Dienstag:2, Mittwoch:3, Donnerstag:4, Freitag:5, Samstag:6 };
+    const heute = new Date().getDay();
+    const naechste = aktive.filter(c => c.liefertag && tageIdx[c.liefertag])
+      .map(c => ({ c, d: (tageIdx[c.liefertag] - heute + 7) % 7 })).sort((x, y) => x.d - y.d)[0];
 
     setHTML('metrics-pools', `
       <div class="metric"><div class="metric-label">Offene Pools</div><div class="metric-val green">${pools.length}</div></div>
-      <div class="metric"><div class="metric-label">Aktive Zusagen</div><div class="metric-val">${aktiveCommitments}</div></div>
-      <div class="metric"><div class="metric-label">Geliefert</div><div class="metric-val">${geliefertCount}</div></div>
-      <div class="metric"><div class="metric-label">Zertifikate</div>
-        <div class="metric-val ${verifZerts > 0 ? 'green' : 'amber'}">${verifZerts}</div></div>
+      <div class="metric"><div class="metric-label">Aktive Zusagen</div><div class="metric-val">${aktive.length}</div></div>
+      <div class="metric"><div class="metric-label">Erwarteter Erlös</div><div class="metric-val green">${fmt(erwErloes)} €</div></div>
+      <div class="metric"><div class="metric-label">Nächste Lieferung</div><div class="metric-val" style="font-size:1.1rem">${naechste ? esc(naechste.c.liefertag) : '–'}</div>${naechste ? `<div class="pool-meta">${naechste.d === 0 ? 'heute' : naechste.d === 1 ? 'morgen' : 'in ' + naechste.d + ' Tagen'} · ${esc(naechste.c.produkt)}</div>` : ''}</div>
     `);
 
-    setHTML('pools-list', pools.length ? pools.map(p => `
+    // Meine Woche: was ist zu tun?
+    const items = [];
+    aktive.forEach(c => {
+      if (c.liefertag) items.push({ tone: 'green', text: `${c.produkt}: ${fmt(c.menge, 0)} kg am ${c.liefertag}${c.zeitfenster_von ? ' (' + String(c.zeitfenster_von).slice(0, 5) + '–' + String(c.zeitfenster_bis || '').slice(0, 5) + ' Uhr)' : ''} bereitstellen` });
+    });
+    pools.forEach(p => {
+      const ms = p.deadline ? new Date(p.deadline) - new Date() : null;
+      const voll = parseFloat(p.menge_committed) >= parseFloat(p.menge_ziel);
+      if (ms !== null && ms > 0 && ms < 48 * 3600000 && !voll) items.push({ tone: 'amber', text: `${p.produkt}: Zusage nur noch ${Math.max(1, Math.round(ms / 3600000))} Std. möglich – erst ${poolPct(p.menge_committed, p.menge_ziel)} % gefüllt` });
+    });
+    if (verifZerts === 0) items.push({ tone: 'amber', text: 'Noch kein verifiziertes Zertifikat – Bio-Preise erst nach Prüfung (Profil & Zertifikate).' });
+    if (!me.erzeuger.iban) items.push({ tone: 'red', text: 'Keine IBAN hinterlegt – Auszahlungen sind erst danach möglich (Profil).' });
+    if (!me.erzeuger.lat) items.push({ tone: 'amber', text: 'Keine Standortkoordinaten – für die Tourenplanung bitte Adresse im Profil vervollständigen.' });
+    const col = { green: 'var(--green)', amber: 'var(--amber)', red: 'var(--red)' };
+    setHTML('erz-woche', `<div class="card" style="margin-bottom:1rem"><div class="card-title">Meine Woche</div>` +
+      (items.length ? items.slice(0, 8).map((i, k) => `<div style="display:flex;gap:10px;align-items:flex-start;padding:9px 0;${k ? 'border-top:1px solid var(--border)' : ''}"><span style="width:8px;height:8px;border-radius:50%;background:${col[i.tone]};margin-top:7px;flex-shrink:0"></span><span style="font-size:13px">${esc(i.text)}</span></div>`).join('')
+        : '<div style="font-size:13px;color:var(--text3)">Nichts zu tun – alles im grünen Bereich.</div>') + '</div>');
+
+    // Offene Pools: volle zuletzt, mit Liefertag, Deadline und Direkt-Zusage
+    const sortiert = [...pools].sort((x, y) => (parseFloat(x.menge_committed) >= parseFloat(x.menge_ziel)) - (parseFloat(y.menge_committed) >= parseFloat(y.menge_ziel)));
+    setHTML('pools-list', sortiert.length ? sortiert.map(p => {
+      const voll = parseFloat(p.menge_committed) >= parseFloat(p.menge_ziel);
+      const zeit = p.zeitfenster_von ? ` ${String(p.zeitfenster_von).slice(0, 5)}–${String(p.zeitfenster_bis || '').slice(0, 5)}` : '';
+      return `
       <div class="pool-item">
         <div class="pool-row">
-          <span class="pool-name">${p.produkt}</span>
-          ${statusBadge(p.status)}
+          <span class="pool-name">${esc(p.produkt)}</span>
+          <div style="display:flex;gap:.4rem;align-items:center">${voll ? '<span class="badge badge-green">Ziel erreicht</span>' : deadlineCountdown(p.deadline)}</div>
         </div>
         <div class="pool-row" style="margin-top:4px">
-          <span class="pool-meta">${p.lieferwoche} · ${p.region} · ${fmt(p.preis_pro_einheit)} €/kg</span>
+          <span class="pool-meta">${esc(p.lieferwoche)} · ${esc(p.region)} · ${fmt(p.preis_pro_einheit)} €/kg</span>
           <span class="pool-meta">${p.erzeuger_count || 0} Erzeuger</span>
         </div>
+        ${p.liefertag ? `<div class="pool-meta" style="margin-top:2px">Lieferung: ${esc(p.liefertag)}${esc(zeit)}${zeit ? ' Uhr' : ''}</div>` : ''}
         ${poolBar(p.menge_committed, p.menge_ziel)}
-      </div>
-    `).join('') : '<p style="color:var(--text3);font-size:13px">Keine offenen Pools</p>');
+        ${voll ? '' : `<div style="margin-top:8px"><button class="btn btn-sm btn-primary" data-action="zusagen-zu" data-pool-id="${esc(p.id)}">Menge zusagen →</button></div>`}
+      </div>`; }).join('') : '<p style="color:var(--text3);font-size:13px">Keine offenen Pools</p>');
 
     setHTML('commitments-list', me.commitments.length ? me.commitments.map(c => `
       <div class="pool-item" data-pool-id="${c.pool_id}" title="Klicken für Pool-Details">
         <div class="pool-row">
-          <span class="pool-name">${c.produkt}</span>
+          <span class="pool-name">${esc(c.produkt)}</span>
           <div style="display:flex;align-items:center;gap:.35rem;flex-wrap:wrap">
             ${statusBadge(c.status)}
             ${c.pool_status==='offen'&&c.status==='aktiv'?`
@@ -405,8 +433,8 @@ async function loadPools() {
           </div>
         </div>
         <div class="pool-row" style="margin-top:3px">
-          <span class="pool-meta">${c.lieferwoche}</span>
-          <span class="pool-meta" style="font-family:'DM Mono',monospace;color:var(--green)">${fmt(c.menge, 0)} kg · ${fmt(c.menge * parseFloat(c.preis_pro_einheit||0) * 0.99)} € erw.</span>
+          <span class="pool-meta">${esc(c.lieferwoche)}${c.liefertag ? ' · ' + esc(c.liefertag) : ''}</span>
+          <span class="pool-meta" style="font-family:'DM Mono',monospace;color:var(--green)">${fmt(c.menge, 0)} kg · ${fmt(c.menge * parseFloat(c.preis_pro_einheit||0) * (1 - (parseFloat(c.platform_fee_pct ?? 1) || 0) / 100))} € erw.</span>
         </div>
         <div id="edit-form-${c.pool_id}" style="display:none;margin-top:.75rem;padding:.75rem;background:var(--bg);border-radius:var(--radius);border:1px solid var(--border)">
           <div style="font-size:11px;color:var(--text3);margin-bottom:.5rem;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.06em">Neue Menge</div>
@@ -426,6 +454,12 @@ async function loadPools() {
   } catch (err) { showAlert('alerts', 'error', err.message); }
 }
 
+document.getElementById('pools-list')?.addEventListener('click', e => {
+  const b = e.target.closest('[data-action="zusagen-zu"]'); if (!b) return;
+  window.__preselect = b.dataset.poolId;
+  document.querySelector('[data-view="zusagen"]')?.click();
+});
+
 // ── ZUSAGEN ───────────────────────────────────────────────────
 async function loadZusagen() {
   try {
@@ -444,18 +478,18 @@ async function loadZusagen() {
     setHTML('pool-status-list', pools.length ? pools.map(p => {
       const preis = parseFloat(p.preis_pro_einheit);
       const istBester = preis >= preisPerProdukt[p.produkt];
-      const erloes100 = (100 * preis * 0.99).toFixed(2);
+      const erloes100 = (100 * preis * (1 - (parseFloat(p.platform_fee_pct ?? 1) || 0) / 100)).toFixed(2);
       return `
       <div class="pool-item" data-pool-id="${p.id}">
         <div class="pool-row">
-          <span class="pool-name">${p.produkt}</span>
+          <span class="pool-name">${esc(p.produkt)}</span>
           <div style="display:flex;gap:.5rem;align-items:center">
             <span style="font-family:'DM Mono',monospace;font-size:12px;font-weight:600;color:${istBester?'var(--green)':'var(--text2)'}">${fmt(preis)} €/kg ${istBester?'⭐':''}</span>
             ${deadlineCountdown(p.deadline)}
           </div>
         </div>
         <div class="pool-row" style="margin-top:3px">
-          <span class="pool-meta">${p.lieferwoche} · Ziel: ${Math.round(p.menge_ziel)} kg · ${p.erzeuger_count||0} Erzeuger</span>
+          <span class="pool-meta">${esc(p.lieferwoche)} · Ziel: ${Math.round(p.menge_ziel)} kg · ${p.erzeuger_count||0} Erzeuger</span>
           <span class="pool-meta" style="color:var(--green)">≈ ${erloes100} € / 100 kg</span>
         </div>
         ${poolBar(p.menge_committed, p.menge_ziel)}
@@ -464,8 +498,9 @@ async function loadZusagen() {
 
     const sel = document.getElementById('commit-pool-sel');
     if (sel) sel.innerHTML = pools.length
-      ? pools.map(p => `<option value="${p.id}" data-preis="${p.preis_pro_einheit}">${p.produkt} (${p.lieferwoche}) · ${fmt(p.preis_pro_einheit)} €/kg</option>`).join('')
+      ? pools.map(p => `<option value="${esc(p.id)}" data-preis="${esc(p.preis_pro_einheit)}" data-fee="${esc(p.platform_fee_pct ?? 1)}">${esc(p.produkt)} (${esc(p.lieferwoche)}) · ${fmt(p.preis_pro_einheit)} €/kg</option>`).join('')
       : '<option>Keine offenen Pools</option>';
+    if (window.__preselect && sel) { sel.value = window.__preselect; window.__preselect = null; }
 
     updateErloes();
   } catch (err) { showAlert('alerts', 'error', err.message); }
@@ -475,18 +510,19 @@ function updateErloes() {
   const sel   = document.getElementById('commit-pool-sel');
   const menge = parseFloat(document.getElementById('commit-menge')?.value || 0);
   const preis = parseFloat(sel?.options[sel.selectedIndex]?.dataset.preis || 0);
+  const feePct = parseFloat(sel?.options[sel.selectedIndex]?.dataset.fee ?? 1) || 0;
   const btn   = document.getElementById('btn-commit');
   const box   = document.getElementById('erloes-box');
   const prev  = document.getElementById('erloes-preview');
 
   if (menge > 0 && preis > 0) {
     const brutto = menge * preis;
-    const fee    = brutto * 0.01;
+    const fee    = brutto * feePct / 100;
     const netto  = brutto - fee;
     if (prev) prev.textContent = fmt(netto) + ' €';
     if (box)  { box.style.display = 'block'; box.innerHTML = `
       <div class="erloes-row"><span class="lbl">Brutto</span><span>${fmt(brutto)} €</span></div>
-      <div class="erloes-row"><span class="lbl">Plattformfee (1%)</span><span>−${fmt(fee)} €</span></div>
+      <div class="erloes-row"><span class="lbl">Plattformfee (${String(feePct).replace('.', ',')} %)</span><span>−${fmt(fee)} €</span></div>
       <div class="erloes-row"><span class="lbl">Netto (SEPA Instant)</span><span class="erloes-total">${fmt(netto)} €</span></div>
     `; }
     if (btn) btn.disabled = false;
@@ -514,10 +550,16 @@ document.getElementById('btn-commit')?.addEventListener('click', async () => {
         <div class="success-title">Commitment erfolgreich</div>
         <div class="success-sub">${menge} kg · Pool ${res.pool_fuellstand}% gefüllt</div>
         ${chainInfo(res.chain?.txHash)}
+        <div style="margin-top:.75rem"><button class="btn btn-sm" id="btn-commit-weitere">Weitere Zusage</button></div>
       </div>`);
     const form = document.getElementById('commit-form');
     if (form) form.style.display = 'none';
     document.getElementById('commit-menge').value = '';
+    document.getElementById('btn-commit-weitere')?.addEventListener('click', () => {
+      setHTML('commit-result', ''); if (form) form.style.display = '';
+      const b = document.getElementById('btn-commit'); if (b) { b.textContent = 'Commitment absenden'; b.disabled = true; }
+      updateErloes();
+    });
     loadZusagen();
   } catch (err) {
     btn.textContent = 'Commitment absenden'; btn.disabled = false;
@@ -540,8 +582,8 @@ async function loadAuszahlungen() {
         <tbody>${auszahlungen.map(a => `
           <tr>
             <td class="pool-meta">${new Date(a.created_at).toLocaleDateString('de-DE')}</td>
-            <td style="font-weight:500">${a.produkt || '—'}</td>
-            <td class="pool-meta">${a.lieferwoche || '—'}</td>
+            <td style="font-weight:500">${esc(a.produkt || '—')}</td>
+            <td class="pool-meta">${esc(a.lieferwoche || '—')}</td>
             <td class="pool-meta">${fmt(a.commitment_menge || 0, 0)} kg</td>
             <td style="font-family:'DM Mono',monospace;color:var(--green);font-weight:500">${fmt(a.netto)} €</td>
             <td>${statusBadge(a.status)}</td>
@@ -618,7 +660,7 @@ async function loadProfil() {
     // Account-Info
     setHTML('account-info', `
       <div style="display:grid;grid-template-columns:auto 1fr;gap:.25rem 1rem">
-        <span style="color:var(--text3)">E-Mail</span><span>${window.Auth.getUser()?.email || '—'}</span>
+        <span style="color:var(--text3)">E-Mail</span><span>${esc(window.Auth.getUser()?.email || '—')}</span>
         <span style="color:var(--text3)">Rolle</span><span>Erzeuger:in</span>
         <span style="color:var(--text3)">Betrieb-ID</span><span style="font-family:'DM Mono',monospace;font-size:11px">${erzeuger.id?.slice(0,8)}...</span>
         <span style="color:var(--text3)">Erzeuger seit</span><span>${new Date(erzeuger.created_at||Date.now()).toLocaleDateString('de-DE')}</span>
@@ -629,8 +671,8 @@ async function loadProfil() {
     setHTML('zert-list', zertifikate.length ? zertifikate.map(z => `
       <div class="auszahl-row">
         <div>
-          <div style="font-size:13px;font-weight:500">${z.typ}
-            <span class="pool-meta" style="margin-left:.5rem">${z.zert_nummer}</span>
+          <div style="font-size:13px;font-weight:500">${esc(z.typ)}
+            <span class="pool-meta" style="margin-left:.5rem">${esc(z.zert_nummer)}</span>
           </div>
           <div class="pool-meta">Gültig bis: ${(() => {
             if (!z.gueltig_bis) return 'unbegrenzt';
@@ -796,9 +838,9 @@ async function loadMeineLieferscheine() {
         </tr></thead>
         <tbody>${lieferungen.map(l => `
           <tr>
-            <td style="font-family:'DM Mono',monospace;font-size:11px">${l.lieferschein_nr}</td>
-            <td style="font-weight:500">${l.produkt}</td>
-            <td class="pool-meta">${l.lieferwoche}</td>
+            <td style="font-family:'DM Mono',monospace;font-size:11px">${esc(l.lieferschein_nr)}</td>
+            <td style="font-weight:500">${esc(l.produkt)}</td>
+            <td class="pool-meta">${esc(l.lieferwoche)}</td>
             <td class="pool-meta">${l.lieferdatum ? new Date(l.lieferdatum).toLocaleDateString('de-DE') : '—'}</td>
             <td style="font-family:'DM Mono',monospace">${l.meine_menge ? fmt(l.meine_menge,0)+' kg' : '—'}</td>
             <td style="font-family:'DM Mono',monospace;color:var(--green);font-weight:600">
@@ -810,14 +852,14 @@ async function loadMeineLieferscheine() {
               ${l.wareneingang_at?'<span style="font-size:10px;color:var(--text3);display:block">'+new Date(l.wareneingang_at).toLocaleDateString('de-DE')+'</span>':''}
             </td>
             <td>
-              ${l.qualitaet_caterer ? `<span class="badge ${l.qualitaet_caterer==='A'?'badge-green':l.qualitaet_caterer==='B'?'badge-amber':l.qualitaet_caterer==='C'?'badge-red':'badge-red'}">${l.qualitaet_caterer}</span>${l.qualitaet_notiz?'<div style="font-size:10px;color:var(--text3);margin-top:2px">'+l.qualitaet_notiz+'</div>':''}` : '<span style="color:var(--text3);font-size:12px">—</span>'}
+              ${l.qualitaet_caterer ? `<span class="badge ${l.qualitaet_caterer==='A'?'badge-green':l.qualitaet_caterer==='B'?'badge-amber':l.qualitaet_caterer==='C'?'badge-red':'badge-red'}">${l.qualitaet_caterer}</span>${l.qualitaet_notiz?'<div style="font-size:10px;color:var(--text3);margin-top:2px">'+esc(l.qualitaet_notiz)+'</div>':''}` : '<span style="color:var(--text3);font-size:12px">—</span>'}
             </td>
             <td>
-              <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent((window.location.origin||'') + '/caterer?qr=' + l.qr_code)}&color=0d1f15&bgcolor=ffffff&margin=2"
-                   alt="${l.qr_code}"
-                   style="width:48px;height:48px;border-radius:4px;border:1px solid var(--border);cursor:pointer"
-                   title="${l.qr_code}"
-                   onclick="window.open(this.src.replace('120x120','300x300'),'_blank')">
+              <img src="/api/lieferungen/qr-svg/${encodeURIComponent(l.qr_code)}"
+                   alt="${esc(l.qr_code)}"
+                   style="width:48px;height:48px;border-radius:4px;border:1px solid var(--border);background:#fff;cursor:pointer"
+                   title="${esc(l.qr_code)}"
+                   onclick="window.open(this.src,'_blank')">
             </td>
             <td>
               <button class="btn btn-sm" onclick="openPrint('/api/print/lieferung-erz/${l.id}')" title="Lieferschein drucken">🖨</button>
@@ -830,28 +872,6 @@ async function loadMeineLieferscheine() {
 }
 
 document.getElementById('btn-reload-lief-erz')?.addEventListener('click', loadMeineLieferscheine);
-
-// ── POOL SUCHE ────────────────────────────────────────────────
-document.getElementById('pool-search-erz')?.addEventListener('input', function() {
-  const q = this.value.toLowerCase();
-  document.querySelectorAll('#pools-erz-list tr[data-produkt]').forEach(row => {
-    row.style.display = row.dataset.produkt.toLowerCase().includes(q) ? '' : 'none';
-  });
-});
-
-// ── DEADLINE ALERT ─────────────────────────────────────────────
-function checkDeadlineAlerts(pools) {
-  const soon = pools.filter(p => {
-    if (!p.deadline || p.status !== 'offen') return false;
-    const ms = new Date(p.deadline) - new Date();
-    return ms > 0 && ms < 48 * 3600000; // < 48 Stunden
-  });
-  if (!soon.length) return;
-  const names = soon.map(p => p.produkt).join(', ');
-  showAlert('alerts','warning',
-    `⏰ ${soon.length} Pool${soon.length>1?'s':''} läuft bald ab: ${names}`);
-}
-
 
 document.getElementById('btn-dsgvo-export')?.addEventListener('click', async () => {
   window.open('/api/dsgvo/export', '_blank');
@@ -911,9 +931,9 @@ async function loadErzNachrichten() {
       <div style="padding:.875rem 0;border-bottom:1px solid var(--border)">
         <div style="display:flex;justify-content:space-between;gap:.5rem">
           <div style="flex:1;min-width:0">
-            <div style="font-weight:${n.gelesen?400:600};font-size:13px">${n.betreff||'(kein Betreff)'}</div>
-            <div class="pool-meta">Von: ${n.von_name||'Admin'} · ${new Date(n.created_at).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
-            <div style="font-size:13px;color:var(--text2);margin-top:.25rem;white-space:pre-wrap">${n.text}</div>
+            <div style="font-weight:${n.gelesen?400:600};font-size:13px">${esc(n.betreff||'(kein Betreff)')}</div>
+            <div class="pool-meta">Von: ${esc(n.von_name||'Admin')} · ${new Date(n.created_at).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
+            <div style="font-size:13px;color:var(--text2);margin-top:.25rem;white-space:pre-wrap">${esc(n.text)}</div>
           </div>
           <div style="display:flex;gap:.35rem;flex-shrink:0">
             ${!n.gelesen?`<button class="btn btn-sm" onclick="erzMarkGelesen(${n.id})">✓</button>`:''}
@@ -944,7 +964,7 @@ document.getElementById('btn-erz-nm-senden')?.addEventListener('click', async ()
     res.innerHTML='<span style="color:var(--green)">✓ Gesendet</span>';
     document.getElementById('erz-nm-text').value='';
     setTimeout(()=>{ if(res) res.innerHTML=''; },3000);
-  } catch(e) { res.innerHTML=`<span style="color:var(--red)">${e.message}</span>`; }
+  } catch(e) { res.innerHTML=`<span style="color:var(--red)">${esc(e.message)}</span>`; }
   btn.disabled=false; btn.textContent='Senden';
 });
 
@@ -958,19 +978,6 @@ document.getElementById('btn-erz-nm-senden')?.addEventListener('click', async ()
     }
   } catch {}
 })();
-
-
-function openPrint(path) {
-  const tok = Auth.getToken();
-  window.open(path + '?_t=' + encodeURIComponent(tok), '_blank');
-}
-function dlPrint(path) {
-  const tok = Auth.getToken();
-  const a = document.createElement('a');
-  a.href = path + '?download=1&_t=' + encodeURIComponent(tok);
-  a.download = '';
-  document.body.appendChild(a); a.click(); a.remove();
-}
 
 
 // ── Print / Download Helpers ─────────────────────────────────
