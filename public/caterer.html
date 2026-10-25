@@ -313,15 +313,15 @@
         </div>
       
       <!-- DSGVO -->
-      <div class="card" style="border-color:#ffcdd2">
-        <div class="card-title" style="color:#c62828">Meine Daten (DSGVO)</div>
+      <div class="card" style="border-color:var(--red-line)">
+        <div class="card-title" style="color:var(--red)">Meine Daten (DSGVO)</div>
         <div id="dsgvo-result"></div>
         <div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1rem">
           <button class="btn btn-sm" id="btn-dsgvo-export">↓ Meine Daten exportieren</button>
           <button class="btn btn-sm btn-danger" id="btn-dsgvo-delete-show">Konto löschen</button>
         </div>
         <div id="dsgvo-delete-area" style="display:none;border-top:1px solid var(--border);padding-top:1rem;margin-top:.5rem">
-          <p style="font-size:13px;color:#c62828;margin-bottom:.75rem">⚠ Diese Aktion kann nicht rückgängig gemacht werden. Dein Konto wird unwiderruflich anonymisiert.</p>
+          <p style="font-size:13px;color:var(--red);margin-bottom:.75rem">⚠ Diese Aktion kann nicht rückgängig gemacht werden. Dein Konto wird unwiderruflich anonymisiert.</p>
           <div class="form-group"><label class="form-label">Passwort zur Bestätigung</label><input type="password" class="form-control" id="dsgvo-confirm-pw"></div>
           <div class="form-group"><label class="form-label">Grund (optional)</label><input type="text" class="form-control" id="dsgvo-reason" placeholder="z.B. kein Bedarf mehr"></div>
           <div style="display:flex;gap:.75rem">
@@ -406,7 +406,7 @@
         </div>
         <div id="nh-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.75rem;margin-top:1rem"></div>
         <div style="position:relative;height:220px;margin-top:1.25rem"><canvas id="chart-nh"></canvas></div>
-        <div id="nh-hinweis" style="font-size:12px;color:var(--text-muted,#777);margin-top:.75rem"></div>
+        <div id="nh-hinweis" style="font-size:12px;color:var(--text-muted,var(--text3));margin-top:.75rem"></div>
       </div>
 
       <div class="card" style="margin-bottom:1.25rem">
@@ -562,13 +562,13 @@ async function nhDownload(kind) {
 }
 function nhTile(label, val, unit, sub, color) {
   const v = (val === null || val === undefined) ? '–' : fmt(val, 1);
-  return `<div style="border:1px solid var(--border,#ddd);border-radius:10px;padding:.75rem .9rem">
-    <div style="font-size:12px;color:var(--text-muted,#777)">${label}</div>
+  return `<div style="border:1px solid var(--border,var(--border));border-radius:10px;padding:.75rem .9rem">
+    <div style="font-size:12px;color:var(--text-muted,var(--text3))">${label}</div>
     <div style="font-size:24px;font-weight:600;color:${color || 'inherit'}">${v}${val === null || val === undefined ? '' : ' ' + unit}</div>
-    <div style="font-size:11px;color:var(--text-muted,#777)">${sub || ''}</div></div>`;
+    <div style="font-size:11px;color:var(--text-muted,var(--text3))">${sub || ''}</div></div>`;
 }
 function nhTable(rows, cols) {
-  if (!rows.length) return '<div style="color:var(--text-muted,#777);font-size:13px">Keine Daten im Zeitraum.</div>';
+  if (!rows.length) return '<div style="color:var(--text-muted,var(--text3));font-size:13px">Keine Daten im Zeitraum.</div>';
   const n = v => (v === null || v === undefined) ? '–' : fmt(v, 1);
   return `<div class="tbl-wrap" style="overflow-x:auto"><table class="tbl"><thead><tr>${cols.map(c => `<th>${c[0]}</th>`).join('')}</tr></thead><tbody>` +
     rows.map(r => `<tr>${cols.map(c => `<td>${c[1] === 'name' ? esc(r.name) : c[1] === 'bio' ? (r.bio ? '✅' : '–') : n(r[c[1]])}</td>`).join('')}</tr>`).join('') +
@@ -586,7 +586,7 @@ async function loadNachhaltigkeit() {
     const sel = document.getElementById('nh-caterer');
     if (sel && sel.options.length <= 1) d.caterer.forEach(c => sel.add(new Option(c.name, c.id)));
 
-    const bioFarbe = g.bio_quote_kg === null ? '' : (g.bio_quote_kg >= d.ziele.bio_prozent ? '#2e7d3e' : '#c6922a');
+    const bioFarbe = g.bio_quote_kg === null ? '' : (g.bio_quote_kg >= d.ziele.bio_prozent ? 'var(--green)' : '#c6922a');
     setHTML('nh-kpis',
       nhTile('Bio-Quote (Menge)', g.bio_quote_kg, '%', `Ziel ${d.ziele.bio_prozent} % · Wert ${g.bio_quote_eur ?? '–'} %`, bioFarbe) +
       nhTile('Regionalquote', g.regional_quote_kg, '%', `≤ ${d.ziele.regional_radius_km} km · Datenabdeckung ${g.daten_abdeckung_regional ?? '–'} %`) +
@@ -610,10 +610,10 @@ async function loadNachhaltigkeit() {
       _nhChart = new Chart(canvas.getContext('2d'), {
         type: 'line',
         data: { labels: d.monate.map(m => m.monat), datasets: [
-          { label: 'Bio %',      data: d.monate.map(m => m.bio_quote_kg),      borderColor: '#2e7d3e', tension: .3 },
+          { label: 'Bio %',      data: d.monate.map(m => m.bio_quote_kg),      borderColor: cv('--green'), tension: .3 },
           { label: 'Regional %', data: d.monate.map(m => m.regional_quote_kg), borderColor: '#2b6cb0', tension: .3 },
-          { label: 'Abfall %',   data: d.monate.map(m => m.abfall_quote),      borderColor: '#c0392b', tension: .3 },
-          { label: 'Ziel Bio',   data: d.monate.map(() => d.ziele.bio_prozent), borderColor: '#999', borderDash: [5, 4], pointRadius: 0 },
+          { label: 'Abfall %',   data: d.monate.map(m => m.abfall_quote),      borderColor: cv('--red'), tension: .3 },
+          { label: 'Ziel Bio',   data: d.monate.map(() => d.ziele.bio_prozent), borderColor: cv('--text3'), borderDash: [5, 4], pointRadius: 0 },
         ] },
         options: { responsive: true, maintainAspectRatio: false, spanGaps: true,
                    scales: { y: { min: 0, max: 100, title: { display: true, text: '%' } } } },
@@ -628,7 +628,7 @@ async function loadNachhaltigkeit() {
     setHTML('nh-saison', s.warnungen.length
       ? '<ul style="margin:0;padding-left:1.1rem">' + s.warnungen.map(w =>
           `<li>${w.firma_name ? '<b>' + esc(w.firma_name) + ':</b> ' : ''}${esc(w.hinweis)}</li>`).join('') + '</ul>'
-      : '<div style="color:var(--text-muted,#777);font-size:13px">Keine Produkte außerhalb der Saison in den aktiven Bedarfsprognosen.</div>');
+      : '<div style="color:var(--text-muted,var(--text3));font-size:13px">Keine Produkte außerhalb der Saison in den aktiven Bedarfsprognosen.</div>');
 
     await loadNhAbfall();
   } catch (err) { showAlert('alerts', 'error', err.message); }
@@ -639,7 +639,7 @@ async function loadNhAbfall() {
     ? `<div style="overflow-x:auto"><table class="tbl"><thead><tr><th>Datum</th><th>Caterer</th><th>Produkt</th><th>Verbraucht kg</th><th>Entsorgt kg</th><th>Weitergegeben kg</th><th>Grund</th><th></th></tr></thead><tbody>` +
       meldungen.map(m => `<tr><td>${String(m.datum).slice(0, 10)}</td><td>${esc(m.firma_name || '')}</td><td>${esc(m.produkt || '')}</td><td>${fmt(m.menge_verbraucht, 1)}</td><td>${fmt(m.menge_entsorgt, 1)}</td><td>${fmt(m.menge_weitergegeben, 1)}${m.weitergegeben_an ? ' (' + esc(m.weitergegeben_an) + ')' : ''}</td><td>${esc(m.grund || '')}</td><td><button class="btn btn-sm" onclick="nhAbfallLoeschen('${m.id}')">✕</button></td></tr>`).join('') +
       '</tbody></table></div>'
-    : '<div style="color:var(--text-muted,#777);font-size:13px">Noch keine Meldungen.</div>');
+    : '<div style="color:var(--text-muted,var(--text3));font-size:13px">Noch keine Meldungen.</div>');
 }
 async function nhAbfallLoeschen(id) {
   if (!confirm('Meldung löschen?')) return;

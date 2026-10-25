@@ -7,22 +7,22 @@
   const style = document.createElement('style');
   style.textContent = `
     /* Modal */
-    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;display:flex;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto;animation:fadeIn .15s ease}
-    .modal{background:#fff;border-radius:12px;width:100%;max-width:780px;box-shadow:0 20px 60px rgba(0,0,0,.2);position:relative;animation:slideUp .2s ease}
+    .modal-overlay{position:fixed;inset:0;background:var(--overlay);z-index:500;display:flex;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto;animation:fadeIn .15s ease}
+    .modal{background:var(--bg2);border:1px solid var(--border);border-radius:16px;width:100%;max-width:780px;box-shadow:0 20px 60px rgba(0,0,0,.2);position:relative;animation:slideUp .2s ease}
     .modal-head{padding:1.25rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:1rem}
     .modal-title{font-weight:600;font-size:16px;flex:1;color:var(--text)}
     .modal-close{width:28px;height:28px;border-radius:50%;background:var(--bg3);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--text2);transition:all .15s;flex-shrink:0}
     .modal-close:hover{background:var(--border);color:var(--text)}
     .modal-body{padding:1.5rem}
     .modal-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:1.25rem}
-    .modal-tab{padding:.6rem 1.1rem;font-size:12px;font-weight:500;cursor:pointer;border:none;background:none;color:var(--text3);border-bottom:2px solid transparent;transition:all .15s;font-family:'DM Sans',sans-serif}
+    .modal-tab{padding:.6rem 1.1rem;font-size:12px;font-weight:500;cursor:pointer;border:none;background:none;color:var(--text3);border-bottom:2px solid transparent;transition:all .15s;font-family:'Figtree',sans-serif}
     .modal-tab:hover{color:var(--text2)}
     .modal-tab.active{color:var(--green);border-bottom-color:var(--green)}
     .modal-tab-content{display:none}
     .modal-tab-content.active{display:block}
     .modal-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.25rem}
     .modal-stat{background:var(--bg);border-radius:6px;padding:.875rem 1rem;border:1px solid var(--border)}
-    .modal-stat-label{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:.25rem;font-family:'DM Mono',monospace}
+    .modal-stat-label{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--text3);margin-bottom:.25rem;font-family:'JetBrains Mono',monospace}
     .modal-stat-val{font-size:18px;font-weight:300;color:var(--text)}
     .modal-stat-val.green{color:var(--green)}
     .modal-actions{display:flex;gap:.75rem;flex-wrap:wrap;padding-top:1.25rem;border-top:1px solid var(--border);margin-top:1.25rem}
@@ -33,33 +33,27 @@
     @media(max-width:560px){.modal-grid{grid-template-columns:1fr 1fr}}
 
     /* Mobile Nav */
-    .hamburger{display:none;flex-direction:column;gap:4px;background:none;border:1px solid var(--border);padding:7px 9px;border-radius:var(--radius);cursor:pointer}
-    .hamburger span{width:18px;height:2px;background:var(--text2);border-radius:1px;transition:all .2s}
-    .nav-mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200}
-    .nav-mobile-panel{position:fixed;top:0;left:0;bottom:0;width:240px;background:#fff;z-index:201;transform:translateX(-100%);transition:transform .25s ease;border-right:1px solid var(--border);padding:1rem 0;overflow-y:auto}
+    .hamburger{display:none;flex-direction:column;gap:4px;background:none;border:1px solid var(--border2);padding:10px;border-radius:10px;cursor:pointer;min-width:44px;min-height:44px;align-items:center;justify-content:center}
+    .hamburger span{width:18px;height:2px;background:var(--text);border-radius:1px}
+    .hdr-mobile-out{display:none;margin-left:auto;min-height:44px;padding:0 14px;border-radius:10px;border:1px solid var(--border2);background:none;color:var(--text);font:inherit;font-weight:600;cursor:pointer}
+    .nav-mobile-overlay{display:none;position:fixed;inset:0;background:var(--overlay);z-index:200}
+    .nav-mobile-panel{position:fixed;top:0;left:0;bottom:0;width:272px;max-width:86vw;background:var(--side);z-index:201;transform:translateX(-100%);transition:transform .25s ease;border-right:1px solid var(--border);padding:1rem .85rem;overflow-y:auto;display:flex;flex-direction:column;gap:2px}
     .nav-mobile-panel.open{transform:translateX(0)}
-    .nav-mobile-panel .nav-btn{display:block;width:100%;text-align:left;padding:.75rem 1.25rem;border-radius:0;font-size:13px}
-    .nav-mobile-logo{padding:.5rem 1.25rem 1rem;font-family:'DM Mono',monospace;font-size:14px;font-weight:500;border-bottom:1px solid var(--border);margin-bottom:.5rem}
-    .nav-mobile-logo span{color:var(--green)}
-    /* Viele Tabs (Admin): Navigation scrollt, Abmelden bleibt immer sichtbar */
-    #app-header .nav{flex:1 1 auto;min-width:0;overflow-x:auto;scrollbar-width:thin}
-    #app-header .nav .nav-btn{white-space:nowrap;flex-shrink:0}
-    #app-header .hdr-right{flex-shrink:0;margin-left:.75rem}
-    #app-header .logo{flex-shrink:0}
+    .nav-mobile-panel .nav-btn{min-height:44px}
+    .nav-mobile-panel .hdr-right{margin-top:auto}
     @media(max-width:768px){
       .hamburger{display:flex}
-      .nav{display:none !important}
-      .hdr-right .role-badge,.hdr-right span:not(.btn-logout){display:none}
+      .hdr-mobile-out{display:inline-block}
     }
 
     /* Pool-Suche */
     .pool-search-wrap{position:relative;margin-bottom:1rem}
     .pool-search-input{width:100%;padding:8px 12px 8px 36px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg2);font-size:13px;color:var(--text);transition:border-color .15s}
-    .pool-search-input:focus{outline:none;border-color:var(--green-dim);box-shadow:0 0 0 3px rgba(46,125,62,.1)}
+    .pool-search-input:focus{outline:none;border-color:var(--green-dim);box-shadow:0 0 0 3px var(--focus)}
     .pool-search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:14px;pointer-events:none}
 
     /* Push Banner */
-    .push-banner{background:var(--green-bg);border:1px solid #b8dfc0;border-radius:var(--radius);padding:.75rem 1rem;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;font-size:13px}
+    .push-banner{background:var(--green-bg);border:1px solid var(--green-line);border-radius:var(--radius);padding:.75rem 1rem;margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between;font-size:13px}
   `;
   document.head.appendChild(style);
 })();
@@ -77,62 +71,105 @@ function requireAuth(expectedRole) {
 }
 
 // ── Mobile Nav ─────────────────────────────────────────────────
+// ── Theme (hell/dunkel) ────────────────────────────────────────
+function getTheme() {
+  try { const t = localStorage.getItem('lp_theme'); if (t === 'light' || t === 'dark') return t; } catch {}
+  return window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+function applyTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  document.querySelectorAll('.btn-theme').forEach(b => {
+    b.textContent = t === 'dark' ? '☀ Hell' : '☾ Dunkel';
+    b.setAttribute('aria-label', t === 'dark' ? 'Helles Design' : 'Dunkles Design');
+  });
+}
+function toggleTheme() {
+  const t = getTheme() === 'dark' ? 'light' : 'dark';
+  try { localStorage.setItem('lp_theme', t); } catch {}
+  applyTheme(t);
+}
+(function initTheme() {
+  try { const t = localStorage.getItem('lp_theme'); if (t) document.documentElement.setAttribute('data-theme', t); } catch {}
+})();
+
+// ── Navigation (Seitenleiste / mobiles Menü) ───────────────────
+const NAV_GROUPS = {
+  'Arbeit':   ['overview','pools','pools-alle','pool-neu','zusagen','wareneingang','bedarf','vorlagen','lieferung-neu','lieferscheine','vertraege'],
+  'Betrieb':  ['lager','logistik','tracking','fahrer-mgmt','auszahlungen','auszahlung','reports','nachhaltigkeit'],
+  'Stammdaten': ['zertifikate','erzeuger','caterer-mgmt','profil','nachrichten','blockchain']
+};
+function navGroupOf(id) {
+  for (const g in NAV_GROUPS) if (NAV_GROUPS[g].includes(id)) return g;
+  return 'Weitere';
+}
+function navHTML(navItems, activeView) {
+  let last = null, out = '';
+  const order = ['Arbeit','Betrieb','Stammdaten','Weitere'];
+  const sorted = [...navItems].map((n, i) => ({ n, i, g: navGroupOf(n.id) }))
+    .sort((a, b) => order.indexOf(a.g) - order.indexOf(b.g) || a.i - b.i);
+  const multi = new Set(sorted.map(x => x.g)).size > 1 && navItems.length > 6;
+  for (const { n, g } of sorted) {
+    if (multi && g !== last) { out += `<div class="nav-group">${g}</div>`; last = g; }
+    out += `<button class="nav-btn ${activeView===n.id?'active':''}" data-view="${n.id}">${n.label}</button>`;
+  }
+  return out;
+}
+
 function renderHeader(activeView, navItems, onNav) {
   const user = Auth.getUser();
   const roleLabels = { erzeuger:'Erzeuger', caterer:'Caterer', admin:'Admin', fahrer:'Fahrer' };
   const hdr = document.getElementById('app-header');
+  const userBlock = `
+    <div class="hdr-right">
+      <div class="hdr-user"><span class="role-badge">${roleLabels[user?.role]||''}</span><span>${esc(user?.name||'')}</span></div>
+      <div class="hdr-actions">
+        <button class="btn-theme" type="button"></button>
+        <button class="btn-logout" type="button">Abmelden</button>
+      </div>
+    </div>`;
 
   hdr.innerHTML = `
     <button class="hamburger" id="hamburger-btn" aria-label="Menü">
       <span></span><span></span><span></span>
     </button>
     <div class="logo">Liefer<span>Pool</span></div>
-    <nav class="nav" id="main-nav">
-      ${navItems.map(n => `<button class="nav-btn ${activeView===n.id?'active':''}" data-view="${n.id}">${n.label}</button>`).join('')}
-    </nav>
-    <div class="hdr-right">
-      <span class="role-badge">${roleLabels[user?.role]||''}</span>
-      <span style="font-size:12px;color:var(--text2)">${user?.name||''}</span>
-      <button class="btn-logout" id="btn-logout">Abmelden</button>
-    </div>
+    <nav class="nav" id="main-nav">${navHTML(navItems, activeView)}</nav>
+    ${userBlock}
+    <button class="hdr-mobile-out btn-logout-m" type="button">Abmelden</button>
 
-    <!-- Mobile Panel -->
     <div class="nav-mobile-overlay" id="nav-overlay"></div>
     <div class="nav-mobile-panel" id="nav-panel">
-      <div class="nav-mobile-logo">Liefer<span>Pool</span></div>
-      ${navItems.map(n => `<button class="nav-btn ${activeView===n.id?'active':''}" data-view="${n.id}">${n.label}</button>`).join('')}
+      <div class="logo" style="padding-bottom:.75rem">Liefer<span>Pool</span></div>
+      ${navHTML(navItems, activeView)}
+      ${userBlock}
     </div>
   `;
 
-  // Desktop nav
   document.getElementById('main-nav').addEventListener('click', e => {
     const btn = e.target.closest('[data-view]');
     if (btn) { onNav(btn.dataset.view); updateActiveNav(btn.dataset.view); }
   });
 
-  // Mobile hamburger
   const panel   = document.getElementById('nav-panel');
   const overlay = document.getElementById('nav-overlay');
+  const closePanel = () => { panel.classList.remove('open'); overlay.style.display = 'none'; };
   document.getElementById('hamburger-btn').addEventListener('click', () => {
     panel.classList.toggle('open');
     overlay.style.display = panel.classList.contains('open') ? 'block' : 'none';
   });
-  overlay.addEventListener('click', () => {
-    panel.classList.remove('open'); overlay.style.display = 'none';
-  });
+  overlay.addEventListener('click', closePanel);
   panel.addEventListener('click', e => {
     const btn = e.target.closest('[data-view]');
-    if (btn) {
-      onNav(btn.dataset.view);
-      updateActiveNav(btn.dataset.view);
-      panel.classList.remove('open'); overlay.style.display = 'none';
-    }
+    if (btn) { onNav(btn.dataset.view); updateActiveNav(btn.dataset.view); closePanel(); }
   });
 
-  document.getElementById('btn-logout').addEventListener('click', async () => {
+  const logout = async () => {
     try { await api.logout(Auth.getRefresh()); } catch {}
     Auth.clear(); window.location.href = '/login';
-  });
+  };
+  hdr.querySelectorAll('.btn-logout, .btn-logout-m').forEach(b => b.addEventListener('click', logout));
+  hdr.querySelectorAll('.btn-theme').forEach(b => b.addEventListener('click', toggleTheme));
+  applyTheme(getTheme());
 }
 
 function updateActiveNav(viewId) {
@@ -206,7 +243,7 @@ function poolBar(committed, ziel) {
   const pct = poolPct(committed, ziel);
   const cls = pct < 40 ? 'low' : pct < 80 ? 'warn' : '';
   return `
-    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);font-family:'DM Mono',monospace;margin-top:6px">
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);font-family:'JetBrains Mono',monospace;margin-top:6px">
       <span>${Math.round(committed)} / ${Math.round(ziel)} kg</span><span>${pct}%</span>
     </div>
     <div class="progress-wrap"><div class="progress-bar ${cls}" style="width:${pct}%"></div></div>
@@ -382,7 +419,7 @@ async function showPoolDetail(poolId) {
       </div>
 
       <div style="margin-bottom:1.25rem">
-        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);font-family:'DM Mono',monospace;margin-bottom:6px">
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);font-family:'JetBrains Mono',monospace;margin-bottom:6px">
           <span>${Math.round(pool.menge_committed)} kg von ${Math.round(pool.menge_ziel)} kg</span>
           <span style="font-weight:600;color:${pct>=100?'var(--green)':pct>=50?'var(--amber)':'var(--red)'}">${pct}%</span>
         </div>
@@ -412,7 +449,7 @@ async function showPoolDetail(poolId) {
                 return `<tr>
                   <td style="font-weight:500">${isErzeuger && c.betrieb_name !== Auth.getUser()?.name ? c.betrieb_name.split(' ')[0]+'...' : c.betrieb_name||'—'}</td>
                   <td class="pool-meta">${c.region||'—'}</td>
-                  <td style="font-family:'DM Mono',monospace">${fmt(c.menge,0)} kg</td>
+                  <td style="font-family:'JetBrains Mono',monospace">${fmt(c.menge,0)} kg</td>
                   <td>
                     <div style="display:flex;align-items:center;gap:8px">
                       <div style="width:60px;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden">
@@ -421,7 +458,7 @@ async function showPoolDetail(poolId) {
                       <span class="pool-meta">${anteil}%</span>
                     </div>
                   </td>
-                  ${isAdmin||!isErzeuger ? `<td style="font-family:'DM Mono',monospace;color:var(--green)">${fmt(erloes)} €</td>` : ''}
+                  ${isAdmin||!isErzeuger ? `<td style="font-family:'JetBrains Mono',monospace;color:var(--green)">${fmt(erloes)} €</td>` : ''}
                   <td>${statusBadge(c.status)}</td>
                 </tr>`;
               }).join('')}
@@ -429,7 +466,7 @@ async function showPoolDetail(poolId) {
           </table>
           <div style="margin-top:.75rem;padding:.75rem 1rem;background:var(--bg);border-radius:6px;display:flex;justify-content:space-between;font-size:13px">
             <span style="color:var(--text2)">Gesamtwert (brutto)</span>
-            <span style="font-weight:600;font-family:'DM Mono',monospace">${fmt(wertGesamt)} €</span>
+            <span style="font-weight:600;font-family:'JetBrains Mono',monospace">${fmt(wertGesamt)} €</span>
           </div>
         ` : '<p style="color:var(--text3);font-size:13px">Noch keine Zusagen</p>'}
       </div>
@@ -441,7 +478,7 @@ async function showPoolDetail(poolId) {
             <tbody>
               ${lieferungen.map(l=>`<tr>
                 <td class="pool-meta">${l.lieferschein_nr}</td>
-                <td><span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--green)">${l.qr_code}</span></td>
+                <td><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green)">${l.qr_code}</span></td>
                 <td class="pool-meta">${fmt(l.menge_bestellt,0)} kg</td>
                 <td style="font-weight:500">${l.menge_geliefert?fmt(l.menge_geliefert,0)+' kg':'—'}</td>
                 <td>${l.qualitaet?statusBadge(l.qualitaet):'—'}</td>
@@ -461,13 +498,13 @@ async function showPoolDetail(poolId) {
               ${auszahlungen.map(a=>`<tr>
                 <td style="font-weight:500">${a.betrieb_name||'—'}</td>
                 <td class="pool-meta">${fmt(a.brutto)} €</td>
-                <td style="font-family:'DM Mono',monospace;color:var(--green);font-weight:500">${fmt(a.netto)} €</td>
+                <td style="font-family:'JetBrains Mono',monospace;color:var(--green);font-weight:500">${fmt(a.netto)} €</td>
                 <td>${statusBadge(a.status)}</td>
               </tr>`).join('')}
               <tr style="background:var(--bg)">
                 <td style="font-weight:600">Gesamt</td>
-                <td style="font-weight:600;font-family:'DM Mono',monospace">${fmt(auszahlungen.reduce((s,a)=>s+parseFloat(a.brutto),0))} €</td>
-                <td style="font-weight:600;font-family:'DM Mono',monospace;color:var(--green)">${fmt(auszahlungen.reduce((s,a)=>s+parseFloat(a.netto),0))} €</td>
+                <td style="font-weight:600;font-family:'JetBrains Mono',monospace">${fmt(auszahlungen.reduce((s,a)=>s+parseFloat(a.brutto),0))} €</td>
+                <td style="font-weight:600;font-family:'JetBrains Mono',monospace;color:var(--green)">${fmt(auszahlungen.reduce((s,a)=>s+parseFloat(a.netto),0))} €</td>
                 <td></td>
               </tr>
             </tbody>
@@ -531,3 +568,6 @@ document.addEventListener('click', e => {
     if (id) showPoolDetail(id);
   }
 });
+
+// CSS-Variable als Farbwert (für Canvas/Leaflet, die var() nicht auflösen)
+function cv(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
