@@ -1,5 +1,4 @@
-# Update 3
-- Dateien in die gleichnamigen Ordner kopieren, deployen. Keine neue Migration (setzt migrate:fix10 voraus, Spalten liefertag/zeitfenster).
-- Wiederkehrende Pools: laufen automatisch (alle 6 h) für alle aktiven Vorlagen im Caterer-Bereich „Vorlagen“.
-- Öffentliche Seite /wirkung: nur sichtbar, wenn in Render WIRKUNG_PUBLIC=true gesetzt ist (Standard: aus).
-- Förder-Bericht: Nachhaltigkeit → PDF (jetzt mit Zielerreichung und Verlaufsdiagramm).
+# Update 4
+- Dateien in die gleichnamigen Ordner kopieren, deployen. Keine Migration nötig.
+- Tourenvorschlag: Admin → Logistik → „🧭 Tourenvorschlag". Nutzt Lieferdatum der Lieferungen, Zusagen der Erzeuger, Koordinaten (Geocoding in Nachhaltigkeit ausführen!) und die größte aktive Fahrzeug-Zuladung.
+- Monatsabrechnung: Caterer → Lieferscheine → „Monatsabrechnung (PDF)". Nur bestätigte Wareneingänge (Status „eingegangen"). Ist keine Rechnung im Sinne des UStG (steht auf dem PDF).

@@ -98,6 +98,7 @@ app.use('/api/bedarf',       require('./routes/bedarf'));
 app.use('/api/kennzahlen',   require('./routes/kennzahlen'));
 app.use('/api/benachrichtigungen', require('./routes/benachrichtigungen'));
 app.use('/api/public', require('./routes/public'));
+app.use('/api/abrechnung', require('./routes/abrechnung'));
 app.use('/api/touren',       require('./routes/touren'));
 app.use('/api/fahrzeuge',    require('./routes/fahrzeuge'));
 app.use('/api/auszahlungen', require('./routes/auszahlungen'));

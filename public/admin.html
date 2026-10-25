@@ -652,6 +652,7 @@
           <span class="section-title">Touren heute</span>
           <div style="display:flex;gap:.5rem">
             <button class="btn btn-sm" id="btn-reload-touren">↻</button>
+            <button class="btn btn-sm" id="btn-tour-vorschlag">🧭 Tourenvorschlag</button>
             <button class="btn btn-primary btn-sm" id="btn-show-tour-form">+ Neue Tour</button>
           </div>
         </div>
@@ -3987,6 +3988,50 @@ async function dlPrint(path) {
 }
 
 
+
+// ── Tourenvorschlag ────────────────────────────────────────────
+document.getElementById('btn-tour-vorschlag')?.addEventListener('click', () => {
+  const morgen = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const ov = document.createElement('div');
+  ov.className = 'modal-overlay';
+  ov.innerHTML = `<div class="modal" style="max-width:720px">
+    <div class="modal-head"><div class="modal-title">🧭 Tourenvorschlag</div><button class="modal-close" aria-label="Schließen">✕</button></div>
+    <div class="modal-body">
+      <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem">
+        <label class="form-label" style="margin:0">Liefertag</label>
+        <input type="date" class="form-control" id="tv-datum" value="${morgen}" style="width:170px">
+        <button class="btn btn-primary btn-sm" id="tv-los">Vorschlag berechnen</button>
+      </div>
+      <div id="tv-out" style="font-size:13px;color:var(--text2)">Wählt alle offenen Lieferungen des Tages, bildet nach Fahrzeug-Zuladung Touren und sortiert die Stopps ab dem Hub.</div>
+    </div></div>`;
+  document.body.appendChild(ov);
+  const close = () => ov.remove();
+  ov.querySelector('.modal-close').onclick = close;
+  ov.addEventListener('click', e => { if (e.target === ov) close(); });
+  const out = ov.querySelector('#tv-out');
+  ov.querySelector('#tv-los').onclick = async () => {
+    const datum = ov.querySelector('#tv-datum').value;
+    out.innerHTML = '<div class="spinner"></div>';
+    try {
+      const r = await fetch('/api/touren/vorschlag?datum=' + encodeURIComponent(datum), { headers: { 'Authorization': 'Bearer ' + Auth.getToken() } });
+      const v = await r.json(); if (!r.ok) throw new Error(v.error || 'Fehler');
+      if (!v.touren.length) { out.innerHTML = '<div class="alert alert-info">' + esc((v.hinweise || [])[0] || 'Nichts zu planen.') + '</div>'; return; }
+      out.innerHTML = (v.hinweise || []).map(h => '<div class="alert alert-info">' + esc(h) + '</div>').join('') +
+        v.touren.map((t, i) => `<div class="card" style="margin-bottom:.75rem"><div class="card-title">Tour ${i + 1} · ${t.gesamt_kg} kg · ca. ${String(t.strecke_km).replace('.', ',')} km · ${t.anzahl_stopps} Stopps ${t.e_lastenrad_ok ? '· 🚲 Lastenrad möglich' : ''}</div>` +
+          t.stopps.map(s => `<div style="display:flex;gap:10px;padding:5px 0;border-top:1px solid var(--border)"><span style="min-width:22px;color:var(--text3)">${s.reihenfolge}</span><span><b>${s.typ === 'abholung' ? '⬆ Abholung' : '⬇ Lieferung'}</b> · ${esc(s.name)}<br><span style="color:var(--text3)">${esc(s.produkt || '')} ${s.menge_geplant_kg ? '· ' + fmt(s.menge_geplant_kg, 0) + ' kg' : ''} ${s.zeitfenster ? '· ' + esc(s.zeitfenster) : ''}</span></span></div>`).join('') + '</div>').join('') +
+        '<div class="modal-actions"><button class="btn btn-primary" id="tv-ok">Touren anlegen</button><span style="font-size:12px;color:var(--text3);align-self:center">Fahrer weist du danach in der Tour zu.</span></div>';
+      ov.querySelector('#tv-ok').onclick = async () => {
+        const b = ov.querySelector('#tv-ok'); b.disabled = true;
+        try {
+          const r2 = await fetch('/api/touren/vorschlag/uebernehmen', { method: 'POST', headers: { 'Authorization': 'Bearer ' + Auth.getToken(), 'Content-Type': 'application/json' }, body: JSON.stringify({ datum, touren: v.touren }) });
+          const j = await r2.json(); if (!r2.ok) throw new Error(j.error || 'Fehler');
+          toast(j.message || 'Touren angelegt'); close();
+          document.getElementById('btn-reload-touren')?.click();
+        } catch (e) { b.disabled = false; out.insertAdjacentHTML('afterbegin', '<div class="alert alert-error">' + esc(e.message) + '</div>'); }
+      };
+    } catch (e) { out.innerHTML = '<div class="alert alert-error">' + esc(e.message) + '</div>'; }
+  };
+});
 </script>
 
 <nav class="mobile-nav" id="mobile-nav">

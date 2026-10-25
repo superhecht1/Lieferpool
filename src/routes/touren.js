@@ -196,6 +196,27 @@ router.post('/:id/stopps/:stoppId/ueberspringen', auth, role('fahrer'), async (r
 
 
 // GET /api/touren/:id – Tour mit Stopps für Fahrer
+// GET /api/touren/vorschlag?datum=YYYY-MM-DD – automatischer Tourenvorschlag (Admin)
+router.get('/vorschlag', auth, role('admin'), async (req, res) => {
+  const datum = /^\d{4}-\d{2}-\d{2}$/.test(req.query.datum || '') ? req.query.datum : new Date().toISOString().slice(0, 10);
+  try { res.json(await require('../services/tourenvorschlag').schlageVor(datum)); }
+  catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/touren/vorschlag/uebernehmen – Vorschlag als echte Touren anlegen (Admin)
+router.post('/vorschlag/uebernehmen', auth, role('admin'), async (req, res) => {
+  const { datum, touren } = req.body || {};
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(datum || '') || !Array.isArray(touren) || !touren.length)
+    return res.status(400).json({ error: 'datum und touren erforderlich' });
+  try {
+    // Sicherheit: Vorschlag serverseitig neu berechnen statt Client-Daten zu vertrauen
+    const v = await require('../services/tourenvorschlag').schlageVor(datum);
+    if (!v.touren.length) return res.status(409).json({ error: 'Keine offenen Lieferungen mehr für dieses Datum' });
+    const ids = await require('../services/tourenvorschlag').uebernehmen(datum, v.touren, req.user.id);
+    res.status(201).json({ ids, message: `${ids.length} Tour(en) angelegt` });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 router.get('/:id', auth, async (req, res) => {
   try {
     const { rows:[tour] } = await db.query(`

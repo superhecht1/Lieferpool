@@ -375,6 +375,10 @@
       <div class="card">
         <div class="section-hdr">
           <span class="section-title">📋 Meine Lieferscheine</span>
+          <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+            <input type="month" class="form-control" id="abr-monat" style="width:150px;padding:5px 8px">
+            <button class="btn btn-sm" id="abr-pdf">⬇ Monatsabrechnung (PDF)</button>
+          </div>
           <div style="display:flex;gap:.5rem">
             <select class="form-control" id="cat-lief-filter" style="width:140px;padding:5px 8px">
               <option value="">Alle Status</option>
@@ -1517,6 +1521,18 @@ function dlPrint(path) {
   a.remove();
 }
 
+
+// ── Monatsabrechnung ───────────────────────────────────────────
+(function () {
+  const m = document.getElementById('abr-monat'); if (m) m.value = new Date().toISOString().slice(0, 7);
+  document.getElementById('abr-pdf')?.addEventListener('click', async () => {
+    try {
+      const r = await fetch('/api/abrechnung/pdf?monat=' + encodeURIComponent(m.value), { headers: { 'Authorization': 'Bearer ' + Auth.getToken() } });
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Fehler ' + r.status);
+      const a = document.createElement('a'); a.href = URL.createObjectURL(await r.blob()); a.download = 'lieferabrechnung_' + m.value + '.pdf'; a.click();
+    } catch (e) { toast(e.message, 'error'); }
+  });
+})();
 </script>
 </body>
 </html>
