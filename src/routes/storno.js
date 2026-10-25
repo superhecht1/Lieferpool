@@ -29,6 +29,21 @@ router.post('/pool/:id', auth, role('admin'), async (req, res) => {
       RETURNING erzeuger_id
     `, [pool.id]);
 
+    // 3a. Pfand: noch nicht ausgelieferte Lieferungen (Status 'erstellt') -> Kisten waren nie beim Caterer
+    const { rows: pf } = await client.query(`
+      SELECT id, pfand_kisten_geliefert - COALESCE(pfand_kisten_zurueck,0) AS offen, pfand_pro_kiste
+      FROM lieferungen WHERE pool_id=$1 AND status='erstellt' AND pfand_kisten_geliefert > COALESCE(pfand_kisten_zurueck,0)`, [pool.id]);
+    for (const l of pf) {
+      const betrag = l.offen * parseFloat(l.pfand_pro_kiste);
+      await client.query(`UPDATE lieferungen SET pfand_kisten_geliefert = COALESCE(pfand_kisten_zurueck,0) WHERE id=$1`, [l.id]);
+      if (pool.caterer_id) {
+        await client.query(`INSERT INTO pfand_bewegungen (lieferung_id, entity_type, entity_id, bewegung_typ, kisten_anzahl, pfand_betrag, notiz, created_by)
+                            VALUES ($1,'caterer',$2,'rueckgabe',$3,$4,'Storno (nicht ausgeliefert)',$5)`, [l.id, pool.caterer_id, l.offen, betrag, req.user.id]);
+        await client.query(`UPDATE pfand_konten SET kisten_saldo = kisten_saldo - $2, pfand_saldo = pfand_saldo - $3, updated_at = NOW()
+                            WHERE entity_type='caterer' AND entity_id=$1`, [pool.caterer_id, l.offen, betrag]);
+      }
+    }
+
     // 3. Lieferscheine stornieren
     const { rows: liefer } = await client.query(`
       UPDATE lieferungen SET status='storniert'
