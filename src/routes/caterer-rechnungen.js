@@ -52,6 +52,20 @@ router.get('/vorschau', auth, role('admin'), async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Einnahmen aus der Servicegebühr je Monat (Admin): Küchenseite = Rechnungen nach Storno, Hofseite = Abzug bei Auszahlungen
+router.get('/gebuehren', auth, role('admin'), async (req, res) => {
+  try {
+    const monat = validMonat(req.query.monat) ? req.query.monat : new Date().toISOString().slice(0, 7);
+    const { rows: [k] } = await db.query(`SELECT COALESCE(SUM(gebuehr_netto),0)::float AS netto, COALESCE(SUM(gebuehr_mwst),0)::float AS mwst,
+        COUNT(*) FILTER (WHERE typ='rechnung')::int AS rechnungen
+      FROM caterer_rechnungen WHERE to_char(rechnungsdatum,'YYYY-MM') = $1`, [monat]);
+    const { rows: [h] } = await db.query(`SELECT COALESCE(SUM(platform_fee),0)::float AS summe, COUNT(*)::int AS anzahl
+      FROM auszahlungen WHERE status <> 'fehlgeschlagen' AND to_char(created_at,'YYYY-MM') = $1`, [monat]);
+    res.json({ monat, kueche_netto: r2(k.netto), kueche_mwst: r2(k.mwst), kueche_rechnungen: k.rechnungen,
+               hof: r2(h.summe), hof_auszahlungen: h.anzahl, gesamt_netto: r2(k.netto + h.summe) });
+  } catch (e) { res.status(500).json({ error: 'Gebühreneinnahmen konnten nicht geladen werden' }); }
+});
+
 router.post('/erstellen', auth, role('admin'), async (req, res) => {
   const { caterer_id, monat } = req.body;
   const satz = Number(req.body.mwst_satz ?? 7), tage = Math.min(90, Math.max(0, parseInt(req.body.zahlungsziel_tage ?? 14)));
