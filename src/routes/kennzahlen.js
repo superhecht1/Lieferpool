@@ -364,6 +364,8 @@ router.get('/export.xlsx', auth, role('admin', 'caterer'), async (req, res) => {
     add('Pro Caterer', [[...kopf, 'Abfallquote %'], ...d.caterer.map(t => [...zeile(t), t.abfall_quote])]);
     add('Pro Produkt', [kopf, ...d.produkte.map(zeile)]);
     add('Pro Erzeuger', [[...kopf, 'Bio-zertifiziert'], ...d.erzeuger.map(t => [...zeile(t), t.bio ? 'ja' : 'nein'])]);
+    add('Lieferantentyp', [['Typ','Menge kg','Wert €','Bio %','Regional %','Ø km','tkm'],
+      ...(d.lieferanten_typ || []).map(t => [t.typ === 'grosshandel' ? 'Großhandel' : 'Regionale Höfe', t.kg, t.eur, t.bio_quote_kg, t.regional_quote_kg, t.avg_transport_km, t.tkm])]);
     add('Monatsverlauf', [['Monat','Menge kg','Bio %','Regional %','Abfall %'],
       ...d.monate.map(t => [t.monat, t.kg, t.bio_quote_kg, t.regional_quote_kg, t.abfall_quote])]);
     add('Methodik', [
