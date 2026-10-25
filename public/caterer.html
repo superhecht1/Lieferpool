@@ -372,6 +372,23 @@
 
 
     <!-- LIEFERSCHEINE (Caterer) -->
+    <div id="view-pfand" class="view" style="display:none">
+      <div id="cat-pfand-stats" style="display:grid;grid-template-columns:repeat(2,1fr);gap:.75rem;margin-bottom:1rem"></div>
+      <div class="card">
+        <div class="section-hdr">
+          <span class="section-title">🧺 Offene Pfandkisten</span>
+          <div style="display:flex;gap:.5rem">
+            <button class="btn btn-sm" id="btn-pfand-auszug">🖨 Kontoauszug</button>
+            <button class="btn btn-sm" id="btn-reload-cat-pfand">↻</button>
+          </div>
+        </div>
+        <div id="cat-pfand-offen"><div class="spinner"></div></div>
+      </div>
+      <div class="card">
+        <div class="section-hdr"><span class="section-title">📜 Verlauf</span></div>
+        <div id="cat-pfand-verlauf"></div>
+      </div>
+    </div>
     <div id="view-lieferscheine" class="view" style="display:none">
       <div class="card">
         <div class="section-hdr">
@@ -510,6 +527,7 @@ const NAV = [
   { id: 'vertraege',    label: 'Verträge'        },
   { id: 'vorlagen',     label: '🔄 Vorlagen'     },
   { id: 'lieferscheine',label: '📋 Lieferscheine' },
+  { id: 'pfand',        label: '🧺 Pfand'        },
   { id: 'profil',       label: 'Profil'          },
   { id: 'nachrichten',  label: '💬 Nachrichten'   },
   { id: 'nachhaltigkeit', label: '🌱 Nachhaltigkeit' },
@@ -543,6 +561,7 @@ async function loadView(v) {
   if (v === 'profil')       loadCatProfil();
   if (v === 'vorlagen')       loadCatererVorlagen();
   if (v === 'lieferscheine')  loadCatLieferscheine();
+  if (v === 'pfand')          loadCatPfand();
   if (v === 'nachrichten')    loadCatNachrichten();
   if (v === 'nachhaltigkeit') loadNachhaltigkeit();
 }
@@ -1366,6 +1385,33 @@ async function loadCatLieferscheine() {
 }
 document.getElementById('cat-lief-filter')?.addEventListener('change', loadCatLieferscheine);
 document.getElementById('btn-reload-cat-lief')?.addEventListener('click', loadCatLieferscheine);
+
+// ── PFAND ─────────────────────────────────────────────────────
+async function loadCatPfand() {
+  try {
+    const d = await fetch('/api/pfand/mein', { headers: { 'Authorization': 'Bearer ' + Auth.getToken() } }).then(r => r.json());
+    if (d.error) throw new Error(d.error);
+    const k = Number(d.konto.kisten_saldo) || 0, e = parseFloat(d.konto.pfand_saldo) || 0;
+    setHTML('cat-pfand-stats', `
+      <div class="metric"><div class="metric-label">Kisten bei dir</div><div class="metric-val" style="color:${k>0?'var(--amber)':'var(--green)'}">${k}</div></div>
+      <div class="metric"><div class="metric-label">Pfand offen (€)</div><div class="metric-val" style="color:${k>0?'var(--amber)':'var(--green)'}">${e.toFixed(2)}</div></div>`);
+    setHTML('cat-pfand-offen', d.offen.length ? `<table class="tbl"><thead><tr><th>Lieferschein</th><th>Produkt</th><th>Datum</th><th>Geliefert</th><th>Zurück</th><th>Offen</th><th>Pfand</th></tr></thead><tbody>${d.offen.map(l => {
+      const alt = l.lieferdatum && (Date.now() - new Date(l.lieferdatum)) > 14*86400000;
+      return `<tr><td style="font-family:'DM Mono',monospace;font-size:11px">${esc(l.lieferschein_nr)}</td><td>${esc(l.produkt||'—')}</td>
+        <td class="pool-meta">${l.lieferdatum ? new Date(l.lieferdatum).toLocaleDateString('de-DE') : '—'}</td>
+        <td>${esc(l.pfand_kisten_geliefert)}</td><td>${esc(l.pfand_kisten_zurueck)}</td>
+        <td style="font-weight:600;color:${alt?'var(--red)':'var(--amber)'}">${esc(l.pfand_kisten_geliefert - l.pfand_kisten_zurueck)}${alt?' ⚠':''}</td>
+        <td>${parseFloat(l.pfand_offen||0).toFixed(2)} €</td></tr>`; }).join('')}</tbody></table>`
+      : '<p style="color:var(--text3);font-size:13px">✓ Keine offenen Pfandkisten</p>');
+    setHTML('cat-pfand-verlauf', d.verlauf.length ? `<table class="tbl"><thead><tr><th>Datum</th><th>Vorgang</th><th>Lieferschein</th><th>Kisten</th><th>Betrag</th><th>Notiz</th></tr></thead><tbody>${d.verlauf.map(b => `<tr>
+      <td class="pool-meta">${new Date(b.created_at).toLocaleDateString('de-DE')}</td><td>${b.bewegung_typ==='ausgabe'?'Ausgabe':'Rückgabe'}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:11px">${esc(b.lieferschein_nr||'—')}</td><td>${esc(b.kisten_anzahl)}</td>
+      <td>${parseFloat(b.pfand_betrag).toFixed(2)} €</td><td class="pool-meta">${esc(b.notiz||'')}</td></tr>`).join('')}</tbody></table>`
+      : '<p style="color:var(--text3);font-size:13px">Noch keine Bewegungen</p>');
+  } catch (err) { setHTML('cat-pfand-offen', `<div class="alert alert-error">${esc(err.message)}</div>`); }
+}
+document.getElementById('btn-reload-cat-pfand')?.addEventListener('click', loadCatPfand);
+document.getElementById('btn-pfand-auszug')?.addEventListener('click', () => window.open('/api/pfand/kontoauszug', '_blank'));
 
 // ── INIT ──────────────────────────────────────────────────────
 loadOverview();

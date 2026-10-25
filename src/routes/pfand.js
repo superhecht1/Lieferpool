@@ -35,43 +35,130 @@ router.get('/uebersicht', auth, role('admin'), async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// POST /api/pfand/rueckgabe – Pfandkisten zurückgeben
+/**
+ * Rückgabe atomar buchen (Lieferung + Bewegung + Kistenkonto des Caterers).
+ * Wirft Error mit .status=400, wenn mehr Kisten zurückgegeben werden als offen sind.
+ */
+async function bucheRueckgabe({ lieferungId, kisten, notiz, userId, quelle = 'admin' }) {
+  kisten = parseInt(kisten);
+  if (!Number.isInteger(kisten) || kisten < 1) { const e = new Error('Ungültige Kistenzahl'); e.status = 400; throw e; }
+  const { rows: [lief] } = await db.query(
+    `UPDATE lieferungen SET pfand_kisten_zurueck = COALESCE(pfand_kisten_zurueck,0) + $1
+     WHERE id=$2 AND COALESCE(pfand_kisten_zurueck,0) + $1 <= pfand_kisten_geliefert RETURNING *`,
+    [kisten, lieferungId]);
+  if (!lief) {
+    const { rows: [l0] } = await db.query(`SELECT pfand_kisten_geliefert g, COALESCE(pfand_kisten_zurueck,0) z FROM lieferungen WHERE id=$1`, [lieferungId]);
+    const e = new Error(l0 ? `Nicht mehr Kisten zurückgeben als offen (noch ${l0.g - l0.z})` : 'Lieferung nicht gefunden');
+    e.status = l0 ? 400 : 404; throw e;
+  }
+  const betrag = kisten * parseFloat(lief.pfand_pro_kiste);
+  const { rows: [pool] } = await db.query(`SELECT caterer_id FROM pools WHERE id=$1`, [lief.pool_id]);
+  if (pool?.caterer_id) {
+    await db.query(`INSERT INTO pfand_bewegungen (lieferung_id, entity_type, entity_id, bewegung_typ, kisten_anzahl, pfand_betrag, notiz, created_by)
+                    VALUES ($1,'caterer',$2,'rueckgabe',$3,$4,$5,$6)`,
+      [lieferungId, pool.caterer_id, kisten, betrag, [quelle, notiz].filter(Boolean).join(': ') || null, userId || null]);
+    await kontoBuchen(pool.caterer_id, -kisten, -betrag);
+  }
+  return { lief, betrag, offen: lief.pfand_kisten_geliefert - lief.pfand_kisten_zurueck };
+}
+
+async function kontoBuchen(catererId, kistenDelta, betragDelta) {
+  await db.query(`INSERT INTO pfand_konten (entity_type, entity_id, kisten_saldo, pfand_saldo) VALUES ('caterer',$1,$2,$3)
+                  ON CONFLICT (entity_type, entity_id) DO UPDATE
+                  SET kisten_saldo = pfand_konten.kisten_saldo + $2, pfand_saldo = pfand_konten.pfand_saldo + $3, updated_at = NOW()`,
+    [catererId, kistenDelta, betragDelta]);
+}
+
+/** Ausgabe beim Anlegen einer Lieferung (aus lieferungen.js) */
+async function bucheAusgabe({ lieferungId, catererId, kisten, preis, userId }) {
+  if (!catererId || !(kisten > 0)) return;
+  const betrag = kisten * preis;
+  await db.query(`INSERT INTO pfand_bewegungen (lieferung_id, entity_type, entity_id, bewegung_typ, kisten_anzahl, pfand_betrag, created_by)
+                  VALUES ($1,'caterer',$2,'ausgabe',$3,$4,$5)`, [lieferungId, catererId, kisten, betrag, userId || null]);
+  await kontoBuchen(catererId, kisten, betrag);
+}
+
+// POST /api/pfand/rueckgabe – Pfandkisten zurückgeben (Admin)
 router.post('/rueckgabe', auth, role('admin'), async (req, res) => {
   const { lieferung_id, kisten_zurueck, notiz } = req.body;
-  if (!lieferung_id || !kisten_zurueck) {
-    return res.status(400).json({ error: 'lieferung_id und kisten_zurueck erforderlich' });
-  }
-
+  if (!lieferung_id || !kisten_zurueck) return res.status(400).json({ error: 'lieferung_id und kisten_zurueck erforderlich' });
   try {
-    const { rows:[lief] } = await db.query(
-      `SELECT * FROM lieferungen WHERE id=$1`, [lieferung_id]
-    );
-    if (!lief) return res.status(404).json({ error: 'Lieferung nicht gefunden' });
+    const r = await bucheRueckgabe({ lieferungId: lieferung_id, kisten: kisten_zurueck, notiz, userId: req.user.id, quelle: 'Admin' });
+    res.json({ message: `${parseInt(kisten_zurueck)} Kisten zurückgebucht · Pfand: ${r.betrag.toFixed(2)} €`,
+               pfand_offen: r.offen * parseFloat(r.lief.pfand_pro_kiste) });
+  } catch (err) { res.status(err.status || 500).json({ error: err.message }); }
+});
 
-    const neuZurueck = (lief.pfand_kisten_zurueck || 0) + parseInt(kisten_zurueck);
-    if (neuZurueck > lief.pfand_kisten_geliefert) {
-      return res.status(400).json({
-        error: `Nicht mehr Kisten zurückgeben als geliefert (max. ${lief.pfand_kisten_geliefert})`
-      });
-    }
-
-    await db.query(
-      `UPDATE lieferungen SET pfand_kisten_zurueck=$1 WHERE id=$2`,
-      [neuZurueck, lieferung_id]
-    );
-
-    // Bewegung loggen
-    const pfandBetrag = parseInt(kisten_zurueck) * parseFloat(lief.pfand_pro_kiste);
-    await db.query(`
-      INSERT INTO pfand_bewegungen (lieferung_id, entity_type, entity_id, bewegung_typ, kisten_anzahl, pfand_betrag, notiz, created_by)
-      VALUES ($1, 'caterer', (SELECT caterer_id FROM pools WHERE id=$2), 'rueckgabe', $3, $4, $5, $6)
-    `, [lieferung_id, lief.pool_id, kisten_zurueck, pfandBetrag, notiz||null, req.user.id]);
-
-    res.json({
-      message: `${kisten_zurueck} Kisten zurückgebucht · Pfand: ${pfandBetrag.toFixed(2)} €`,
-      pfand_offen: (lief.pfand_kisten_geliefert - neuZurueck) * parseFloat(lief.pfand_pro_kiste),
-    });
+// GET /api/pfand/konten – Admin: Kistenkonto je Caterer
+router.get('/konten', auth, role('admin'), async (req, res) => {
+  try {
+    const { rows } = await db.query(`
+      SELECT c.id, c.firma_name, k.kisten_saldo, k.pfand_saldo,
+             (SELECT MIN(l.lieferdatum) FROM lieferungen l JOIN pools p ON p.id=l.pool_id
+              WHERE p.caterer_id=c.id AND l.pfand_kisten_geliefert > COALESCE(l.pfand_kisten_zurueck,0)) AS aeltestes_offen
+      FROM pfand_konten k JOIN caterer c ON c.id=k.entity_id
+      WHERE k.entity_type='caterer' ORDER BY k.kisten_saldo DESC`);
+    res.json({ konten: rows });
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+async function catererFuer(req) {
+  if (req.user.role === 'admin') return req.query.caterer_id || null;
+  const { rows: [c] } = await db.query(`SELECT id FROM caterer WHERE user_id=$1`, [req.user.id]);
+  return c?.id || null;
+}
+
+// GET /api/pfand/mein – Caterer: eigenes Konto, offene Lieferungen, Verlauf
+router.get('/mein', auth, role('caterer', 'admin'), async (req, res) => {
+  try {
+    const cid = await catererFuer(req);
+    if (!cid) return res.status(404).json({ error: 'Kein Caterer-Profil' });
+    const [konto, offen, verlauf] = await Promise.all([
+      db.query(`SELECT kisten_saldo, pfand_saldo FROM pfand_konten WHERE entity_type='caterer' AND entity_id=$1`, [cid]),
+      db.query(`SELECT l.id, l.lieferschein_nr, l.lieferdatum, p.produkt, l.pfand_kisten_geliefert,
+                       COALESCE(l.pfand_kisten_zurueck,0) AS pfand_kisten_zurueck, l.pfand_pro_kiste, l.pfand_offen
+                FROM lieferungen l JOIN pools p ON p.id=l.pool_id
+                WHERE p.caterer_id=$1 AND l.pfand_kisten_geliefert > COALESCE(l.pfand_kisten_zurueck,0)
+                ORDER BY l.lieferdatum`, [cid]),
+      db.query(`SELECT b.created_at, b.bewegung_typ, b.kisten_anzahl, b.pfand_betrag, b.notiz, l.lieferschein_nr
+                FROM pfand_bewegungen b LEFT JOIN lieferungen l ON l.id=b.lieferung_id
+                WHERE b.entity_type='caterer' AND b.entity_id=$1 ORDER BY b.created_at DESC LIMIT 50`, [cid]),
+    ]);
+    res.json({ konto: konto.rows[0] || { kisten_saldo: 0, pfand_saldo: 0 }, offen: offen.rows, verlauf: verlauf.rows });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/pfand/kontoauszug – druckbarer Pfand-Kontoauszug (Caterer: eigener, Admin: ?caterer_id=)
+router.get('/kontoauszug', auth, role('caterer', 'admin'), async (req, res) => {
+  const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  try {
+    const cid = await catererFuer(req);
+    if (!cid) return res.status(404).send('Kein Caterer-Profil');
+    const { rows: [cat] } = await db.query(`SELECT firma_name FROM caterer WHERE id=$1`, [cid]);
+    const { rows } = await db.query(`
+      SELECT b.created_at, b.bewegung_typ, b.kisten_anzahl, b.pfand_betrag, l.lieferschein_nr
+      FROM pfand_bewegungen b LEFT JOIN lieferungen l ON l.id=b.lieferung_id
+      WHERE b.entity_type='caterer' AND b.entity_id=$1 ORDER BY b.created_at`, [cid]);
+    let k = 0, e = 0;
+    const zeilen = rows.map(r => {
+      const sign = r.bewegung_typ === 'ausgabe' ? 1 : -1;
+      k += sign * r.kisten_anzahl; e += sign * parseFloat(r.pfand_betrag);
+      return `<tr><td>${new Date(r.created_at).toLocaleDateString('de-DE')}</td><td>${esc(r.lieferschein_nr || '—')}</td>
+        <td>${sign > 0 ? 'Ausgabe' : 'Rückgabe'}</td><td style="text-align:right">${sign * r.kisten_anzahl}</td>
+        <td style="text-align:right">${(sign * parseFloat(r.pfand_betrag)).toFixed(2)} €</td>
+        <td style="text-align:right">${k}</td><td style="text-align:right">${e.toFixed(2)} €</td></tr>`;
+    }).join('');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(`<!doctype html><html lang="de"><meta charset="utf-8"><title>Pfand-Kontoauszug</title>
+<style>body{font:14px system-ui,sans-serif;max-width:820px;margin:2rem auto;padding:0 1rem;color:#111}
+table{border-collapse:collapse;width:100%}th,td{border-bottom:1px solid #ddd;padding:6px 8px;text-align:left}th{background:#f3f3f3}
+.s{margin:1rem 0;font-size:16px}.n{color:#666;font-size:12px;margin-top:1.5rem}@media print{button{display:none}}</style>
+<h1>Pfand-Kontoauszug</h1><div>${esc(cat?.firma_name || '')} · Stand ${new Date().toLocaleDateString('de-DE')}</div>
+<div class="s"><b>Offene Kisten: ${k}</b> · Pfand offen: <b>${e.toFixed(2)} €</b></div>
+<table><thead><tr><th>Datum</th><th>Lieferschein</th><th>Vorgang</th><th style="text-align:right">Kisten</th><th style="text-align:right">Betrag</th><th style="text-align:right">Saldo Kisten</th><th style="text-align:right">Saldo €</th></tr></thead><tbody>${zeilen || '<tr><td colspan="7">Keine Bewegungen</td></tr>'}</tbody></table>
+<p class="n">Pfand ist ein durchlaufender Posten und wird getrennt von den Warenpreisen geführt. Steuerliche Behandlung bitte mit der Steuerberatung abstimmen.</p>
+<button onclick="print()">Drucken</button></html>`);
+  } catch (err) { res.status(500).send('Fehler: ' + esc(err.message)); }
 });
 
 // GET /api/pfand/stats – Schnellübersicht für Admin-Dashboard
@@ -137,15 +224,7 @@ router.get('/bewegungen', auth, role('admin'), async (req, res) => {
 });
 
 // GET /api/pfand/export-csv – CSV-Export
-router.get('/export-csv', async (req, res) => {
-  const jwt = require('jsonwebtoken');
-  try {
-    const token = req.query.token;
-    if (!token) return res.status(401).json({ error: 'Token fehlt' });
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (decoded.role !== 'admin') return res.status(403).json({ error: 'Kein Zugriff' });
-  } catch { return res.status(401).json({ error: 'Ungültiger Token' }); }
-
+router.get('/export-csv', auth, role('admin'), async (req, res) => {
   try {
     const { rows } = await db.query(`
       SELECT l.lieferschein_nr, p.produkt, p.lieferwoche,
@@ -176,3 +255,5 @@ router.get('/export-csv', async (req, res) => {
 });
 
 module.exports = router;
+router.bucheRueckgabe = bucheRueckgabe;
+router.bucheAusgabe = bucheAusgabe;

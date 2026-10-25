@@ -120,6 +120,9 @@ router.post('/', auth, role('admin', 'caterer'), async (req, res) => {
 
     if (!lief) return res.status(404).json({ error: 'Lieferung nicht gefunden' });
 
+    try { await require('./pfand').bucheAusgabe({ lieferungId: lief.id, catererId: pool.caterer_id, kisten: kistenAnzahl, preis: pfandPreis, userId: req.user.id }); }
+    catch (e) { console.warn('[pfand] Ausgabe:', e.message); }
+
     // Lieferschein-Email an Caterer
     try {
       const { rows:[catRow] } = await db.query(`
@@ -173,7 +176,8 @@ router.post('/', auth, role('admin', 'caterer'), async (req, res) => {
 // GET /api/lieferungen/qr/:code – QR-Code als PNG
 router.get('/qr/:code', async (req, res) => {
   const code   = req.params.code;
-  const appUrl = process.env.APP_URL || 'https://frischkette.onrender.com';
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(code)) return res.status(400).json({ error: 'Ungültiger Code' });
+  const appUrl = process.env.APP_URL || 'https://lieferpool.onrender.com';
   const qrData = `${appUrl}/caterer?qr=${code}`;
 
   try {
@@ -196,7 +200,8 @@ router.get('/qr/:code', async (req, res) => {
 // GET /api/lieferungen/qr-svg/:code – QR als SVG
 router.get('/qr-svg/:code', async (req, res) => {
   const code   = req.params.code;
-  const appUrl = process.env.APP_URL || 'https://frischkette.onrender.com';
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(code)) return res.status(400).json({ error: 'Ungültiger Code' });
+  const appUrl = process.env.APP_URL || 'https://lieferpool.onrender.com';
   const qrData = `${appUrl}/caterer?qr=${code}`;
 
   try {

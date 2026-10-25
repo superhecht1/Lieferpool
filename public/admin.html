@@ -3501,7 +3501,7 @@ document.getElementById('btn-reload-pfand-hist')?.addEventListener('click', load
 document.getElementById('pfand-filter')?.addEventListener('change', loadPfandListe);
 
 document.getElementById('btn-pfand-csv')?.addEventListener('click', () => {
-  window.open('/api/pfand/export-csv?token=' + Auth.getToken(), '_blank');
+  window.open('/api/pfand/export-csv', '_blank');
 });
 
 // Manuelle Rückgabe per Lieferschein-Nr.

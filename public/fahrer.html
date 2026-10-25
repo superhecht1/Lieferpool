@@ -941,6 +941,12 @@ function stoppCard(s, i) {
           <input class="fld-input" type="number" id="menge-${s.id}" placeholder="0" value="${s.menge||''}" inputmode="decimal" min="0" step="0.1">
         </div>
 
+        ${(Number(s.pfand_offen_kisten) > 0 && s.typ !== 'abholung') ? `
+        <div>
+          <label class="fld-label">🧺 Leergut mitgenommen (offen: ${Number(s.pfand_offen_kisten)} Kisten)</label>
+          <input class="fld-input" type="number" id="pfand-${s.id}" placeholder="0" value="0" inputmode="numeric" min="0" max="${Number(s.pfand_offen_kisten)}" step="1">
+        </div>` : ''}
+
         <div>
           <label class="fld-label">Foto als Nachweis</label>
           <div class="foto-area" id="foto-area-${s.id}" onclick="document.getElementById('foto-inp-${s.id}').click()">
@@ -991,12 +997,13 @@ function fotoPreview(input, stoppId) {
 async function stoppBestaetigen(stoppId) {
   const menge = document.getElementById('menge-' + stoppId)?.value;
   const notiz = document.getElementById('notiz-' + stoppId)?.value || '';
+  const pfandKisten = parseInt(document.getElementById('pfand-' + stoppId)?.value) || 0;
   const foto  = document.getElementById('foto-prev-' + stoppId)?.src || '';
 
   try {
     const r = await apiQ('/touren/' + aktiveTour.id + '/stopps/' + stoppId + '/bestaetigen', {
       method: 'POST',
-      body: { menge_geliefert: menge ? parseFloat(menge) : null, notiz, foto: foto.startsWith('data:') ? foto : null },
+      body: { menge_geliefert: menge ? parseFloat(menge) : null, notiz, pfand_kisten_abgeholt: pfandKisten, foto: foto.startsWith('data:') ? foto : null },
     });
     toast(r.queued ? 'Stopp gespeichert – wird gesendet, sobald Netz da ist' : 'Stopp bestätigt ✓');
 

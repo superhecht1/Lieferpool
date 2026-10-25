@@ -160,16 +160,24 @@ router.get('/meine/alle', auth, role('fahrer'), async (req, res) => {
 // POST /api/touren/:id/stopps/:stoppId/bestaetigen
 router.post('/:id/stopps/:stoppId/bestaetigen', auth, role('fahrer'), async (req, res) => {
   const { menge_geliefert, notiz, foto } = req.body;
+  const kisten = Math.max(0, parseInt(req.body.pfand_kisten_abgeholt) || 0);
   try {
+    // Nur eigener Stopp einer eigenen Tour; Vorzustand für idempotentes Pfand-Buchen (Offline-Queue kann doppelt senden)
+    const { rows: [alt] } = await db.query(`
+      SELECT ts.status, ts.lieferung_id FROM tour_stopps ts JOIN touren t ON t.id = ts.tour_id
+      WHERE ts.id=$1 AND ts.tour_id=$2 AND t.fahrer_id=$3`, [req.params.stoppId, req.params.id, req.user.id]);
+    if (!alt) return res.status(404).json({ error: 'Stopp nicht gefunden' });
+
     await db.query(`
       UPDATE tour_stopps SET
         status         = 'abgeschlossen',
         menge_geliefert= $1,
         notiz          = COALESCE($2, notiz),
         foto_base64    = COALESCE($3, foto_base64),
+        pfand_kisten_abgeholt = COALESCE($6, pfand_kisten_abgeholt),
         bestaetigt_at  = NOW()
       WHERE id=$4 AND tour_id=$5
-    `, [menge_geliefert || null, notiz || null, foto || null, req.params.stoppId, req.params.id]);
+    `, [menge_geliefert || null, notiz || null, foto || null, req.params.stoppId, req.params.id, kisten > 0 ? kisten : null]);
 
     // Lieferschein-Status aktualisieren falls vorhanden
     await db.query(`
@@ -178,7 +186,20 @@ router.post('/:id/stopps/:stoppId/bestaetigen', auth, role('fahrer'), async (req
       AND status NOT IN ('abgeschlossen','storniert')
     `, [req.params.stoppId]).catch(()=>{});
 
-    res.json({ message: 'Stopp bestätigt' });
+    // Leergut-Rücknahme verbuchen (nur beim ersten Bestätigen, höchstens so viele Kisten wie offen sind)
+    let pfand = null;
+    if (kisten > 0 && alt.lieferung_id && alt.status !== 'abgeschlossen') {
+      try {
+        const { rows: [l] } = await db.query(
+          `SELECT pfand_kisten_geliefert - COALESCE(pfand_kisten_zurueck,0) AS offen FROM lieferungen WHERE id=$1`, [alt.lieferung_id]);
+        const n = Math.min(kisten, Math.max(0, l?.offen || 0));
+        if (n > 0) {
+          const r = await require('./pfand').bucheRueckgabe({ lieferungId: alt.lieferung_id, kisten: n, notiz: 'Tour ' + req.params.id, userId: req.user.id, quelle: 'Fahrer' });
+          pfand = { kisten: n, offen: r.offen };
+        }
+      } catch (e) { console.warn('[pfand]', e.message); }
+    }
+    res.json({ message: 'Stopp bestätigt', pfand });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
@@ -233,7 +254,8 @@ router.get('/:id', auth, async (req, res) => {
         SELECT ts.*,
           e.betrieb_name AS erzeuger_name,
           c.firma_name   AS caterer_name,
-          l.lieferschein_nr, l.qr_code
+          l.lieferschein_nr, l.qr_code,
+          GREATEST(l.pfand_kisten_geliefert - COALESCE(l.pfand_kisten_zurueck,0), 0) AS pfand_offen_kisten
         FROM tour_stopps ts
         LEFT JOIN erzeuger e ON e.id = ts.erzeuger_id
         LEFT JOIN caterer  c ON c.id = ts.caterer_id

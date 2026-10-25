@@ -71,11 +71,32 @@ async function lieferungMorgen() {
   return rows.length;
 }
 
+// Offene Pfandkisten, deren Lieferung > 14 Tage zurückliegt → eine Erinnerung je Caterer und 14-Tage-Fenster
+async function pfandOffen() {
+  const { rows } = await db.query(`
+    SELECT c.id AS cid, u.id AS user_id, u.email, c.firma_name,
+           SUM(l.pfand_kisten_geliefert - COALESCE(l.pfand_kisten_zurueck,0))::int AS kisten,
+           SUM(l.pfand_offen) AS eur
+    FROM lieferungen l JOIN pools p ON p.id = l.pool_id
+    JOIN caterer c ON c.id = p.caterer_id JOIN users u ON u.id = c.user_id
+    WHERE l.pfand_kisten_geliefert > COALESCE(l.pfand_kisten_zurueck,0)
+      AND l.lieferdatum < CURRENT_DATE - INTERVAL '14 days' AND l.status <> 'storniert'
+    GROUP BY c.id, u.id, u.email, c.firma_name`);
+  const fenster = Math.floor(Date.now() / (14 * 86400000));
+  for (const r of rows) {
+    if (await schonGesendet(`pfand:${r.cid}:${fenster}`)) continue;
+    await benachrichtige(r.user_id, r.email, `Offene Pfandkisten: ${r.kisten}`,
+      `Du hast noch ${r.kisten} Pfandkisten (${parseFloat(r.eur).toFixed(2)} €) von Lieferungen, die älter als 14 Tage sind. Bitte gib sie bei der nächsten Lieferung mit.`, '/caterer');
+  }
+  return rows.length;
+}
+
 async function run() {
   const h = berlinHour();
   if (h < 7 || h >= 20) return;
   try {
     const a = await poolDeadlines(), b = await lieferungMorgen();
+    await pfandOffen();
     if (a || b) console.log(`[erinnerungen] geprüft: ${a} Pools, ${b} Lieferungen`);
     await db.query(`DELETE FROM erinnerungen_log WHERE created_at < NOW() - INTERVAL '30 days'`);
   } catch (e) { console.warn('[erinnerungen]', e.message); }
