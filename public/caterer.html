@@ -1370,11 +1370,12 @@ let _catAdminUserId = null;
 
 async function loadCatNachrichten() {
   try {
-    const [{ nachrichten, ungelesen }, { empfaenger }] = await Promise.all([
-      api.getNachrichten(),
-      api.getEmpfaengerListe(),
-    ]);
-    _catAdminUserId = empfaenger?.[0]?.id || null;
+    // Posteingang und Empfängerliste getrennt laden: fällt eines aus, funktioniert das andere
+    const { nachrichten, ungelesen } = await api.getNachrichten();
+    try {
+      const { empfaenger } = await api.getEmpfaengerListe();
+      _catAdminUserId = empfaenger?.[0]?.id || null;
+    } catch (_) { _catAdminUserId = null; }
 
     const navBtn = document.querySelector('[data-view="nachrichten"]');
     if (navBtn && ungelesen > 0)
@@ -1395,7 +1396,9 @@ async function loadCatNachrichten() {
         </div>
       </div>
     `).join('') : '<p style="color:var(--text3);font-size:13px">Keine Nachrichten</p>');
-  } catch(e) { showAlert('alerts','error',e.message); }
+  } catch(e) {
+    setHTML('cat-nachrichten-inbox', `<p style="color:var(--red);font-size:13px">Nachrichten konnten nicht geladen werden: ${esc(e.message)}</p>`);
+  }
 }
 async function catMarkGelesen(id) { await api.markGelesen(id).catch(()=>{}); loadCatNachrichten(); }
 async function catDeleteNachricht(id) { if(!confirm('Löschen?')) return; await api.deleteNachricht(id).catch(()=>{}); loadCatNachrichten(); }
@@ -1410,7 +1413,7 @@ document.getElementById('btn-cat-nm-senden')?.addEventListener('click', async ()
   const res  = document.getElementById('cat-nm-result');
   const btn  = document.getElementById('btn-cat-nm-senden');
   if (!text) { res.innerHTML='<span style="color:var(--red)">Nachricht eingeben</span>'; return; }
-  if (!_catAdminUserId) { res.innerHTML='<span style="color:var(--red)">Kein Admin gefunden</span>'; return; }
+  if (!_catAdminUserId) { res.innerHTML='<span style="color:var(--red)">Kein Admin als Empfänger gefunden – bitte Seite neu laden. Besteht der Fehler weiter, existiert kein Admin-Konto oder die Route /api/nachrichten/empfaenger-liste fehlt auf dem Server.</span>'; return; }
   btn.disabled=true; btn.innerHTML='<span class="spinner"></span>';
   try {
     await api.sendNachricht({ an_user_id: _catAdminUserId, betreff: betr, text });
