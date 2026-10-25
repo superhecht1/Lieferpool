@@ -275,6 +275,7 @@ router.post('/', auth, role('admin'), async (req, res) => {
 router.put('/:id', auth, role('admin'), async (req, res) => {
   const { fahrer_id, fahrzeug_id, startzeit, notiz, status } = req.body;
   try {
+    const { rows:[alt] } = await db.query('SELECT fahrer_id FROM touren WHERE id=$1', [req.params.id]);
     const { rows:[tour] } = await db.query(`
       UPDATE touren SET
         fahrer_id   = COALESCE($1, fahrer_id),
@@ -285,6 +286,13 @@ router.put('/:id', auth, role('admin'), async (req, res) => {
       WHERE id=$6 RETURNING *
     `, [fahrer_id, fahrzeug_id, startzeit, notiz, status, req.params.id]);
     if (!tour) return res.status(404).json({ error: 'Nicht gefunden' });
+    if (tour.fahrer_id && String(tour.fahrer_id) !== String(alt?.fahrer_id)) {
+      sendPushToFahrer(tour.fahrer_id, {
+        title: '🚲 Neue Tour zugewiesen',
+        body: `${tour.typ||'Tour'} · ${tour.datum||''} · ${tour.startzeit ? String(tour.startzeit).slice(0,5)+' Uhr' : ''}`,
+        url: '/fahrer', tag: 'neue-tour-' + tour.id,
+      });
+    }
     res.json({ tour });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -383,21 +391,3 @@ router.post('/:id/optimieren', auth, role('admin'), async (req, res) => {
 });
 
 module.exports = router;
-
-// Helper: Push senden wenn Tour einem Fahrer zugewiesen wird
-async function sendTourPush(tourId, db) {
-  try {
-    const { rows:[tour] } = await db.query(
-      `SELECT t.name, t.datum, t.startzeit, t.fahrer_id
-       FROM touren t WHERE t.id=$1`, [tourId]
-    );
-    if (!tour?.fahrer_id) return;
-    const push = require('../services/push');
-    await push.sendToUser(tour.fahrer_id, {
-      title: '🚲 Neue Tour zugewiesen',
-      body:  `${tour.name||'Tour'} · ${tour.datum||''} · ${(tour.startzeit||'').slice(0,5)} Uhr`,
-      url:   '/fahrer',
-      tag:   'neue-tour',
-    });
-  } catch {}
-}
