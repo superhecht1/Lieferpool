@@ -33,12 +33,12 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc:    ["'self'"],
-      scriptSrc:     ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://js.stripe.com', 'https://unpkg.com'],
+      scriptSrc:     ["'self'", "'unsafe-inline'", 'https://js.stripe.com'],
       scriptSrcAttr: ["'unsafe-inline'"],
-      styleSrc:      ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net', 'https://unpkg.com'],
-      fontSrc:       ["'self'", 'https://fonts.gstatic.com', 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net'],
-      connectSrc:    ["'self'", 'https://api.stripe.com', 'https://cdn.jsdelivr.net', 'https://fonts.googleapis.com', 'https://*.tile.openstreetmap.org', 'https://fonts.gstatic.com', 'https://api.qrserver.com'],
-      imgSrc:        ["'self'", 'data:', 'blob:', 'https://*.tile.openstreetmap.org', 'https://api.qrserver.com', 'https://unpkg.com'],
+      styleSrc:      ["'self'", "'unsafe-inline'"],
+      fontSrc:       ["'self'"],
+      connectSrc:    ["'self'", 'https://api.stripe.com', 'https://*.tile.openstreetmap.org', 'https://api.qrserver.com'],
+      imgSrc:        ["'self'", 'data:', 'blob:', 'https://*.tile.openstreetmap.org', 'https://api.qrserver.com'],
       frameSrc:      ["'self'", 'https://js.stripe.com'],
       objectSrc:     ["'none'"],
       baseUri:       ["'self'"],
