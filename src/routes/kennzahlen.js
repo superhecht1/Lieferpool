@@ -500,5 +500,86 @@ router.get('/export.pdf', auth, role('admin', 'caterer'), async (req, res) => {
   }
 });
 
+// ── Warengruppen-Auswertung (Näherung nach Produktname) ─────
+const GRUPPEN = [
+  ['Gemüse',      /salat|tomate|gurke|zucchini|paprika|aubergine|kohl|brokkoli|spinat|mangold|möhre|moehre|karotte|rote bete|lauch|porree|zwiebel|knoblauch|sellerie|pastinake|radieschen|rettich|kürbis|kuerbis|erbse|bohne|mais|spargel|rucola|fenchel|kräuter|kraeuter|gemüse|gemuese/i, true],
+  ['Obst',        /apfel|äpfel|birne|pflaume|zwetschge|kirsche|erdbeere|himbeere|heidelbeer|beere|rhabarber|obst|traube|pfirsich|aprikose/i, true],
+  ['Kartoffeln & Getreide', /kartoffel|getreide|mehl|hafer|roggen|weizen|dinkel|nudel|reis|brot|graupen|grieß|gries/i, true],
+  ['Hülsenfrüchte & Nüsse', /linse|kichererbse|sojabohne|nuss|nüsse|walnuss|haselnuss/i, true],
+  ['Milch & Milchprodukte', /milch|joghurt|quark|käse|kaese|butter|sahne|skyr/i, false],
+  ['Eier',        /\bei\b|eier/i, false],
+  ['Fleisch & Wurst', /fleisch|rind|schwein|huhn|hähnchen|haehnchen|pute|lamm|wurst|schinken|speck|hack/i, false],
+  ['Fisch',       /fisch|lachs|forelle|karpfen|hering/i, false],
+];
+function gruppeVon(produkt) {
+  const p = String(produkt || '');
+  for (const [name, re, pflanzlich] of GRUPPEN) if (re.test(p)) return { name, pflanzlich };
+  return { name: 'Sonstiges', pflanzlich: null };
+}
+// ── DGE-Orientierung Schulverpflegung (Referenzwerte) ──────
+// Quelle: Anforderungen einer kommunalen Musterausschreibung (Berlin 2023, Leistungsbeschreibung Ziff. 1.4/1.5), die den
+// DGE-Qualitätsstandard für die Schulverpflegung zugrunde legt. Maßgeblich ist der aktuelle DGE-Qualitätsstandard selbst.
+const DGE = {
+  quelle: 'Musterausschreibung Schulmittagessen Berlin 2023 (Ziff. 1.4/1.5), angelehnt an den DGE-Qualitätsstandard für die Schulverpflegung',
+  hinweis: 'Orientierungswerte – kein Zertifikat. Verbindlich ist der aktuelle DGE-Qualitätsstandard (dge.de).',
+  haeufigkeit: [   // je 5 bzw. 20 Verpflegungstage
+    { key: 'getreide', name: 'Getreide, Getreideprodukte, Kartoffeln', je: 5, min: 5 },
+    { key: 'vollkorn', name: '… davon Vollkornprodukte', je: 5, min: 1 },
+    { key: 'gemuese',  name: 'Gemüse (inkl. Hülsenfrüchte)', je: 5, min: 5 },
+    { key: 'huelsen',  name: '… davon Hülsenfrüchte', je: 5, min: 1 },
+    { key: 'obst',     name: 'Obst', je: 5, min: 2 },
+    { key: 'kerne',    name: 'Ölsaaten und Kerne', je: 5, min: 1 },
+    { key: 'milch',    name: 'Milch und Milchprodukte', je: 5, min: 2 },
+    { key: 'frittiert',name: 'Frittierte/panierte Produkte', je: 5, max: 1 },
+    { key: 'fleisch',  name: 'Fleisch inkl. Erzeugnisse', je: 20, max: 4 },
+    { key: 'fisch',    name: 'Fisch', je: 20, min: 4 },
+    { key: 'fettfisch',name: '… davon fettreicher Fisch', je: 20, min: 2 },
+    { key: 'suess',    name: 'Süße Hauptgerichte', je: 20, max: 2 },
+  ],
+  mengen_5_tage_g: [   // pro Person und 5 Verpflegungstage; [Klasse 1–4, ab Klasse 5]
+    { name: 'Kartoffeln, Reis, Teigwaren, Getreide', klasse1_4: 600, ab5: 650, art: 'min' },
+    { name: 'Gemüse', klasse1_4: 900, ab5: 1000, art: 'min' },
+    { name: '… davon Hülsenfrüchte', klasse1_4: 140, ab5: 150, art: 'min' },
+    { name: 'Obst', klasse1_4: 150, ab5: 150, art: 'min' },
+    { name: 'Ölsaaten und Kerne', klasse1_4: 25, ab5: 25, art: 'min' },
+    { name: 'Milch und Milchprodukte (inkl. Käse)', klasse1_4: 200, ab5: 200, art: 'min' },
+    { name: 'Rapsöl, Sojaöl, Olivenöl, Leinöl', klasse1_4: 30, ab5: 30, art: 'min' },
+    { name: 'Fisch', klasse1_4: 45, ab5: 50, art: 'min' },
+    { name: 'Fleisch und Fleischerzeugnisse', klasse1_4: 60, ab5: 70, art: 'max' },
+  ],
+};
+router.get('/dge-regeln', auth, role('admin', 'caterer'), (req, res) => res.json(DGE));
+
+router.get('/warengruppen', auth, role('admin', 'caterer'), async (req, res) => {
+  try {
+    const sc = await scope(req);
+    if (sc.leer) return res.json({ leer: true });
+    const params = [sc.von, sc.bis]; let cf = '';
+    if (sc.catererId) { params.push(sc.catererId); cf = 'AND p.caterer_id = $3'; }
+    const { rows } = await db.query(`
+      SELECT p.produkt, SUM(COALESCE(l.menge_geliefert, 0))::float AS kg
+      FROM lieferungen l JOIN pools p ON p.id = l.pool_id
+      WHERE l.status = 'eingegangen'
+        AND COALESCE(l.wareneingang_at::date, l.lieferdatum, l.created_at::date) BETWEEN $1 AND $2 ${cf}
+      GROUP BY p.produkt`, params);
+    const map = {}; let gesamt = 0, pflanz = 0, bekannt = 0;
+    for (const r of rows) {
+      const g = gruppeVon(r.produkt);
+      map[g.name] = (map[g.name] || 0) + r.kg; gesamt += r.kg;
+      if (g.pflanzlich !== null) { bekannt += r.kg; if (g.pflanzlich) pflanz += r.kg; }
+    }
+    const gruppen = Object.entries(map).map(([name, kg]) => ({ name, kg: r1(kg), anteil: pct(kg, gesamt) })).sort((a, b) => b.kg - a.kg);
+    res.json({ zeitraum: { von: sc.von, bis: sc.bis }, gesamt_kg: r1(gesamt), gruppen,
+      pflanzlich_anteil: pct(pflanz, bekannt),
+      hinweis: 'Zuordnung nach Produktnamen, Näherung. Mengen in kg; Ausweis von Portionen nach DGE-Qualitätsstandard ist damit nicht möglich.' });
+  } catch (err) {
+    console.error('[kennzahlen/warengruppen]', err);
+    res.status(500).json({ error: 'Auswertung nicht möglich' });
+  }
+});
+
 module.exports = router;
 module.exports.berechne = berechne;
+module.exports.SAISON = SAISON;
+module.exports.saisonPruefen = saisonPruefen;
+module.exports.MONATSNAMEN = MONATSNAMEN;

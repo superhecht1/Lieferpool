@@ -889,7 +889,11 @@
       <div class="card">
         <div class="section-hdr">
           <span class="section-title">🧾 Abrechnungen / Rechnungen</span>
-          <button class="btn btn-sm" id="btn-reload-rech">↻</button>
+          <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+            <input type="month" class="form-control" id="datev-monat" style="width:150px;padding:5px 8px">
+            <button class="btn btn-sm" id="btn-datev" title="DATEV-Buchungsstapel (EXTF) für den Monat">⬇ DATEV</button>
+            <button class="btn btn-sm" id="btn-reload-rech">↻</button>
+          </div>
         </div>
         <div id="rech-list"><div class="spinner"></div></div>
       </div>
@@ -3632,6 +3636,11 @@ async function dlRechnungPDF(id, nr) {
   } catch(err) { alert(err.message); }
 }
 document.getElementById('btn-reload-rech')?.addEventListener('click', loadRechnungen);
+(function(){ const m=document.getElementById('datev-monat'); if(m) m.value=new Date().toISOString().slice(0,7); })();
+document.getElementById('btn-datev')?.addEventListener('click', () => {
+  const m = document.getElementById('datev-monat')?.value || new Date().toISOString().slice(0,7);
+  window.open('/api/datev/buchungsstapel?monat=' + encodeURIComponent(m), '_blank');
+});
 
 async function rechStornieren(id, nr) {
   if (!confirm(`Rechnung ${esc(nr)} stornieren?`)) return;

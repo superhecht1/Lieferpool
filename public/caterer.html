@@ -372,6 +372,21 @@
 
 
     <!-- LIEFERSCHEINE (Caterer) -->
+    <div id="view-speiseplan" class="view" style="display:none">
+      <div class="card">
+        <div class="section-hdr">
+          <span class="section-title">🍽 Speiseplan-Check (DGE-Orientierung)</span>
+          <select class="form-control" id="sp-tage" style="width:150px;padding:5px 8px">
+            <option value="5">5 Tage</option><option value="10">10 Tage</option><option value="15">15 Tage</option><option value="20" selected>20 Tage</option>
+          </select>
+        </div>
+        <p style="font-size:12px;color:var(--text3);margin:0 0 .75rem">Hake pro Verpflegungstag an, was im Hauptgericht samt Beilagen vorkommt. Die Auswertung prüft die Häufigkeiten der Orientierungswerte.</p>
+        <div id="sp-grid" style="overflow-x:auto"></div>
+      </div>
+      <div class="card"><div class="card-title">Ergebnis</div><div id="sp-ergebnis"></div></div>
+      <div class="card"><div class="card-title">Mengen-Orientierung pro Person (5 Verpflegungstage)</div><div id="sp-mengen"></div>
+        <div id="sp-quelle" style="font-size:11px;color:var(--text3);margin-top:.75rem"></div></div>
+    </div>
     <div id="view-pfand" class="view" style="display:none">
       <div id="cat-pfand-stats" style="display:grid;grid-template-columns:repeat(2,1fr);gap:.75rem;margin-bottom:1rem"></div>
       <div class="card">
@@ -528,6 +543,7 @@ const NAV = [
   { id: 'vorlagen',     label: '🔄 Vorlagen'     },
   { id: 'lieferscheine',label: '📋 Lieferscheine' },
   { id: 'pfand',        label: '🧺 Pfand'        },
+  { id: 'speiseplan',   label: '🍽 Speiseplan-Check' },
   { id: 'profil',       label: 'Profil'          },
   { id: 'nachrichten',  label: '💬 Nachrichten'   },
   { id: 'nachhaltigkeit', label: '🌱 Nachhaltigkeit' },
@@ -562,6 +578,7 @@ async function loadView(v) {
   if (v === 'vorlagen')       loadCatererVorlagen();
   if (v === 'lieferscheine')  loadCatLieferscheine();
   if (v === 'pfand')          loadCatPfand();
+  if (v === 'speiseplan')     initSpeiseplan();
   if (v === 'nachrichten')    loadCatNachrichten();
   if (v === 'nachhaltigkeit') loadNachhaltigkeit();
 }
@@ -1413,6 +1430,46 @@ async function loadCatPfand() {
 document.getElementById('btn-reload-cat-pfand')?.addEventListener('click', loadCatPfand);
 document.getElementById('btn-pfand-auszug')?.addEventListener('click', () => window.open('/api/pfand/kontoauszug', '_blank'));
 
+// ── SPEISEPLAN-CHECK ──────────────────────────────────────────
+const SP_SPALTEN = [['getreide','Getreide/ Kartoffeln'],['vollkorn','Vollkorn'],['gemuese','Gemüse'],['huelsen','Hülsen-früchte'],['obst','Obst'],['kerne','Kerne/ Saaten'],
+  ['milch','Milch'],['fleisch','Fleisch'],['fisch','Fisch'],['fettfisch','fettr. Fisch'],['frittiert','Frittiert'],['suess','Süßes Hauptg.']];
+let spRegeln = null, spAuswahl = {};
+async function initSpeiseplan() {
+  try {
+    if (!spRegeln) spRegeln = await fetch('/api/kennzahlen/dge-regeln', { headers: { 'Authorization': 'Bearer ' + Auth.getToken() } }).then(r => r.json());
+  } catch { return setHTML('sp-grid', '<div class="alert alert-error">Regeln konnten nicht geladen werden</div>'); }
+  setHTML('sp-mengen', `<table class="tbl"><thead><tr><th>Lebensmittelgruppe</th><th>Klasse 1–4</th><th>ab Klasse 5</th></tr></thead><tbody>${spRegeln.mengen_5_tage_g.map(m =>
+    `<tr><td>${esc(m.name)}</td><td>${m.art==='max'?'max.':'min.'} ${m.klasse1_4} g</td><td>${m.art==='max'?'max.':'min.'} ${m.ab5} g</td></tr>`).join('')}</tbody></table>`);
+  setHTML('sp-quelle', esc(spRegeln.quelle + '. ' + spRegeln.hinweis));
+  spZeichne();
+}
+function spZeichne() {
+  const n = parseInt(document.getElementById('sp-tage')?.value) || 20;
+  let h = '<table class="tbl" style="min-width:720px"><thead><tr><th>Tag</th>' + SP_SPALTEN.map(c => `<th style="text-align:center;font-size:11px">${esc(c[1])}</th>`).join('') + '</tr></thead><tbody>';
+  for (let t = 1; t <= n; t++) h += `<tr><td>${t}</td>` + SP_SPALTEN.map(c => `<td style="text-align:center"><input type="checkbox" data-t="${t}" data-k="${c[0]}"${spAuswahl[t+':'+c[0]]?' checked':''}></td>`).join('') + '</tr>';
+  setHTML('sp-grid', h + '</tbody></table>');
+  spAuswerten();
+}
+function spAuswerten() {
+  if (!spRegeln) return;
+  const n = parseInt(document.getElementById('sp-tage')?.value) || 20;
+  const cnt = {}; SP_SPALTEN.forEach(c => { cnt[c[0]] = 0; });
+  for (let t = 1; t <= n; t++) SP_SPALTEN.forEach(c => { if (spAuswahl[t+':'+c[0]]) cnt[c[0]]++; });
+  const rows = spRegeln.haeufigkeit.map(r => {
+    const f = n / r.je, ist = cnt[r.key] || 0;
+    const min = r.min != null ? Math.ceil(r.min * f - 1e-9) : null, max = r.max != null ? Math.floor(r.max * f + 1e-9) : null;
+    const ok = (min == null || ist >= min) && (max == null || ist <= max);
+    return `<tr><td>${esc(r.name)}</td><td>${min != null ? 'mind. ' + min + '×' : 'höchstens ' + max + '×'}</td><td style="font-weight:600">${ist}×</td>
+      <td><span class="badge ${ok ? 'badge-green' : 'badge-red'}">${ok ? 'erfüllt' : 'nicht erfüllt'}</span></td></tr>`;
+  });
+  setHTML('sp-ergebnis', `<table class="tbl"><thead><tr><th>Gruppe</th><th>Soll (${n} Tage)</th><th>Ist</th><th></th></tr></thead><tbody>${rows.join('')}</tbody></table>`);
+}
+document.getElementById('sp-tage')?.addEventListener('change', spZeichne);
+document.getElementById('sp-grid')?.addEventListener('change', e => {
+  const c = e.target.closest('input[data-k]'); if (!c) return;
+  spAuswahl[c.dataset.t + ':' + c.dataset.k] = c.checked; spAuswerten();
+});
+
 // ── INIT ──────────────────────────────────────────────────────
 loadOverview();
 </script>
@@ -1501,99 +1558,4 @@ document.getElementById('btn-cat-nm-senden')?.addEventListener('click', async ()
 document.getElementById('btn-bedarf-zu-pool')?.addEventListener('click', async () => {
   try {
     const { prognosen } = await api.getBedarfPrognosen();
-    if (!prognosen || prognosen.length === 0) {
-      showAlert('alerts','info','Keine Bedarfsprognosen vorhanden. Zuerst Prognosen anlegen.');
-      return;
-    }
-
-    // Aggregieren nach Produkt + Lieferwoche
-    const agg = {};
-    prognosen.forEach(p => {
-      const key = `${esc(p.produkt)}|${esc(p.lieferwoche||'')}`;
-      if (!agg[key]) agg[key] = { produkt: p.produkt, lieferwoche: p.lieferwoche||'', menge:0, preis: p.preis_vorstellung||0, region: p.region||'NRW' };
-      agg[key].menge += parseFloat(p.menge_pro_woche||p.menge_bedarf||0);
-      if (p.preis_vorstellung||p.preis) agg[key].preis = p.preis_vorstellung||p.preis||agg[key].preis;
-    });
-
-    const items = Object.values(agg).filter(a => a.menge > 0);
-    if (items.length === 0) { showAlert('alerts','info','Keine Mengen in Prognosen'); return; }
-
-    // Bei mehreren: wähle die größte Menge
-    items.sort((a,b) => b.menge - a.menge);
-    const top = items[0];
-
-    // Pool-Formular vorausfüllen und Tab wechseln
-    showView('pool-neu'); loadView('pool-neu');
-    setTimeout(() => {
-      const set = (id, val) => { const el=document.getElementById(id); if(el) el.value=val; };
-      set('pf-produkt', top.produkt);
-      set('pf-menge',   top.menge.toFixed(0));
-      set('pf-preis',   top.preis||'');
-      set('pf-lieferwoche', top.lieferwoche);
-      set('pf-region',  top.region);
-      updateCostPreview && updateCostPreview();
-      toast('Pool-Formular aus Bedarfsplanung vorausgefüllt');
-    }, 100);
-  } catch(e) { showAlert('alerts','error',e.message); }
-});
-
-
-// ── Print / Download Helpers ─────────────────────────────────
-async function openPrint(path) {
-  try {
-    const res = await fetch(path, { headers: { 'Authorization': 'Bearer ' + Auth.getToken() } });
-    if (!res.ok) { const e = await res.json().catch(()=>{}); throw new Error(e?.error||'Fehler'); }
-    const html = await res.text();
-    const win  = window.open('', '_blank');
-    win.document.write(html);
-    win.document.close();
-  } catch(err) { alert('Drucken fehlgeschlagen: ' + err.message); }
-}
-async function dlPrint(path) {
-  try {
-    const res = await fetch(path + (path.includes('?') ? '&' : '?') + 'download=1', {
-      headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
-    });
-    if (!res.ok) { const e = await res.json().catch(()=>{}); throw new Error(e?.error||'Fehler'); }
-    const blob = await res.blob();
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = url;
-    a.download = 'Lieferschein.html';
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
-  } catch(err) { alert('Download fehlgeschlagen: ' + err.message); }
-}
-
-function dlPrint(path) {
-  const tok = Auth.getToken();
-  const a   = document.createElement('a');
-  a.href    = path + '?download=1&_t=' + encodeURIComponent(tok);
-  a.download = '';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-}
-
-
-// ── Monatsabrechnung ───────────────────────────────────────────
-(function () {
-  const m = document.getElementById('abr-monat'); if (m) m.value = new Date().toISOString().slice(0, 7);
-  document.getElementById('abr-csv')?.addEventListener('click', async () => {
-    try {
-      const r = await fetch('/api/abrechnung/csv?monat=' + encodeURIComponent(m.value), { headers: { 'Authorization': 'Bearer ' + Auth.getToken() } });
-      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Fehler ' + r.status);
-      const a = document.createElement('a'); a.href = URL.createObjectURL(await r.blob()); a.download = 'lieferabrechnung_' + m.value + '.csv'; a.click();
-    } catch (e) { toast(e.message, 'error'); }
-  });
-  document.getElementById('abr-pdf')?.addEventListener('click', async () => {
-    try {
-      const r = await fetch('/api/abrechnung/pdf?monat=' + encodeURIComponent(m.value), { headers: { 'Authorization': 'Bearer ' + Auth.getToken() } });
-      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Fehler ' + r.status);
-      const a = document.createElement('a'); a.href = URL.createObjectURL(await r.blob()); a.download = 'lieferabrechnung_' + m.value + '.pdf'; a.click();
-    } catch (e) { toast(e.message, 'error'); }
-  });
-})();
-</script>
-</body>
-</html>
+    if (!prognosen || prognosen.length ==
