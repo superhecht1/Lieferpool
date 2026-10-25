@@ -903,6 +903,21 @@
         </div>
         <div id="rech-list"><div class="spinner"></div></div>
       </div>
+      <div class="card">
+        <div class="section-hdr">
+          <span class="section-title">🧾 Rechnungen an Caterer</span>
+          <button class="btn btn-sm" id="btn-reload-crech">↻</button>
+        </div>
+        <div style="display:flex;gap:.5rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:.5rem">
+          <div><label class="form-label">Caterer</label><select class="form-control" id="crech-caterer" style="min-width:200px"></select></div>
+          <div><label class="form-label">Monat</label><input type="month" class="form-control" id="crech-monat" style="width:150px"></div>
+          <div><label class="form-label">MwSt.</label><select class="form-control" id="crech-satz" style="width:90px"><option value="7">7 %</option><option value="19">19 %</option><option value="0">0 %</option></select></div>
+          <div><label class="form-label">Zahlungsziel (Tage)</label><input type="number" class="form-control" id="crech-ziel" value="14" min="0" max="90" style="width:90px"></div>
+          <button class="btn btn-primary" id="btn-crech-neu">Rechnung erstellen</button>
+        </div>
+        <div id="crech-vorschau" style="font-size:12px;color:var(--text3);margin-bottom:.75rem"></div>
+        <div id="crech-list"><div class="spinner"></div></div>
+      </div>
     </div>
 
     <!-- EINLADUNGEN -->
@@ -1772,7 +1787,7 @@ async function loadView(v) {
   if (v === 'audit')          loadAuditLog();
   if (v === 'settings')       loadSettings();
   if (v === 'pfand')          loadPfand();
-  if (v === 'rechnungen')     loadRechnungen();
+  if (v === 'rechnungen')     { loadRechnungen(); loadCatRech(); }
   if (v === 'einladungen')    loadEinladungen();
   if (v === 'vorlagen')       loadVorlagen();
   if (v === 'pool-erstellen') loadPoolErstellen();
@@ -3602,6 +3617,57 @@ document.addEventListener('click', e => {
     if (r) r.style.display = 'none';
   }
 });
+
+// ── RECHNUNGEN AN CATERER ─────────────────────────────────
+async function crechApi(path, opt) {
+  const r = await fetch('/api/caterer-rechnungen' + path, Object.assign({ headers: { 'Content-Type': 'application/json' } }, opt));
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || 'Fehler');
+  return d;
+}
+async function loadCatRech() {
+  try {
+    const sel = document.getElementById('crech-caterer');
+    if (sel && !sel.options.length) {
+      const { caterer } = await crechApi('/caterer');
+      sel.innerHTML = caterer.map(c => `<option value="${esc(c.id)}">${esc(c.firma_name)}</option>`).join('');
+      const m = document.getElementById('crech-monat'); if (m && !m.value) m.value = new Date().toISOString().slice(0, 7);
+    }
+    const { rechnungen } = await crechApi('/');
+    setHTML('crech-list', rechnungen.length ? `<table class="tbl"><thead><tr><th>Nr.</th><th>Caterer</th><th>Monat</th><th>Netto</th><th>MwSt.</th><th>Brutto</th><th>Status</th><th></th></tr></thead><tbody>${rechnungen.map(r => `<tr>
+      <td style="font-family:'DM Mono',monospace;font-size:11px">${esc(r.rechnungs_nr)}${r.typ === 'storno' ? ' <span class="badge badge-gray">Storno</span>' : ''}</td>
+      <td>${esc(r.firma_name)}</td><td class="pool-meta">${esc(r.monat)}</td>
+      <td>${parseFloat(r.netto).toFixed(2)} €</td><td class="pool-meta">${parseFloat(r.mwst).toFixed(2)} €</td>
+      <td style="font-weight:600">${parseFloat(r.brutto).toFixed(2)} €</td>
+      <td>${r.status === 'bezahlt' ? '<span class="badge badge-green">bezahlt</span>' : r.status === 'storniert' ? '<span class="badge badge-gray">storniert</span>' : '<span class="badge badge-amber">offen</span>'}</td>
+      <td><div style="display:flex;gap:.35rem"><button class="btn btn-sm" onclick="window.open('/api/caterer-rechnungen/'+${jsq(r.id)}+'/pdf','_blank')">PDF</button>
+        ${r.typ === 'rechnung' && r.status === 'offen' ? `<button class="btn btn-sm" onclick="crechBezahlt(${jsq(r.id)})">bezahlt</button><button class="btn btn-sm btn-danger" onclick="crechStorno(${jsq(r.id)})">Storno</button>` : ''}
+        ${r.typ === 'rechnung' && r.status === 'bezahlt' ? `<button class="btn btn-sm btn-danger" onclick="crechStorno(${jsq(r.id)})">Storno</button>` : ''}</div></td></tr>`).join('')}</tbody></table>`
+      : '<p style="color:var(--text3);font-size:13px">Noch keine Rechnungen</p>');
+  } catch (err) { setHTML('crech-list', `<div class="alert alert-error">${esc(err.message)}</div>`); }
+}
+async function crechVorschau() {
+  const c = document.getElementById('crech-caterer')?.value, m = document.getElementById('crech-monat')?.value;
+  if (!c || !m) return setHTML('crech-vorschau', '');
+  try { const v = await crechApi('/vorschau?caterer_id=' + encodeURIComponent(c) + '&monat=' + encodeURIComponent(m));
+    setHTML('crech-vorschau', v.anzahl ? `${v.anzahl} Wareneingänge noch nicht abgerechnet · Netto ${v.netto.toFixed(2)} €` : 'Keine offenen Wareneingänge in diesem Monat'); }
+  catch (e) { setHTML('crech-vorschau', esc(e.message)); }
+}
+document.getElementById('crech-caterer')?.addEventListener('change', crechVorschau);
+document.getElementById('crech-monat')?.addEventListener('change', crechVorschau);
+document.getElementById('btn-reload-crech')?.addEventListener('click', loadCatRech);
+document.getElementById('btn-crech-neu')?.addEventListener('click', async () => {
+  const body = { caterer_id: document.getElementById('crech-caterer').value, monat: document.getElementById('crech-monat').value,
+    mwst_satz: Number(document.getElementById('crech-satz').value), zahlungsziel_tage: parseInt(document.getElementById('crech-ziel').value) };
+  if (!confirm('Rechnung für ' + body.monat + ' mit ' + body.mwst_satz + ' % MwSt. erstellen? Rechnungen sind danach unveränderlich (nur Storno möglich).')) return;
+  try { const d = await crechApi('/erstellen', { method: 'POST', body: JSON.stringify(body) }); toast('Rechnung ' + d.rechnung.rechnungs_nr + ' erstellt'); loadCatRech(); crechVorschau(); }
+  catch (e) { toast(e.message, 'error'); }
+});
+async function crechBezahlt(id) { try { await crechApi('/' + encodeURIComponent(id) + '/bezahlt', { method: 'POST', body: '{}' }); loadCatRech(); } catch (e) { toast(e.message, 'error'); } }
+async function crechStorno(id) {
+  if (!confirm('Rechnung stornieren? Es wird eine Stornorechnung erzeugt, die Lieferungen werden wieder abrechenbar.')) return;
+  try { const d = await crechApi('/' + encodeURIComponent(id) + '/stornieren', { method: 'POST', body: '{}' }); toast('Storno ' + d.storno_nr); loadCatRech(); } catch (e) { toast(e.message, 'error'); }
+}
 
 // ── RECHNUNGEN ─────────────────────────────────────────────────
 async function loadRechnungen() {

@@ -102,6 +102,7 @@ app.use('/api/public', require('./routes/public'));
 app.use('/api/abrechnung', require('./routes/abrechnung'));
 app.use('/api/saisonplan',  require('./routes/saisonplan'));
 app.use('/api/datev',       require('./routes/datev'));
+app.use('/api/caterer-rechnungen', require('./routes/caterer-rechnungen'));
 app.use('/api/touren',       require('./routes/touren'));
 app.use('/api/fahrzeuge',    require('./routes/fahrzeuge'));
 app.use('/api/auszahlungen', require('./routes/auszahlungen'));
