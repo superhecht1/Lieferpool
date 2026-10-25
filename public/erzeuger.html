@@ -285,6 +285,37 @@
       </div></div>
     </div>
 
+    <!-- NACHRICHTEN (ERZEUGER) -->
+    <div id="view-nachrichten" class="view" style="display:none">
+      <div class="grid2" style="align-items:flex-start">
+        <div class="card">
+          <div class="section-hdr">
+            <span class="section-title">📥 Posteingang</span>
+            <div style="display:flex;gap:.5rem">
+              <button class="btn btn-sm" id="btn-erz-alle-gelesen">Alle gelesen</button>
+              <button class="btn btn-sm" id="btn-erz-reload-nm">↻</button>
+            </div>
+          </div>
+          <div id="erz-nachrichten-inbox"><div class="spinner"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">✉ Nachricht an Admin</div>
+          <div class="form-group">
+            <label class="form-label">Betreff</label>
+            <input class="form-control" id="erz-nm-betreff" placeholder="z. B. Frage zu Auszahlung">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nachricht</label>
+            <textarea class="form-control" id="erz-nm-text" rows="5" style="resize:vertical" placeholder="Ihre Nachricht..."></textarea>
+          </div>
+          <div style="display:flex;align-items:center;gap:1rem">
+            <button class="btn btn-primary" id="btn-erz-nm-senden">Senden</button>
+            <div id="erz-nm-result" style="font-size:13px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -848,38 +879,6 @@ document.getElementById('btn-dsgvo-delete-confirm')?.addEventListener('click', a
 // ── INIT ──────────────────────────────────────────────────────
 loadPools();
 </script>
-
-
-    <!-- NACHRICHTEN (ERZEUGER) -->
-    <div id="view-nachrichten" class="view" style="display:none">
-      <div class="grid2" style="align-items:flex-start">
-        <div class="card">
-          <div class="section-hdr">
-            <span class="section-title">📥 Posteingang</span>
-            <div style="display:flex;gap:.5rem">
-              <button class="btn btn-sm" id="btn-erz-alle-gelesen">Alle gelesen</button>
-              <button class="btn btn-sm" id="btn-erz-reload-nm">↻</button>
-            </div>
-          </div>
-          <div id="erz-nachrichten-inbox"><div class="spinner"></div></div>
-        </div>
-        <div class="card">
-          <div class="card-title">✉ Nachricht an Admin</div>
-          <div class="form-group">
-            <label class="form-label">Betreff</label>
-            <input class="form-control" id="erz-nm-betreff" placeholder="z. B. Frage zu Auszahlung">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Nachricht</label>
-            <textarea class="form-control" id="erz-nm-text" rows="5" style="resize:vertical" placeholder="Ihre Nachricht..."></textarea>
-          </div>
-          <div style="display:flex;align-items:center;gap:1rem">
-            <button class="btn btn-primary" id="btn-erz-nm-senden">Senden</button>
-            <div id="erz-nm-result" style="font-size:13px"></div>
-          </div>
-        </div>
-      </div>
-    </div>
 
 <script>
 if ('serviceWorker' in navigator) {

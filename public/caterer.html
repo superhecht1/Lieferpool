@@ -387,6 +387,97 @@
         <div id="cat-lief-list"><div class="spinner"></div></div>
       </div>
     </div>
+    <!-- NACHRICHTEN (CATERER) -->
+    <!-- NACHHALTIGKEIT -->
+    <div id="view-nachhaltigkeit" class="view" style="display:none">
+      <div class="card" style="margin-bottom:1.25rem">
+        <div class="section-hdr">
+          <span class="section-title">🌱 Nachhaltigkeits-Kennzahlen</span>
+          <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+            <input type="date" class="form-control" id="nh-von" style="width:150px;padding:4px 8px">
+            <span>–</span>
+            <input type="date" class="form-control" id="nh-bis" style="width:150px;padding:4px 8px">
+            
+            <button class="btn btn-sm" id="nh-laden">Laden</button>
+            <button class="btn btn-sm" id="nh-xlsx">⬇ XLSX</button>
+            <button class="btn btn-sm" id="nh-pdf">⬇ PDF</button>
+            
+          </div>
+        </div>
+        <div id="nh-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.75rem;margin-top:1rem"></div>
+        <div style="position:relative;height:220px;margin-top:1.25rem"><canvas id="chart-nh"></canvas></div>
+        <div id="nh-hinweis" style="font-size:12px;color:var(--text-muted,#777);margin-top:.75rem"></div>
+      </div>
+
+      <div class="card" style="margin-bottom:1.25rem">
+        <div class="card-title">🗓 Saisonkalender-Warnungen (Bedarfsplanung)</div>
+        <div id="nh-saison"></div>
+      </div>
+
+      <div class="card" style="margin-bottom:1.25rem">
+        <div class="card-title">Abnehmer</div>
+        <div id="nh-tab-caterer"></div>
+      </div>
+      <div class="card" style="margin-bottom:1.25rem">
+        <div class="card-title">Produkte</div>
+        <div id="nh-tab-produkte"></div>
+      </div>
+      <div class="card" style="margin-bottom:1.25rem">
+        <div class="card-title">Erzeuger</div>
+        <div id="nh-tab-erzeuger"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">♻ Verbrauch &amp; Abfall</div>
+                <div id="nh-abfall-result"></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.5rem;margin-bottom:1rem">
+          <input class="form-control" id="nh-a-produkt" placeholder="Produkt (optional)">
+          <input class="form-control" id="nh-a-datum" type="date">
+          <input class="form-control" id="nh-a-verbraucht" type="number" min="0" step="0.1" placeholder="Verbraucht (kg)">
+          <input class="form-control" id="nh-a-entsorgt" type="number" min="0" step="0.1" placeholder="Entsorgt (kg)">
+          <input class="form-control" id="nh-a-weiter" type="number" min="0" step="0.1" placeholder="Weitergegeben (kg)">
+          <select class="form-control" id="nh-a-weiter-an">
+            <option value="">Weitergabe an …</option>
+            <option>Tafel</option><option>Foodsharing</option><option>Eigenes Café/Restaurant</option><option>Kompost/Landwirt</option>
+          </select>
+          <input class="form-control" id="nh-a-grund" placeholder="Grund (z. B. Überproduktion)">
+          <button class="btn btn-primary" id="nh-a-speichern">Melden</button>
+        </div>
+
+        <div id="nh-abfall-liste"></div>
+      </div>
+    </div>
+
+    <div id="view-nachrichten" class="view" style="display:none">
+      <div class="grid2" style="align-items:flex-start">
+        <div class="card">
+          <div class="section-hdr">
+            <span class="section-title">📥 Posteingang</span>
+            <div style="display:flex;gap:.5rem">
+              <button class="btn btn-sm" id="btn-cat-alle-gelesen">Alle gelesen</button>
+              <button class="btn btn-sm" id="btn-cat-reload-nm">↻</button>
+            </div>
+          </div>
+          <div id="cat-nachrichten-inbox"><div class="spinner"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">✉ Nachricht an Admin</div>
+          <div class="form-group">
+            <label class="form-label">Betreff</label>
+            <input class="form-control" id="cat-nm-betreff" placeholder="Betreff (optional)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nachricht</label>
+            <textarea class="form-control" id="cat-nm-text" rows="5" style="resize:vertical" placeholder="Ihre Nachricht..."></textarea>
+          </div>
+          <div style="display:flex;align-items:center;gap:1rem">
+            <button class="btn btn-primary" id="btn-cat-nm-senden">Senden</button>
+            <div id="cat-nm-result" style="font-size:13px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -1262,98 +1353,6 @@ document.getElementById('btn-reload-cat-lief')?.addEventListener('click', loadCa
 // ── INIT ──────────────────────────────────────────────────────
 loadOverview();
 </script>
-
-
-    <!-- NACHRICHTEN (CATERER) -->
-    <!-- NACHHALTIGKEIT -->
-    <div id="view-nachhaltigkeit" class="view" style="display:none">
-      <div class="card" style="margin-bottom:1.25rem">
-        <div class="section-hdr">
-          <span class="section-title">🌱 Nachhaltigkeits-Kennzahlen</span>
-          <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
-            <input type="date" class="form-control" id="nh-von" style="width:150px;padding:4px 8px">
-            <span>–</span>
-            <input type="date" class="form-control" id="nh-bis" style="width:150px;padding:4px 8px">
-            
-            <button class="btn btn-sm" id="nh-laden">Laden</button>
-            <button class="btn btn-sm" id="nh-xlsx">⬇ XLSX</button>
-            <button class="btn btn-sm" id="nh-pdf">⬇ PDF</button>
-            
-          </div>
-        </div>
-        <div id="nh-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:.75rem;margin-top:1rem"></div>
-        <div style="position:relative;height:220px;margin-top:1.25rem"><canvas id="chart-nh"></canvas></div>
-        <div id="nh-hinweis" style="font-size:12px;color:var(--text-muted,#777);margin-top:.75rem"></div>
-      </div>
-
-      <div class="card" style="margin-bottom:1.25rem">
-        <div class="card-title">🗓 Saisonkalender-Warnungen (Bedarfsplanung)</div>
-        <div id="nh-saison"></div>
-      </div>
-
-      <div class="card" style="margin-bottom:1.25rem">
-        <div class="card-title">Abnehmer</div>
-        <div id="nh-tab-caterer"></div>
-      </div>
-      <div class="card" style="margin-bottom:1.25rem">
-        <div class="card-title">Produkte</div>
-        <div id="nh-tab-produkte"></div>
-      </div>
-      <div class="card" style="margin-bottom:1.25rem">
-        <div class="card-title">Erzeuger</div>
-        <div id="nh-tab-erzeuger"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">♻ Verbrauch &amp; Abfall</div>
-                <div id="nh-abfall-result"></div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.5rem;margin-bottom:1rem">
-          <input class="form-control" id="nh-a-produkt" placeholder="Produkt (optional)">
-          <input class="form-control" id="nh-a-datum" type="date">
-          <input class="form-control" id="nh-a-verbraucht" type="number" min="0" step="0.1" placeholder="Verbraucht (kg)">
-          <input class="form-control" id="nh-a-entsorgt" type="number" min="0" step="0.1" placeholder="Entsorgt (kg)">
-          <input class="form-control" id="nh-a-weiter" type="number" min="0" step="0.1" placeholder="Weitergegeben (kg)">
-          <select class="form-control" id="nh-a-weiter-an">
-            <option value="">Weitergabe an …</option>
-            <option>Tafel</option><option>Foodsharing</option><option>Eigenes Café/Restaurant</option><option>Kompost/Landwirt</option>
-          </select>
-          <input class="form-control" id="nh-a-grund" placeholder="Grund (z. B. Überproduktion)">
-          <button class="btn btn-primary" id="nh-a-speichern">Melden</button>
-        </div>
-
-        <div id="nh-abfall-liste"></div>
-      </div>
-    </div>
-
-    <div id="view-nachrichten" class="view" style="display:none">
-      <div class="grid2" style="align-items:flex-start">
-        <div class="card">
-          <div class="section-hdr">
-            <span class="section-title">📥 Posteingang</span>
-            <div style="display:flex;gap:.5rem">
-              <button class="btn btn-sm" id="btn-cat-alle-gelesen">Alle gelesen</button>
-              <button class="btn btn-sm" id="btn-cat-reload-nm">↻</button>
-            </div>
-          </div>
-          <div id="cat-nachrichten-inbox"><div class="spinner"></div></div>
-        </div>
-        <div class="card">
-          <div class="card-title">✉ Nachricht an Admin</div>
-          <div class="form-group">
-            <label class="form-label">Betreff</label>
-            <input class="form-control" id="cat-nm-betreff" placeholder="Betreff (optional)">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Nachricht</label>
-            <textarea class="form-control" id="cat-nm-text" rows="5" style="resize:vertical" placeholder="Ihre Nachricht..."></textarea>
-          </div>
-          <div style="display:flex;align-items:center;gap:1rem">
-            <button class="btn btn-primary" id="btn-cat-nm-senden">Senden</button>
-            <div id="cat-nm-result" style="font-size:13px"></div>
-          </div>
-        </div>
-      </div>
-    </div>
 
 <script>
 if ('serviceWorker' in navigator) {

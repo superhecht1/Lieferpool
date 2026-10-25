@@ -1004,6 +1004,91 @@
         </div>
       </div>
     </div>
+    <!-- BLOCKCHAIN -->
+    <div id="view-blockchain" class="view" style="display:none">
+      <div class="card" style="margin-bottom:1.25rem">
+        <div class="section-hdr">
+          <span class="section-title">⛓ Blockchain-Status</span>
+          <button class="btn btn-sm" id="btn-chain-refresh">↻ Refresh</button>
+        </div>
+        <div id="chain-status-box" style="margin-top:.75rem"><div class="spinner"></div></div>
+      </div>
+
+      <!-- Events Tabs: DB-Events + Covalent Live -->
+      <div class="card" style="margin-bottom:1.25rem">
+        <div class="section-hdr">
+          <span class="section-title">📋 Chain Events</span>
+          <div style="display:flex;gap:.5rem;align-items:center">
+            <button class="btn btn-sm" id="btn-events-db" onclick="switchChainTab('db')" style="background:var(--green);color:#fff">🗄 DB</button>
+            <button class="btn btn-sm" id="btn-events-live" onclick="switchChainTab('live')">🔴 Live (Covalent)</button>
+            <button class="btn btn-sm" id="btn-events-txs" onclick="switchChainTab('txs')">💳 Wallet-TXs</button>
+          </div>
+        </div>
+
+        <!-- DB Events -->
+        <div id="chain-tab-db">
+          <div style="display:flex;gap:.5rem;align-items:center;margin:.75rem 0">
+            <select class="form-control" id="chain-filter-type" style="padding:4px 8px;width:160px">
+              <option value="">Alle Events</option>
+              <option value="pool_created">Pool erstellt</option>
+              <option value="quantity_committed">Commitment</option>
+              <option value="pool_locked">Pool gesperrt</option>
+              <option value="delivery_confirmed">Wareneingang</option>
+              <option value="payments_released">Auszahlungen</option>
+              <option value="certificate_registered">Zertifikat reg.</option>
+              <option value="certificate_verified">Zertifikat verif.</option>
+            </select>
+          </div>
+          <div id="chain-events-list"><div class="spinner"></div></div>
+        </div>
+
+        <!-- Live Events (Covalent) -->
+        <div id="chain-tab-live" style="display:none">
+          <p style="font-size:13px;color:var(--text2);margin:.75rem 0">
+            Echte On-Chain Events vom LieferPool-Contract via Covalent GoldRush API.
+            Nur verfügbar wenn COVALENT_API_KEY + CONTRACT_ADDRESS gesetzt.
+          </p>
+          <div id="chain-live-list"><div class="spinner"></div></div>
+        </div>
+
+        <!-- Wallet Transactions (Covalent) -->
+        <div id="chain-tab-txs" style="display:none">
+          <p style="font-size:13px;color:var(--text2);margin:.75rem 0">
+            Letzte Transaktionen der Hub-Wallet auf Polygon.
+          </p>
+          <div id="chain-txs-list"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+      <!-- TX suchen -->
+      <div class="card" style="margin-bottom:1.25rem">
+        <div class="card-title">🔍 Transaktion suchen</div>
+        <div style="display:flex;gap:.5rem;margin-top:.75rem">
+          <input class="form-control" id="chain-tx-input" placeholder="TX Hash: 0x..." style="font-family:monospace;font-size:12px">
+          <button class="btn btn-primary" id="btn-chain-tx-suchen">Suchen</button>
+        </div>
+        <div id="chain-tx-result" style="margin-top:.75rem"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🚀 Deploy-Anleitung</div>
+        <div style="font-size:13px;line-height:1.8;color:var(--text2)">
+          <strong style="color:var(--text1)">Schritt 1 — Contract kompilieren:</strong><br>
+          <code style="background:var(--bg2);padding:2px 6px;border-radius:3px">npx hardhat compile</code><br><br>
+          <strong style="color:var(--text1)">Schritt 2 — Auf Polygon deployen:</strong><br>
+          <code style="background:var(--bg2);padding:2px 6px;border-radius:3px">npx hardhat run scripts/deploy-hardhat.js --network polygon</code><br><br>
+          <strong style="color:var(--text1)">Schritt 3 — Render ENV setzen:</strong><br>
+          <code style="background:var(--bg2);padding:2px 6px;border-radius:3px">CONTRACT_ADDRESS=0x...</code><br>
+          <code style="background:var(--bg2);padding:2px 6px;border-radius:3px">BLOCKCHAIN_ENABLED=true</code><br>
+          <code style="background:var(--bg2);padding:2px 6px;border-radius:3px">PRIVATE_KEY=0x...</code><br>
+          <code style="background:var(--bg2);padding:2px 6px;border-radius:3px">RPC_URL=https://polygon-rpc.com</code><br><br>
+          <a href="https://polygonscan.com" target="_blank" style="color:var(--green)">🔍 Polygonscan</a>
+          &nbsp;·&nbsp;
+          <a href="https://faucet.polygon.technology" target="_blank" style="color:var(--green)">💧 MATIC Faucet (Testnet)</a>
+        </div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -3951,89 +4036,3 @@ async function dlPrint(path) {
 </div>
 </body>
 </html>
-    <!-- BLOCKCHAIN -->
-    <div id="view-blockchain" class="view" style="display:none">
-      <div class="card" style="margin-bottom:1.25rem">
-        <div class="section-hdr">
-          <span class="section-title">⛓ Blockchain-Status</span>
-          <button class="btn btn-sm" id="btn-chain-refresh">↻ Refresh</button>
-        </div>
-        <div id="chain-status-box" style="margin-top:.75rem"><div class="spinner"></div></div>
-      </div>
-
-      <!-- Events Tabs: DB-Events + Covalent Live -->
-      <div class="card" style="margin-bottom:1.25rem">
-        <div class="section-hdr">
-          <span class="section-title">📋 Chain Events</span>
-          <div style="display:flex;gap:.5rem;align-items:center">
-            <button class="btn btn-sm" id="btn-events-db" onclick="switchChainTab('db')" style="background:var(--green);color:#fff">🗄 DB</button>
-            <button class="btn btn-sm" id="btn-events-live" onclick="switchChainTab('live')">🔴 Live (Covalent)</button>
-            <button class="btn btn-sm" id="btn-events-txs" onclick="switchChainTab('txs')">💳 Wallet-TXs</button>
-          </div>
-        </div>
-
-        <!-- DB Events -->
-        <div id="chain-tab-db">
-          <div style="display:flex;gap:.5rem;align-items:center;margin:.75rem 0">
-            <select class="form-control" id="chain-filter-type" style="padding:4px 8px;width:160px">
-              <option value="">Alle Events</option>
-              <option value="pool_created">Pool erstellt</option>
-              <option value="quantity_committed">Commitment</option>
-              <option value="pool_locked">Pool gesperrt</option>
-              <option value="delivery_confirmed">Wareneingang</option>
-              <option value="payments_released">Auszahlungen</option>
-              <option value="certificate_registered">Zertifikat reg.</option>
-              <option value="certificate_verified">Zertifikat verif.</option>
-            </select>
-          </div>
-          <div id="chain-events-list"><div class="spinner"></div></div>
-        </div>
-
-        <!-- Live Events (Covalent) -->
-        <div id="chain-tab-live" style="display:none">
-          <p style="font-size:13px;color:var(--text2);margin:.75rem 0">
-            Echte On-Chain Events vom LieferPool-Contract via Covalent GoldRush API.
-            Nur verfügbar wenn COVALENT_API_KEY + CONTRACT_ADDRESS gesetzt.
-          </p>
-          <div id="chain-live-list"><div class="spinner"></div></div>
-        </div>
-
-        <!-- Wallet Transactions (Covalent) -->
-        <div id="chain-tab-txs" style="display:none">
-          <p style="font-size:13px;color:var(--text2);margin:.75rem 0">
-            Letzte Transaktionen der Hub-Wallet auf Polygon.
-          </p>
-          <div id="chain-txs-list"><div class="spinner"></div></div>
-        </div>
-      </div>
-
-      <!-- TX suchen -->
-      <div class="card" style="margin-bottom:1.25rem">
-        <div class="card-title">🔍 Transaktion suchen</div>
-        <div style="display:flex;gap:.5rem;margin-top:.75rem">
-          <input class="form-control" id="chain-tx-input" placeholder="TX Hash: 0x..." style="font-family:monospace;font-size:12px">
-          <button class="btn btn-primary" id="btn-chain-tx-suchen">Suchen</button>
-        </div>
-        <div id="chain-tx-result" style="margin-top:.75rem"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">🚀 Deploy-Anleitung</div>
-        <div style="font-size:13px;line-height:1.8;color:var(--text2)">
-          <strong style="color:var(--text1)">Schritt 1 — Contract kompilieren:</strong><br>
-          <code style="background:var(--bg2);padding:2px 6px;border-radius:3px">npx hardhat compile</code><br><br>
-          <strong style="color:var(--text1)">Schritt 2 — Auf Polygon deployen:</strong><br>
-          <code style="background:var(--bg2);padding:2px 6px;border-radius:3px">npx hardhat run scripts/deploy-hardhat.js --network polygon</code><br><br>
-          <strong style="color:var(--text1)">Schritt 3 — Render ENV setzen:</strong><br>
-          <code style="background:var(--bg2);padding:2px 6px;border-radius:3px">CONTRACT_ADDRESS=0x...</code><br>
-          <code style="background:var(--bg2);padding:2px 6px;border-radius:3px">BLOCKCHAIN_ENABLED=true</code><br>
-          <code style="background:var(--bg2);padding:2px 6px;border-radius:3px">PRIVATE_KEY=0x...</code><br>
-          <code style="background:var(--bg2);padding:2px 6px;border-radius:3px">RPC_URL=https://polygon-rpc.com</code><br><br>
-          <a href="https://polygonscan.com" target="_blank" style="color:var(--green)">🔍 Polygonscan</a>
-          &nbsp;·&nbsp;
-          <a href="https://faucet.polygon.technology" target="_blank" style="color:var(--green)">💧 MATIC Faucet (Testnet)</a>
-        </div>
-      </div>
-    </div>
-
-
