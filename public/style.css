@@ -287,6 +287,6 @@ a:hover { text-decoration: underline; }
 
 /* ── Responsive ── */
 @media(max-width:480px) {
-  .grid3, .grid4 { grid-template-columns:1fr; }
+  .grid3 { grid-template-columns:1fr; }
   .main { padding:1rem; }
 }

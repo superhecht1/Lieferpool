@@ -33,6 +33,7 @@
     @media(max-width:560px){.modal-grid{grid-template-columns:1fr 1fr}}
 
     /* Mobile Nav */
+    .tabbar{display:none}
     .hamburger{display:none;flex-direction:column;gap:4px;background:none;border:1px solid var(--border2);padding:10px;border-radius:10px;cursor:pointer;min-width:44px;min-height:44px;align-items:center;justify-content:center}
     .hamburger span{width:18px;height:2px;background:var(--text);border-radius:1px}
     .hdr-mobile-out{display:none;margin-left:auto;min-height:44px;padding:0 14px;border-radius:10px;border:1px solid var(--border2);background:none;color:var(--text);font:inherit;font-weight:600;cursor:pointer}
@@ -42,8 +43,12 @@
     .nav-mobile-panel .nav-btn{min-height:44px}
     .nav-mobile-panel .hdr-right{margin-top:auto}
     @media(max-width:768px){
-      .hamburger{display:flex}
+      .hamburger{display:none !important}
       .hdr-mobile-out{display:inline-block}
+      body{padding-bottom:72px}
+      .tabbar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;position:fixed;left:0;right:0;bottom:0;z-index:150;padding:8px 10px calc(10px + env(safe-area-inset-bottom));background:var(--side);border-top:1px solid var(--border)}
+      .tab-btn{display:flex;align-items:center;justify-content:center;min-height:48px;padding:0 4px;border:0;border-radius:12px;background:none;color:var(--text2);font:inherit;font-size:12px;font-weight:600;cursor:pointer;text-align:center;line-height:1.2}
+      .tab-btn.active{background:var(--bg3);color:var(--text);box-shadow:inset 0 -3px 0 var(--green)}
     }
 
     /* Pool-Suche */
@@ -136,6 +141,10 @@ function renderHeader(activeView, navItems, onNav) {
     <nav class="nav" id="main-nav">${navHTML(navItems, activeView)}</nav>
     ${userBlock}
     <button class="hdr-mobile-out btn-logout-m" type="button">Abmelden</button>
+    <nav class="tabbar" id="tabbar" aria-label="Hauptnavigation">
+      ${navItems.slice(0, 3).map(n => `<button class="tab-btn ${activeView===n.id?'active':''}" data-view="${n.id}">${n.label.replace(/^[^\wÄÖÜäöü]+\s*/, '')}</button>`).join('')}
+      <button class="tab-btn" id="tab-more" type="button">Mehr</button>
+    </nav>
 
     <div class="nav-mobile-overlay" id="nav-overlay"></div>
     <div class="nav-mobile-panel" id="nav-panel">
@@ -158,6 +167,11 @@ function renderHeader(activeView, navItems, onNav) {
     overlay.style.display = panel.classList.contains('open') ? 'block' : 'none';
   });
   overlay.addEventListener('click', closePanel);
+  document.getElementById('tabbar').addEventListener('click', e => {
+    if (e.target.closest('#tab-more')) { panel.classList.add('open'); overlay.style.display = 'block'; return; }
+    const btn = e.target.closest('[data-view]');
+    if (btn) { onNav(btn.dataset.view); updateActiveNav(btn.dataset.view); }
+  });
   panel.addEventListener('click', e => {
     const btn = e.target.closest('[data-view]');
     if (btn) { onNav(btn.dataset.view); updateActiveNav(btn.dataset.view); closePanel(); }
@@ -173,7 +187,7 @@ function renderHeader(activeView, navItems, onNav) {
 }
 
 function updateActiveNav(viewId) {
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === viewId));
+  document.querySelectorAll('.nav-btn, .tab-btn[data-view]').forEach(b => b.classList.toggle('active', b.dataset.view === viewId));
 }
 
 // ── View Switcher ──────────────────────────────────────────────
