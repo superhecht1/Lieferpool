@@ -2,8 +2,8 @@
  * Service Worker – FrischKette Caterer
  * Nur same-origin Requests werden gecacht.
  */
-const CACHE     = 'frischkette-erzeuger-v2';
-const API_CACHE = 'frischkette-erzeuger-api-v2';
+const CACHE     = 'frischkette-erzeuger-v3';
+const API_CACHE = 'frischkette-erzeuger-api-v3';
 
 const STATIC = [
   '/erzeuger',
