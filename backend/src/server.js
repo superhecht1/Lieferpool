@@ -16,6 +16,7 @@ app.use(logger.middleware());
 
 // ── CSRF + Origin Check ─────────────────────────
 const { originCheck, csrfTokenCheck } = require('./middleware/csrf');
+app.use(require('./middleware/cookieauth'));   // Sitzungs-Cookie -> Authorization
 app.use(originCheck);
 app.use(csrfTokenCheck);
 

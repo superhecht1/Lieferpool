@@ -1,20 +1,27 @@
 const API_BASE = '/api';
 const TIMEOUT_MS = 30000; // 30 Sekunden globaler Timeout
 
+// Die Sitzung liegt in httpOnly-Cookies (nicht per JavaScript lesbar). Im Browser steht nur das
+// Nutzerprofil (ohne Geheimnisse); "cookie" ist ein Platzhalter, den der Server durch das echte Token ersetzt.
 const Auth = {
-  getToken:      () => localStorage.getItem('lp_token'),
-  setToken:      (t) => localStorage.setItem('lp_token', t),
-  getUser:       () => JSON.parse(localStorage.getItem('lp_user') || 'null'),
+  getToken:      () => localStorage.getItem('lp_user') ? 'cookie' : null,
+  setToken:      () => {},
+  getUser:       () => { try { return JSON.parse(localStorage.getItem('lp_user') || 'null'); } catch { return null; } },
   setUser:       (u) => localStorage.setItem('lp_user', JSON.stringify(u)),
-  getRefresh:    () => localStorage.getItem('lp_refresh'),
-  setRefresh:    (t) => localStorage.setItem('lp_refresh', t),
+  getRefresh:    () => localStorage.getItem('lp_user') ? 'cookie' : null,
+  setRefresh:    () => {},
   clear:         () => {
-    localStorage.removeItem('lp_token');
+    localStorage.removeItem('lp_token');   // Altlast früherer Versionen
     localStorage.removeItem('lp_user');
     localStorage.removeItem('lp_refresh');
+    try { caches.keys().then(ks => ks.filter(k => /api/i.test(k)).forEach(k => caches.delete(k))); } catch {}
   },
-  isLoggedIn: () => !!localStorage.getItem('lp_token'),
+  // Server-seitig abmelden (löscht Cookies + Refresh-Tokens), dann lokal aufräumen
+  logout:        () => fetch('/api/auth/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}', keepalive: true })
+                         .catch(() => {}).finally(() => Auth.clear()),
+  isLoggedIn: () => !!localStorage.getItem('lp_user'),
 };
+try { localStorage.removeItem('lp_token'); localStorage.removeItem('lp_refresh'); } catch {}
 
 // Globales Timeout via AbortController
 function fetchWithTimeout(url, options = {}, timeoutMs = TIMEOUT_MS) {
@@ -33,12 +40,10 @@ async function refreshAccessToken() {
   const res  = await fetchWithTimeout(API_BASE + '/auth/refresh', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ refreshToken }),
+    body:    JSON.stringify({ refreshToken: 'cookie' }),
   });
   if (!res.ok) throw new Error('Refresh fehlgeschlagen');
   const data = await res.json();
-  Auth.setToken(data.token);
-  Auth.setRefresh(data.refreshToken);
   return data.token;
 }
 

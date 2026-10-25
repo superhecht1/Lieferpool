@@ -415,25 +415,22 @@
 
 <script>
 /* ── AUTH ──────────────────────────────────────────────── */
+// Sitzung liegt in httpOnly-Cookies; im Browser steht nur das Nutzerprofil. "cookie" ist ein Platzhalter für den Server.
+try { localStorage.removeItem('lp_token'); localStorage.removeItem('lp_refresh'); sessionStorage.removeItem('lp_token'); } catch {}
 const Auth = {
-  getToken() { return localStorage.getItem('lp_token') || sessionStorage.getItem('lp_token') || ''; },
-  getUser() {
+  getToken() { return localStorage.getItem('lp_user') ? 'cookie' : ''; },
+  getUser() { try { return JSON.parse(localStorage.getItem('lp_user') || 'null'); } catch { return null; } },
+  async logout() {
     try {
-      const t = Auth.getToken();
-      if (!t) return null;
-      const parts = t.split('.');
-      if (parts.length < 2) return null;
-      const payload = parts[1].replace(/-/g,'+').replace(/_/g,'/');
-      const padded  = payload + '='.repeat((4 - payload.length % 4) % 4);
-      return JSON.parse(atob(padded));
-    } catch { return null; }
-  },
-  logout() {
-    localStorage.removeItem('lp_token');
-    localStorage.removeItem('lp_refresh');
-    sessionStorage.removeItem('lp_token');
-    if (!window.location.pathname.includes('/login'))
-      window.location.href = '/login';
+      const n = (await OQ.all()).length;
+      if (n && navigator.onLine === false && !confirm(n + ' Aktion(en) sind noch nicht gesendet und gehen beim Abmelden verloren. Trotzdem abmelden?')) return;
+      if (n && navigator.onLine) await syncQueue();
+    } catch {}
+    try { await fetch('/api/auth/logout', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}', keepalive:true }); } catch {}
+    localStorage.removeItem('lp_user');
+    try { await OQ.wipe(); } catch {}
+    try { (await caches.keys()).filter(k => /api/i.test(k)).forEach(k => caches.delete(k)); } catch {}
+    if (!window.location.pathname.includes('/login')) window.location.href = '/login';
   },
 };
 
@@ -441,7 +438,7 @@ const Auth = {
 const me = Auth.getUser();
 
 /* ── API ───────────────────────────────────────────────── */
-async function api(path, opts = {}) {
+async function api(path, opts = {}, retried = false) {
   try {
     const res = await fetch('/api' + path, {
       ...opts,
@@ -452,6 +449,10 @@ async function api(path, opts = {}) {
       },
       body: opts.body ? JSON.stringify(opts.body) : undefined,
     });
+    if (res.status === 401 && !retried && !path.startsWith('/auth/')) {
+      const r = await fetch('/api/auth/refresh', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ refreshToken:'cookie' }) }).catch(() => null);
+      if (r && r.ok) return api(path, opts, true);
+    }
     const data = await res.json().catch(() => ({}));
     if (res.status === 401 || res.status === 403) throw new Error('401: Nicht autorisiert');
     if (!res.ok) throw new Error(data.error || 'Server-Fehler');
@@ -465,12 +466,16 @@ async function api(path, opts = {}) {
 
 /* ── OFFLINE: Warteschlange + Snapshots (IndexedDB) ─────── */
 const OQ = (function(){
-  let dbp = null;
+  // Alle Daten (Warteschlange, Tour-Snapshots) werden mit AES-GCM verschlüsselt abgelegt.
+  // Der Schlüssel ist nicht exportierbar und liegt in einer eigenen IndexedDB. Schutz gegen Auslesen
+  // von Dateisystem/Backup – nicht gegen jemanden, der das entsperrte Gerät in der App bedient.
+  const DB = 'fk-fahrer', KEYDB = 'fk-key', MAX_AGE = 36 * 3600 * 1000;
+  let dbp = null, keyp = null;
   function open(){
     if (dbp) return dbp;
     dbp = new Promise((res, rej) => {
       if (!window.indexedDB) return rej(new Error('no idb'));
-      const r = indexedDB.open('fk-fahrer', 1);
+      const r = indexedDB.open(DB, 1);
       r.onupgradeneeded = () => {
         const d = r.result;
         d.createObjectStore('queue', { keyPath:'id', autoIncrement:true });
@@ -480,6 +485,39 @@ const OQ = (function(){
       r.onerror   = () => rej(r.error);
     });
     return dbp;
+  }
+  function getKey(){
+    if (keyp) return keyp;
+    keyp = new Promise(res => {
+      if (!(window.crypto && crypto.subtle && window.indexedDB)) return res(null);
+      const r = indexedDB.open(KEYDB, 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('k');
+      r.onerror = () => res(null);
+      r.onsuccess = () => {
+        const d = r.result, g = d.transaction('k').objectStore('k').get('main');
+        g.onerror = () => res(null);
+        g.onsuccess = async () => {
+          if (g.result) return res(g.result);
+          try {
+            const key = await crypto.subtle.generateKey({ name:'AES-GCM', length:256 }, false, ['encrypt','decrypt']);
+            const t = d.transaction('k', 'readwrite'); t.objectStore('k').put(key, 'main');
+            t.oncomplete = () => res(key); t.onerror = () => res(null);
+          } catch { res(null); }
+        };
+      };
+    });
+    return keyp;
+  }
+  async function seal(obj){
+    const raw = JSON.stringify(obj), k = await getKey();
+    if (!k) return { p: raw };                      // Fallback ohne WebCrypto (unsicherer Kontext)
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    return { iv, ct: await crypto.subtle.encrypt({ name:'AES-GCM', iv }, k, new TextEncoder().encode(raw)) };
+  }
+  async function unseal(e){
+    if (e.p !== undefined) return JSON.parse(e.p);
+    const k = await getKey(); if (!k) throw new Error('kein Schlüssel');
+    return JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({ name:'AES-GCM', iv:e.iv }, k, e.ct)));
   }
   async function tx(store, mode, fn){
     const d = await open();
@@ -492,11 +530,30 @@ const OQ = (function(){
   }
   const user = () => (me && (me.id || me.email)) || 'x';
   return {
-    add:   item => tx('queue','readwrite', st => st.add({ ...item, user:user(), ts:Date.now() })),
-    all:   async () => { try { return ((await tx('queue','readonly', st => st.getAll())) || []).filter(i => i.user === user()); } catch { return []; } },
-    del:   id   => tx('queue','readwrite', st => st.delete(id)),
-    put:   (k,v) => tx('snap','readwrite', st => st.put({ k: user()+':'+k, v, ts:Date.now() })).catch(()=>{}),
-    get:   async k => { try { const r = await tx('snap','readonly', st => st.get(user()+':'+k)); return r ? r.v : null; } catch { return null; } },
+    add: async item => { const enc = await seal(item); return tx('queue','readwrite', st => st.add({ user:user(), ts:Date.now(), enc })); },
+    all: async () => {
+      try {
+        const rows = ((await tx('queue','readonly', st => st.getAll())) || []).filter(i => i.user === user());
+        const out = [];
+        for (const r of rows) { try { out.push({ ...(await unseal(r.enc)), id:r.id, ts:r.ts }); } catch {} }
+        return out;
+      } catch { return []; }
+    },
+    del: id => tx('queue','readwrite', st => st.delete(id)),
+    put: async (k, v) => { try { const enc = await seal(v); await tx('snap','readwrite', st => st.put({ k:user()+':'+k, enc, ts:Date.now() })); } catch {} },
+    get: async k => {
+      try {
+        const r = await tx('snap','readonly', st => st.get(user()+':'+k));
+        if (!r || Date.now() - r.ts > MAX_AGE) return null;
+        return await unseal(r.enc);
+      } catch { return null; }
+    },
+    // Beim Abmelden: alles lokal löschen (Daten + Schlüssel)
+    wipe: async () => {
+      try { (await dbp)?.close(); } catch {}
+      dbp = null; keyp = null;
+      await Promise.all([DB, KEYDB].map(n => new Promise(res => { try { const r = indexedDB.deleteDatabase(n); r.onsuccess = r.onerror = r.onblocked = () => res(); } catch { res(); } })));
+    },
   };
 })();
 

@@ -204,7 +204,6 @@ document.getElementById('btn-register')?.addEventListener('click', async () => {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Registrierung fehlgeschlagen');
 
-    localStorage.setItem('lp_token', data.token);
     localStorage.setItem('lp_user',  JSON.stringify(data.user));
 
     document.getElementById('step-form').style.display    = 'none';

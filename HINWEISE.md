@@ -1,13 +1,19 @@
-# Update 8 – Sicherheitscheck + Zugriffs-Fixes
-Ablage: scripts/security-check.js · .github/workflows/security.yml · package.json (Hauptordner, neues Script "security")
-Backend: src/routes/print.js, src/routes/lieferungen.js
+# Update 9 – Sitzung per httpOnly-Cookie + verschlüsselte Offline-Daten (Fahrer)
+Keine Migration, keine neuen Umgebungsvariablen. Reihenfolge egal: Backend und public/ zusammen deployen.
 
-Behoben:
-- print.js: /lieferung/:id nur für Admin oder den Caterer, dem der Pool gehört; /tour/:id nur Admin oder zugewiesener Fahrer (vorher: jeder Eingeloggte mit der ID).
-- lieferungen.js: QR-Code-Pfad validiert; Standard-Domain auf lieferpool.onrender.com (vorher falsche Domain, wenn APP_URL fehlt).
+Ablage:
+- public/: api.js, login.html, register.html, fahrer.html, sw.js, sw-caterer.js, sw-erzeuger.js, sw-fahrer.js (Caches neu)
+- src/middleware/cookieauth.js (NEU), src/middleware/csrf.js (ersetzt), src/routes/auth.js (ersetzt), src/server.js (ersetzt)
 
-Nutzung:
-- Im Repo: Actions -> Sicherheitscheck -> Run workflow (läuft zusätzlich wöchentlich).
-- Lokal: npm run security  |  npm run security -- --env (prüft zusätzlich JWT_SECRET, FIELD_ENCRYPTION_KEY, NODE_ENV).
-- WICHTIG: In Render APP_URL=https://lieferpool.onrender.com setzen.
-Der Check ist eine Heuristik und ersetzt keinen Penetrationstest.
+Was sich ändert
+1) Sitzung: Das Login-Token liegt nicht mehr in localStorage, sondern in httpOnly-Cookies (lp_at, lp_rt; SameSite=Strict, Secure unter HTTPS).
+   - JavaScript auf der Seite kann sie nicht lesen (schützt vor Token-Diebstahl per XSS).
+   - Der Server übersetzt das Cookie in den Authorization-Header; middleware/auth.js bleibt unverändert.
+   - API-Clients/Tests mit echtem "Authorization: Bearer <token>" funktionieren weiter (Login-Antwort enthält das Token weiterhin).
+   - Alle bestehenden Nutzer müssen sich EINMAL neu anmelden.
+   - Logout löscht Cookies + Refresh-Tokens serverseitig, auch bei abgelaufenem Access-Token.
+2) Origin-Prüfung (csrf.js) strenger: exakter Vergleich statt "beginnt mit" (Lücke: https://deine-domain.evil.com wäre durchgegangen);
+   Cookie-Sitzungen ohne Origin/Referer werden bei schreibenden Requests abgelehnt.
+   Setze in Render APP_URL=https://lieferpool.onrender.com (oder CORS_ORIGIN), sonst gilt nur der Host der Anfrage selbst.
+3) Fahrer-App: Warteschlange und Tour-Snapshots werden mit AES-GCM verschlüsselt (Schlüssel nicht exportierbar), Daten älter als 36 h werden nicht mehr geladen,
+   beim Abmelden werden Daten UND Schlüssel gelöscht. Sind beim Abmelden noch Aktionen ungesendet und es gibt kein Netz, fragt die App nach.

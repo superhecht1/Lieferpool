@@ -166,7 +166,6 @@ document.getElementById('btn-login').addEventListener('click', async () => {
       return;
     }
 
-    localStorage.setItem('lp_token', data.token);
     localStorage.setItem('lp_user',  JSON.stringify(data.user));
 
     // Redirect basierend auf Rolle
@@ -204,7 +203,6 @@ document.getElementById('btn-register').addEventListener('click', async () => {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Registrierung fehlgeschlagen');
 
-    localStorage.setItem('lp_token', data.token);
     localStorage.setItem('lp_user',  JSON.stringify(data.user));
 
     const redirectMap = { erzeuger:'/erzeuger', caterer:'/caterer', fahrer:'/fahrer' };
@@ -254,12 +252,13 @@ document.getElementById('btn-pw-change').addEventListener('click', async () => {
 });
 
 // Bereits eingeloggt? Weiterleiten
-const existingToken = localStorage.getItem('lp_token');
-const existingUser  = JSON.parse(localStorage.getItem('lp_user') || 'null');
-if (existingToken && existingUser) {
+try { localStorage.removeItem('lp_token'); localStorage.removeItem('lp_refresh'); } catch {}   // Altlast früherer Versionen
+fetch('/api/auth/me').then(r => r.ok ? r.json() : null).then(d => {
+  if (!d || !d.user) { localStorage.removeItem('lp_user'); return; }
+  localStorage.setItem('lp_user', JSON.stringify(d.user));
   const redirectMap = { admin:'/admin', erzeuger:'/erzeuger', caterer:'/caterer', fahrer:'/fahrer' };
-  window.location.href = redirectMap[existingUser.role] || '/';
-}
+  window.location.href = redirectMap[d.user.role] || '/';
+}).catch(() => {});
 </script>
 
 <div id="modal-reset-pw" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:none;align-items:center;justify-content:center">
@@ -340,7 +339,6 @@ document.getElementById('btn-verify-2fa')?.addEventListener('click', async () =>
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Ungültiger Code');
-    localStorage.setItem('lp_token', data.token);
     localStorage.setItem('lp_user', JSON.stringify(data.user));
     window.location.href = data.redirect || '/admin';
   } catch(err) {
