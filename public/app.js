@@ -41,6 +41,11 @@
     .nav-mobile-panel .nav-btn{display:block;width:100%;text-align:left;padding:.75rem 1.25rem;border-radius:0;font-size:13px}
     .nav-mobile-logo{padding:.5rem 1.25rem 1rem;font-family:'DM Mono',monospace;font-size:14px;font-weight:500;border-bottom:1px solid var(--border);margin-bottom:.5rem}
     .nav-mobile-logo span{color:var(--green)}
+    /* Viele Tabs (Admin): Navigation scrollt, Abmelden bleibt immer sichtbar */
+    #app-header .nav{flex:1 1 auto;min-width:0;overflow-x:auto;scrollbar-width:thin}
+    #app-header .nav .nav-btn{white-space:nowrap;flex-shrink:0}
+    #app-header .hdr-right{flex-shrink:0;margin-left:.75rem}
+    #app-header .logo{flex-shrink:0}
     @media(max-width:768px){
       .hamburger{display:flex}
       .nav{display:none !important}
