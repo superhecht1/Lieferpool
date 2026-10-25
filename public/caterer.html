@@ -667,7 +667,7 @@ document.addEventListener('click', async (e) => {
     e.target.disabled = true; e.target.textContent = 'Läuft…';
     try {
       const r = await (await nhFetch('/api/kennzahlen/geocode', { method: 'POST' })).json();
-      toast(`Koordinaten: ${r.erzeuger} Erzeuger, ${r.caterer} Caterer, ${r.fehlgeschlagen} nicht gefunden`);
+      toast(`Koordinaten: ${esc(r.erzeuger)} Erzeuger, ${esc(r.caterer)} Caterer, ${r.fehlgeschlagen} nicht gefunden`);
       loadNachhaltigkeit();
     } catch (err) { toast(err.message, 'error'); }
     e.target.disabled = false; e.target.textContent = '📍 Koordinaten ermitteln';
@@ -709,11 +709,11 @@ async function loadOverview() {
     setHTML('cat-pools-list', meinePools.length ? meinePools.slice(0,6).map(p => `
       <div class="pool-item" data-pool-id="${p.id}" title="Klicken für Details">
         <div class="pool-row">
-          <span class="pool-name">${p.produkt}</span>
+          <span class="pool-name">${esc(p.produkt)}</span>
           ${statusBadge(p.status)}
         </div>
         <div class="pool-row" style="margin-top:3px">
-          <span class="pool-meta">${p.lieferwoche} · ${fmt(p.preis_pro_einheit)} €/kg</span>
+          <span class="pool-meta">${esc(p.lieferwoche)} · ${fmt(p.preis_pro_einheit)} €/kg</span>
           <span class="pool-meta">${p.erzeuger_count || 0} Erzeuger</span>
         </div>
         ${poolBar(p.menge_committed, p.menge_ziel)}
@@ -740,8 +740,8 @@ async function loadOverview() {
       setHTML('cat-recent-lief', lief.length ? lief.map(l => `
         <div class="auszahl-row">
           <div>
-            <div style="font-size:13px;font-weight:500">${l.produkt || l.lieferschein_nr}</div>
-            <div class="pool-meta">${l.lieferwoche||''} · Nr. ${l.lieferschein_nr}</div>
+            <div style="font-size:13px;font-weight:500">${esc(l.produkt || l.lieferschein_nr)}</div>
+            <div class="pool-meta">${esc(l.lieferwoche||'')} · Nr. ${esc(l.lieferschein_nr)}</div>
           </div>
           <div style="text-align:right">
             ${statusBadge(l.status)}
@@ -754,7 +754,7 @@ async function loadOverview() {
   } catch (err) {
     console.error('[loadOverview]', err);
     setHTML('cat-metrics',
-      '<div style="color:var(--text3);font-size:13px;padding:.5rem">Übersicht konnte nicht geladen werden: '+err.message+'</div>'
+      '<div style="color:var(--text3);font-size:13px;padding:.5rem">Übersicht konnte nicht geladen werden: '+esc(err.message)+'</div>'
     );
   }
 }
@@ -765,7 +765,7 @@ function initPoolForm() {
   const now = new Date();
   const kw  = getKW(now);
   const pf = document.getElementById('pf-lieferwoche');
-  if (pf && !pf.value) pf.value = `KW ${kw}/${now.getFullYear()}`;
+  if (pf && !pf.value) pf.value = `KW ${esc(kw)}/${now.getFullYear()}`;
   const dd = document.getElementById('pf-deadline');
   if (dd && !dd.value) {
     const d = new Date(); d.setDate(d.getDate() + 7);
@@ -826,7 +826,7 @@ document.getElementById('btn-create-pool')?.addEventListener('click', async () =
       <div class="success-box">
         <div class="success-icon">✓</div>
         <div class="success-title">Pool erstellt</div>
-        <div class="success-sub">${pool.produkt} · ${pool.lieferwoche} · Ziel: ${Math.round(pool.menge_ziel)} kg</div>
+        <div class="success-sub">${esc(pool.produkt)} · ${esc(pool.lieferwoche)} · Ziel: ${Math.round(pool.menge_ziel)} kg</div>
         <div style="margin-top:.75rem">
           <button class="btn btn-sm" id="btn-detail-new-pool" data-pool-id="${pool.id}">Pool-Details anzeigen →</button>
         </div>
@@ -877,8 +877,8 @@ async function scanQR() {
     setHTML('lief-detail', `
       <div style="padding:.875rem 1rem;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:1rem">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;font-size:13px">
-          <div><span class="pool-meta">Produkt</span><br><strong>${lieferung.produkt || '—'}</strong></div>
-          <div><span class="pool-meta">Lieferschein</span><br><strong>${lieferung.lieferschein_nr}</strong></div>
+          <div><span class="pool-meta">Produkt</span><br><strong>${esc(lieferung.produkt || '—')}</strong></div>
+          <div><span class="pool-meta">Lieferschein</span><br><strong>${esc(lieferung.lieferschein_nr)}</strong></div>
           <div><span class="pool-meta">Bestellmenge</span><br><strong>${fmt(lieferung.menge_bestellt,0)} kg</strong></div>
           <div><span class="pool-meta">Status</span><br>${statusBadge(lieferung.status)}</div>
         </div>
@@ -988,9 +988,9 @@ async function loadBedarf() {
         <thead><tr><th>Produkt</th><th>Bedarf/Woche</th><th>Qualität</th><th>Umpack</th><th></th></tr></thead>
         <tbody>${prognosen.map(b => `
           <tr>
-            <td style="font-weight:500">${b.produkt}</td>
-            <td style="font-family:'DM Mono',monospace">${fmt(b.menge_pro_woche,0)} ${b.einheit}</td>
-            <td><span class="badge badge-gray">${b.qualitaet_praeferenz}</span></td>
+            <td style="font-weight:500">${esc(b.produkt)}</td>
+            <td style="font-family:'DM Mono',monospace">${fmt(b.menge_pro_woche,0)} ${esc(b.einheit)}</td>
+            <td><span class="badge badge-gray">${esc(b.qualitaet_praeferenz)}</span></td>
             <td>${b.umpack ? '📦' : ''}</td>
             <td><button class="btn btn-sm btn-danger" data-action="del-bedarf" data-id="${b.id}">✕</button></td>
           </tr>`).join('')}
@@ -1058,8 +1058,8 @@ async function loadVertraege() {
             const pct = poolPct(p.menge_committed, p.menge_ziel);
             return `
               <tr>
-                <td style="font-weight:600;color:var(--text)">${p.produkt}</td>
-                <td class="pool-meta">${p.lieferwoche}</td>
+                <td style="font-weight:600;color:var(--text)">${esc(p.produkt)}</td>
+                <td class="pool-meta">${esc(p.lieferwoche)}</td>
                 <td class="pool-meta">${fmt(p.preis_pro_einheit)} €/kg</td>
                 <td style="font-family:'DM Mono',monospace">${Math.round(p.menge_ziel)} kg</td>
                 <td style="font-family:'DM Mono',monospace">${Math.round(p.menge_committed)} kg</td>
@@ -1136,7 +1136,7 @@ async function loadCatProfil() {
     `);
     setHTML('cat-account-info', `
       <div style="display:grid;grid-template-columns:auto 1fr;gap:.25rem 1rem;font-size:13px">
-        <span style="color:var(--text3)">E-Mail</span><span>${caterer.email||'—'}</span>
+        <span style="color:var(--text3)">E-Mail</span><span>${esc(caterer.email||'—')}</span>
         <span style="color:var(--text3)">Rolle</span><span>Caterer</span>
         <span style="color:var(--text3)">ID</span><span style="font-family:'DM Mono',monospace;font-size:11px">${(caterer.id||'').slice(0,8)}...</span>
         <span style="color:var(--text3)">Mitglied seit</span><span>${new Date(caterer.created_at||Date.now()).toLocaleDateString('de-DE')}</span>
@@ -1189,7 +1189,7 @@ document.getElementById('btn-cat-change-pw')?.addEventListener('click', async ()
     await api.changePassword(current, neu);
     setHTML('cpw-result','<div class="alert alert-success">✓ Passwort geändert – bitte neu anmelden</div>');
     ['cpw-current','cpw-new','cpw-new2'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
-  } catch(err){ setHTML('cpw-result',`<div class="alert alert-error">${err.message}</div>`); }
+  } catch(err){ setHTML('cpw-result',`<div class="alert alert-error">${esc(err.message)}</div>`); }
 });
 
 
@@ -1214,7 +1214,7 @@ document.getElementById('btn-dsgvo-delete-confirm')?.addEventListener('click', a
       body:JSON.stringify({password:pw, reason})
     }).then(r=>r.json());
     if(r.error) throw new Error(r.error);
-    setHTML('dsgvo-result','<div class="success-box">'+r.message+'</div>');
+    setHTML('dsgvo-result','<div class="success-box">'+esc(r.message)+'</div>');
     setTimeout(()=>{ Auth.logout?.(); window.location.href='/login'; }, 3000);
   } catch(e) { showAlert('alerts','error',e.message); }
 });
@@ -1256,13 +1256,13 @@ async function loadCatererVorlagen() {
       card.innerHTML =
         '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.625rem">' +
           '<div>' +
-            '<div style="font-weight:600;font-size:.9rem">' + v.produkt + '</div>' +
-            '<div style="font-size:12px;color:var(--text3);margin-top:.2rem">jeden ' + tag + ' &middot; ' + menge + ' kg &middot; ' + preis + ' &euro;/kg</div>' +
+            '<div style="font-weight:600;font-size:.9rem">' + esc(v.produkt) + '</div>' +
+            '<div style="font-size:12px;color:var(--text3);margin-top:.2rem">jeden ' + esc(tag) + ' &middot; ' + esc(menge) + ' kg &middot; ' + esc(preis) + ' &euro;/kg</div>' +
           '</div>' + badge +
         '</div>' +
         '<div style="display:flex;gap:.5rem;flex-wrap:wrap">' +
-          '<button class="btn btn-sm btn-primary" data-id="' + v.id + '" data-action="erstellen">&#9654; Pool für nächste KW</button>' +
-          '<button class="btn btn-sm btn-danger"  data-id="' + v.id + '" data-action="loeschen">Löschen</button>' +
+          '<button class="btn btn-sm btn-primary" data-id="' + esc(v.id) + '" data-action="erstellen">&#9654; Pool für nächste KW</button>' +
+          '<button class="btn btn-sm btn-danger"  data-id="' + esc(v.id) + '" data-action="loeschen">Löschen</button>' +
         '</div>';
       return card;
     });
@@ -1281,7 +1281,7 @@ async function loadCatererVorlagen() {
     };
 
   } catch(err) {
-    wrap.innerHTML = '<div class="alert alert-error">' + (err.message || 'Fehler') + '</div>';
+    wrap.innerHTML = '<div class="alert alert-error">' + esc(err.message || 'Fehler') + '</div>';
   }
 }
 
@@ -1302,10 +1302,10 @@ document.getElementById('btn-vorlage-cat-erstellen')?.addEventListener('click', 
       body:JSON.stringify({produkt, wochentag, menge_ziel:menge, preis_pro_einheit:preis, deadline_tage:deadline, notiz})
     }).then(r=>r.json());
     if(r.error) throw new Error(r.error);
-    setHTML('vorlage-cat-result',`<div class="alert alert-success" style="margin-bottom:.75rem">✓ ${r.message}</div>`);
+    setHTML('vorlage-cat-result',`<div class="alert alert-success" style="margin-bottom:.75rem">✓ ${esc(r.message)}</div>`);
     document.getElementById('vl-cat-produkt').value='';
     loadCatererVorlagen();
-  } catch(err) { setHTML('vorlage-cat-result',`<div class="alert alert-error">${err.message}</div>`); }
+  } catch(err) { setHTML('vorlage-cat-result',`<div class="alert alert-error">${esc(err.message)}</div>`); }
 });
 
 async function poolAusVorlageCat(id) {
@@ -1344,9 +1344,9 @@ async function loadCatLieferscheine() {
         <th>Nr.</th><th>Produkt</th><th>KW</th><th>Lieferdatum</th>
         <th>Bestellt</th><th>Geliefert</th><th>Qualität</th><th>Status</th><th></th>
       </tr></thead><tbody>${lieferungen.map(l => `<tr>
-        <td style="font-family:'DM Mono',monospace;font-size:11px">${l.lieferschein_nr}</td>
-        <td style="font-weight:500">${l.produkt||'—'}</td>
-        <td class="pool-meta">${l.lieferwoche||'—'}</td>
+        <td style="font-family:'DM Mono',monospace;font-size:11px">${esc(l.lieferschein_nr)}</td>
+        <td style="font-weight:500">${esc(l.produkt||'—')}</td>
+        <td class="pool-meta">${esc(l.lieferwoche||'—')}</td>
         <td class="pool-meta">${l.lieferdatum ? new Date(l.lieferdatum).toLocaleDateString('de-DE') : '—'}</td>
         <td class="pool-meta">${l.menge_bestellt ? fmt(l.menge_bestellt,0)+' kg' : '—'}</td>
         <td>${l.menge_geliefert ? fmt(l.menge_geliefert,0)+' kg' : '—'}</td>
@@ -1359,7 +1359,7 @@ async function loadCatLieferscheine() {
         </div></td>
       </tr>`).join('')}</tbody></table>
     ` : '<p style="color:var(--text3);font-size:13px">Keine Lieferscheine</p>');
-  } catch(err) { setHTML('cat-lief-list','<div class="alert alert-error">'+err.message+'</div>'); }
+  } catch(err) { setHTML('cat-lief-list','<div class="alert alert-error">'+esc(err.message)+'</div>'); }
 }
 document.getElementById('cat-lief-filter')?.addEventListener('change', loadCatLieferscheine);
 document.getElementById('btn-reload-cat-lief')?.addEventListener('click', loadCatLieferscheine);
@@ -1398,9 +1398,9 @@ async function loadCatNachrichten() {
       <div style="padding:.875rem 0;border-bottom:1px solid var(--border)">
         <div style="display:flex;justify-content:space-between;gap:.5rem">
           <div style="flex:1;min-width:0">
-            <div style="font-weight:${n.gelesen?400:600};font-size:13px">${n.betreff||'(kein Betreff)'}</div>
-            <div class="pool-meta">Von: ${n.von_name||'Admin'} · ${new Date(n.created_at).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
-            <div style="font-size:13px;color:var(--text2);margin-top:.25rem;white-space:pre-wrap">${n.text}</div>
+            <div style="font-weight:${n.gelesen?400:600};font-size:13px">${esc(n.betreff||'(kein Betreff)')}</div>
+            <div class="pool-meta">Von: ${esc(n.von_name||'Admin')} · ${new Date(n.created_at).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
+            <div style="font-size:13px;color:var(--text2);margin-top:.25rem;white-space:pre-wrap">${esc(n.text)}</div>
           </div>
           <div style="display:flex;gap:.35rem;flex-shrink:0">
             ${!n.gelesen?`<button class="btn btn-sm" onclick="catMarkGelesen(${n.id})">✓</button>`:''}
@@ -1433,7 +1433,7 @@ document.getElementById('btn-cat-nm-senden')?.addEventListener('click', async ()
     res.innerHTML='<span style="color:var(--green)">✓ Gesendet</span>';
     document.getElementById('cat-nm-text').value='';
     setTimeout(()=>{ if(res) res.innerHTML=''; },3000);
-  } catch(e) { res.innerHTML=`<span style="color:var(--red)">${e.message}</span>`; }
+  } catch(e) { res.innerHTML=`<span style="color:var(--red)">${esc(e.message)}</span>`; }
   btn.disabled=false; btn.textContent='Senden';
 });
 
@@ -1460,7 +1460,7 @@ document.getElementById('btn-bedarf-zu-pool')?.addEventListener('click', async (
     // Aggregieren nach Produkt + Lieferwoche
     const agg = {};
     prognosen.forEach(p => {
-      const key = `${p.produkt}|${p.lieferwoche||''}`;
+      const key = `${esc(p.produkt)}|${esc(p.lieferwoche||'')}`;
       if (!agg[key]) agg[key] = { produkt: p.produkt, lieferwoche: p.lieferwoche||'', menge:0, preis: p.preis_vorstellung||0, region: p.region||'NRW' };
       agg[key].menge += parseFloat(p.menge_pro_woche||p.menge_bedarf||0);
       if (p.preis_vorstellung||p.preis) agg[key].preis = p.preis_vorstellung||p.preis||agg[key].preis;

@@ -1312,7 +1312,7 @@ document.addEventListener('click', async (e) => {
     e.target.disabled = true; e.target.textContent = 'Läuft…';
     try {
       const r = await (await nhFetch('/api/kennzahlen/geocode', { method: 'POST' })).json();
-      toast(`Koordinaten: ${r.erzeuger} Erzeuger, ${r.caterer} Caterer, ${r.fehlgeschlagen} nicht gefunden`);
+      toast(`Koordinaten: ${esc(r.erzeuger)} Erzeuger, ${esc(r.caterer)} Caterer, ${r.fehlgeschlagen} nicht gefunden`);
       loadNachhaltigkeit();
     } catch (err) { toast(err.message, 'error'); }
     e.target.disabled = false; e.target.textContent = '📍 Koordinaten ermitteln';
@@ -1348,15 +1348,15 @@ async function loadNachrichten() {
     // Empfänger-Dropdown
     const sel = document.getElementById('nm-empfaenger');
     if (sel) sel.innerHTML = '<option value="">— Empfänger wählen —</option>' +
-      empfaenger.map(e => `<option value="${e.id}">[${e.role}] ${e.firma || e.name} (${e.email})</option>`).join('');
+      empfaenger.map(e => `<option value="${e.id}">[${esc(e.role)}] ${esc(e.firma || e.name)} (${esc(e.email)})</option>`).join('');
 
     setHTML('nachrichten-inbox', nachrichten.length ? nachrichten.map(n => `
       <div style="padding:.875rem 0;border-bottom:1px solid var(--border);${!n.gelesen?'background:var(--bg-highlight,var(--bg2));margin:0 -1rem;padding:.875rem 1rem;border-radius:4px':''}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem">
           <div style="min-width:0;flex:1">
-            <div style="font-weight:${n.gelesen?400:600};font-size:13px">${n.betreff || '(kein Betreff)'}</div>
-            <div class="pool-meta">Von: ${n.von_name || 'System'} · ${new Date(n.created_at).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
-            <div style="font-size:13px;color:var(--text2);margin-top:.25rem;white-space:pre-wrap">${n.text}</div>
+            <div style="font-weight:${n.gelesen?400:600};font-size:13px">${esc(n.betreff || '(kein Betreff)')}</div>
+            <div class="pool-meta">Von: ${esc(n.von_name || 'System')} · ${new Date(n.created_at).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</div>
+            <div style="font-size:13px;color:var(--text2);margin-top:.25rem;white-space:pre-wrap">${esc(n.text)}</div>
           </div>
           <div style="display:flex;gap:.35rem;flex-shrink:0">
             ${!n.gelesen ? `<button class="btn btn-sm" onclick="markGelesen(${n.id})">✓</button>` : ''}
@@ -1398,7 +1398,7 @@ document.getElementById('btn-nm-senden')?.addEventListener('click', async () => 
     document.getElementById('nm-text').value='';
     document.getElementById('nm-betreff').value='';
     setTimeout(()=>{ if(res) res.innerHTML=''; },3000);
-  } catch(e) { res.innerHTML=`<span style="color:var(--red)">${e.message}</span>`; }
+  } catch(e) { res.innerHTML=`<span style="color:var(--red)">${esc(e.message)}</span>`; }
   btn.disabled=false; btn.textContent='Senden';
 });
 
@@ -1563,7 +1563,7 @@ async function loadBlockchain() {
           <div class="sum-box" style="background:var(--bg2);border-radius:6px;padding:12px 16px">
             <div class="pool-meta">Contract</div>
             <div style="font-size:11px;font-family:monospace;margin-top:4px">
-              <a href="https://polygonscan.com/address/${cs.contractAddress}" target="_blank" style="color:var(--green)">${cs.contractAddress?.slice(0,10)}...${cs.contractAddress?.slice(-6)}</a>
+              <a href="https://polygonscan.com/address/${esc(cs.contractAddress)}" target="_blank" style="color:var(--green)">${cs.contractAddress?.slice(0,10)}...${cs.contractAddress?.slice(-6)}</a>
             </div>
           </div>
         ` : `
@@ -1611,7 +1611,7 @@ async function loadChainEvents() {
               <td class="pool-meta">${e.entity_type || '—'}</td>
               <td style="font-family:monospace;font-size:11px">
                 ${e.tx_hash && e.tx_hash !== '0x' + '0'.repeat(64)
-                  ? `<a href="https://polygonscan.com/tx/${e.tx_hash}" target="_blank" style="color:var(--green)">${e.tx_hash.slice(0,8)}...${e.tx_hash.slice(-6)}</a>`
+                  ? `<a href="https://polygonscan.com/tx/${esc(e.tx_hash)}" target="_blank" style="color:var(--green)">${e.tx_hash.slice(0,8)}...${e.tx_hash.slice(-6)}</a>`
                   : '<span style="color:var(--text3)">mock</span>'}
               </td>
               <td class="pool-meta">${e.block_nr ? '#' + e.block_nr.toLocaleString('de-DE') : '—'}</td>
@@ -1620,7 +1620,7 @@ async function loadChainEvents() {
         </tbody>
       </table>
     ` : '<p style="color:var(--text3);font-size:13px">Noch keine Chain-Events</p>');
-  } catch(err) { setHTML('chain-events-list', `<p style="color:var(--red)">${err.message}</p>`); }
+  } catch(err) { setHTML('chain-events-list', `<p style="color:var(--red)">${esc(err.message)}</p>`); }
 }
 
 document.getElementById('btn-chain-refresh')?.addEventListener('click', loadBlockchain);
@@ -1634,7 +1634,7 @@ async function loadChainLiveEvents() {
     }).then(r => r.json());
 
     if (data.note) {
-      setHTML('chain-live-list', `<div style="font-size:13px;color:var(--amber);padding:.75rem 0">⚠ ${data.note}</div>`);
+      setHTML('chain-live-list', `<div style="font-size:13px;color:var(--amber);padding:.75rem 0">⚠ ${esc(data.note)}</div>`);
       return;
     }
 
@@ -1645,16 +1645,16 @@ async function loadChainLiveEvents() {
         <tbody>${data.events.map(e => `
           <tr>
             <td class="pool-meta">#${e.blockNr?.toLocaleString('de-DE')}</td>
-            <td style="font-weight:500">${e.name}</td>
+            <td style="font-weight:500">${esc(e.name)}</td>
             <td style="font-family:monospace;font-size:11px">
-              <a href="${e.explorerUrl}" target="_blank" style="color:var(--green)">${e.txHash?.slice(0,8)}...${e.txHash?.slice(-6)}</a>
+              <a href="${esc(e.explorerUrl)}" target="_blank" style="color:var(--green)">${e.txHash?.slice(0,8)}...${e.txHash?.slice(-6)}</a>
             </td>
             <td class="pool-meta">${e.timestamp ? new Date(e.timestamp).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—'}</td>
           </tr>
         `).join('')}</tbody>
       </table>
     ` : '<p style="color:var(--text3);font-size:13px">Noch keine On-Chain Events (oder Contract nicht deployed)</p>');
-  } catch(err) { setHTML('chain-live-list', `<p style="color:var(--red)">${err.message}</p>`); }
+  } catch(err) { setHTML('chain-live-list', `<p style="color:var(--red)">${esc(err.message)}</p>`); }
 }
 
 async function loadChainWalletTxs() {
@@ -1665,23 +1665,23 @@ async function loadChainWalletTxs() {
     }).then(r => r.json());
 
     setHTML('chain-txs-list', data.txs?.length ? `
-      <div class="pool-meta" style="margin-bottom:.75rem">Wallet: <code style="font-size:11px">${data.walletAddress}</code></div>
+      <div class="pool-meta" style="margin-bottom:.75rem">Wallet: <code style="font-size:11px">${esc(data.walletAddress)}</code></div>
       <table class="tbl">
         <thead><tr><th>Block</th><th>Status</th><th>MATIC</th><th>TX Hash</th><th>Zeit</th></tr></thead>
         <tbody>${data.txs.map(tx => `
           <tr>
             <td class="pool-meta">#${tx.blockNr?.toLocaleString('de-DE')}</td>
-            <td><span class="badge ${tx.status==='success'?'badge-green':'badge-red'}">${tx.status}</span></td>
+            <td><span class="badge ${tx.status==='success'?'badge-green':'badge-red'}">${esc(tx.status)}</span></td>
             <td class="pool-meta">${parseFloat(tx.value||0).toFixed(4)}</td>
             <td style="font-family:monospace;font-size:11px">
-              <a href="${tx.explorerUrl}" target="_blank" style="color:var(--green)">${tx.hash?.slice(0,8)}...${tx.hash?.slice(-6)}</a>
+              <a href="${esc(tx.explorerUrl)}" target="_blank" style="color:var(--green)">${tx.hash?.slice(0,8)}...${tx.hash?.slice(-6)}</a>
             </td>
             <td class="pool-meta">${tx.timestamp ? new Date(tx.timestamp).toLocaleString('de-DE',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—'}</td>
           </tr>
         `).join('')}</tbody>
       </table>
-    ` : `<p style="color:var(--text3);font-size:13px">${data.note || 'Keine Transaktionen'}</p>`);
-  } catch(err) { setHTML('chain-txs-list', `<p style="color:var(--red)">${err.message}</p>`); }
+    ` : `<p style="color:var(--text3);font-size:13px">${esc(data.note || 'Keine Transaktionen')}</p>`);
+  } catch(err) { setHTML('chain-txs-list', `<p style="color:var(--red)">${esc(err.message)}</p>`); }
 }
 
 // TX Suche
@@ -1690,22 +1690,22 @@ document.getElementById('btn-chain-tx-suchen')?.addEventListener('click', async 
   if (!hash) return;
   setHTML('chain-tx-result', '<div class="spinner"></div>');
   try {
-    const data = await fetch(`/api/chain/tx/${hash}`, {
+    const data = await fetch(`/api/chain/tx/${esc(hash)}`, {
       headers: { 'Authorization': 'Bearer ' + Auth.getToken() }
     }).then(async r => { const d=await r.json(); if(!r.ok) throw new Error(d.error); return d; });
     const tx = data.tx;
     setHTML('chain-tx-result', `
       <div style="background:var(--bg2);border-radius:6px;padding:1rem;font-size:13px;line-height:2">
-        <div><strong>Status:</strong> <span style="color:${tx.status==='success'?'var(--green)':'var(--red)'}">${tx.status}</span></div>
+        <div><strong>Status:</strong> <span style="color:${tx.status==='success'?'var(--green)':'var(--red)'}">${esc(tx.status)}</span></div>
         <div><strong>Block:</strong> #${tx.blockNr?.toLocaleString('de-DE')}</div>
         <div><strong>Zeit:</strong> ${tx.timestamp ? new Date(tx.timestamp).toLocaleString('de-DE') : '—'}</div>
         <div><strong>Gas used:</strong> ${tx.gasUsed?.toLocaleString('de-DE')}</div>
-        <div><strong>Von:</strong> <code style="font-size:11px">${tx.from}</code></div>
-        <div><strong>An:</strong> <code style="font-size:11px">${tx.to}</code></div>
-        <div><a href="${tx.explorerUrl}" target="_blank" style="color:var(--green)">→ Polygonscan</a></div>
+        <div><strong>Von:</strong> <code style="font-size:11px">${esc(tx.from)}</code></div>
+        <div><strong>An:</strong> <code style="font-size:11px">${esc(tx.to)}</code></div>
+        <div><a href="${esc(tx.explorerUrl)}" target="_blank" style="color:var(--green)">→ Polygonscan</a></div>
       </div>
     `);
-  } catch(err) { setHTML('chain-tx-result', `<p style="color:var(--red)">${err.message}</p>`); }
+  } catch(err) { setHTML('chain-tx-result', `<p style="color:var(--red)">${esc(err.message)}</p>`); }
 });
 document.getElementById('chain-filter-type')?.addEventListener('change', loadChainEvents);
 
@@ -1836,9 +1836,9 @@ async function loadOverview() {
   const aktivePools = poolsList.filter(p => ['offen','geschlossen'].includes(p.status)).slice(0,6);
   setHTML('admin-pools-list', aktivePools.length ? aktivePools.map(p => `
     <div class="pool-item" data-pool-id="${p.id}" title="Details">
-      <div class="pool-row"><span class="pool-name">${p.produkt}</span>${statusBadge(p.status)}</div>
+      <div class="pool-row"><span class="pool-name">${esc(p.produkt)}</span>${statusBadge(p.status)}</div>
       <div class="pool-row" style="margin-top:3px">
-        <span class="pool-meta">${p.lieferwoche} · ${p.erzeuger_count||0} Erzeuger</span>
+        <span class="pool-meta">${esc(p.lieferwoche)} · ${p.erzeuger_count||0} Erzeuger</span>
         <span class="pool-meta" style="font-family:'DM Mono',monospace">${fmt(p.preis_pro_einheit)} €/kg</span>
       </div>
       ${poolBar(p.menge_committed, p.menge_ziel)}
@@ -1849,20 +1849,20 @@ async function loadOverview() {
   const activities = [];
   azListe.slice(0,3).forEach(a => activities.push({
     ts: a.created_at, icon: '💰',
-    title: `${a.betrieb_name} · ${fmt(a.netto)} €`,
-    sub: `Auszahlung ${a.status}`,
+    title: `${esc(a.betrieb_name)} · ${fmt(a.netto)} €`,
+    sub: `Auszahlung ${esc(a.status)}`,
     color: a.status==='ausgezahlt'?'var(--green)':'var(--amber)'
   }));
   lieferungen.slice(0,3).forEach(l => activities.push({
     ts: l.created_at, icon: '📦',
-    title: `${l.produkt||l.lieferschein_nr}`,
-    sub: `Lieferschein · ${l.status}`,
+    title: `${esc(l.produkt||l.lieferschein_nr)}`,
+    sub: `Lieferschein · ${esc(l.status)}`,
     color: 'var(--text2)'
   }));
   pendingZerts.slice(0,2).forEach(z => activities.push({
     ts: z.created_at, icon: '📋',
-    title: z.betrieb_name,
-    sub: `Zertifikat eingereicht: ${z.typ}`,
+    title: esc(z.betrieb_name),
+    sub: `Zertifikat eingereicht: ${esc(z.typ)}`,
     color: 'var(--amber)'
   }));
   activities.sort((a,b) => new Date(b.ts) - new Date(a.ts));
@@ -1882,7 +1882,7 @@ async function loadOverview() {
   setHTML('pending-quick', pendingZerts.length ? pendingZerts.slice(0,4).map(z => `
     <div class="pool-item">
       <div class="pool-row">
-        <div><div style="font-size:13px;font-weight:500">${z.betrieb_name}</div><div class="pool-meta">${z.typ} · ${z.zert_nummer}</div></div>
+        <div><div style="font-size:13px;font-weight:500">${esc(z.betrieb_name)}</div><div class="pool-meta">${esc(z.typ)} · ${esc(z.zert_nummer)}</div></div>
         <div style="display:flex;gap:.35rem">
           <button class="btn btn-primary btn-sm" data-action="approve" data-id="${z.id}" style="padding:3px 8px">✓</button>
           <button class="btn btn-sm btn-danger" data-action="reject"  data-id="${z.id}" style="padding:3px 8px">✗</button>
@@ -1929,7 +1929,7 @@ async function loadOverview() {
     <table class="tbl" style="font-size:12px">
       <thead><tr><th>Produkt</th><th>Bestand</th><th>Mindest</th></tr></thead>
       <tbody>${alerts.slice(0,5).map(a => `<tr>
-        <td style="font-weight:500">${a.produkt}</td>
+        <td style="font-weight:500">${esc(a.produkt)}</td>
         <td style="color:var(--red);font-family:'DM Mono',monospace">${fmt(a.bestand,1)} kg</td>
         <td style="color:var(--text2);font-family:'DM Mono',monospace">${fmt(a.mindestbestand,1)} kg</td>
       </tr>`).join('')}</tbody>
@@ -1941,8 +1941,8 @@ async function loadOverview() {
     <table class="tbl" style="font-size:12px">
       <thead><tr><th>Typ</th><th>Fahrer</th><th>Stopps</th><th>Status</th></tr></thead>
       <tbody>${touren.slice(0,5).map(t => `<tr>
-        <td style="font-weight:500">${t.typ==='abholung'?'🌾':t.typ==='auslieferung'?'🚚':'🔄'} ${t.typ}</td>
-        <td class="pool-meta">${t.fahrer_name||'—'}</td>
+        <td style="font-weight:500">${t.typ==='abholung'?'🌾':t.typ==='auslieferung'?'🚚':'🔄'} ${esc(t.typ)}</td>
+        <td class="pool-meta">${esc(t.fahrer_name||'—')}</td>
         <td class="pool-meta">${t.stopps_done||0}/${t.stopp_anzahl||0}</td>
         <td>${statusBadge(t.status)}</td>
       </tr>`).join('')}</tbody>
@@ -1970,7 +1970,7 @@ async function loadOverview() {
     try {
       const res = await fetch('/api/stripe/collect-fees',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+Auth.getToken()},body:JSON.stringify({})}).then(r=>r.json());
       if (res.url) window.open(res.url,'_blank');
-      else setHTML('quick-action-result',`<div class="alert alert-error">${res.error}</div>`);
+      else setHTML('quick-action-result',`<div class="alert alert-error">${esc(res.error)}</div>`);
     } catch(err){ showAlert('alerts','error',err.message); }
     btn.textContent='💳 Stripe-Gebühren einziehen'; btn.disabled=false;
   });
@@ -1996,9 +1996,9 @@ async function loadZertifikate() {
         <thead><tr><th>Betrieb</th><th>Typ</th><th>Nummer</th><th>Gültig bis</th><th>Eingereicht</th><th>Aktion</th></tr></thead>
         <tbody>${zertifikate.map(z => `
           <tr id="zrow-${z.id}">
-            <td style="font-weight:500">${z.betrieb_name}<div style="font-size:11px;color:var(--text3)">${z.email}</div></td>
-            <td><span class="badge badge-gray">${z.typ}</span></td>
-            <td class="pool-meta">${z.zert_nummer}</td>
+            <td style="font-weight:500">${esc(z.betrieb_name)}<div style="font-size:11px;color:var(--text3)">${esc(z.email)}</div></td>
+            <td><span class="badge badge-gray">${esc(z.typ)}</span></td>
+            <td class="pool-meta">${esc(z.zert_nummer)}</td>
             <td class="pool-meta">${(() => {
               if (!z.gueltig_bis) return '—';
               const d = new Date(z.gueltig_bis);
@@ -2073,16 +2073,16 @@ function renderErzeuger(list) {
       <thead><tr><th>Betrieb</th><th>E-Mail</th><th>Region</th><th>Ort</th><th>Sortiment</th><th>Kapazität</th><th>Zertifikate</th><th>Zusagen</th><th>Aktionen</th></tr></thead>
       <tbody>${list.map(e => `
         <tr>
-          <td><div style="font-weight:500">${e.betrieb_name}</div>${e.gruendungsjahr?`<div class="pool-meta">seit ${e.gruendungsjahr}</div>`:''}</td>
-          <td class="pool-meta">${e.email}</td>
-          <td><span class="badge badge-gray">${e.region||'—'}</span></td>
-          <td class="pool-meta" style="font-size:11px">${e.ort?e.plz+' '+e.ort:'—'}</td>
-          <td class="pool-meta" style="font-size:11px;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e.sortiment||''}">${e.sortiment||'—'}</td>
+          <td><div style="font-weight:500">${esc(e.betrieb_name)}</div>${e.gruendungsjahr?`<div class="pool-meta">seit ${e.gruendungsjahr}</div>`:''}</td>
+          <td class="pool-meta">${esc(e.email)}</td>
+          <td><span class="badge badge-gray">${esc(e.region||'—')}</span></td>
+          <td class="pool-meta" style="font-size:11px">${esc(e.ort?(e.plz||'')+' '+e.ort:'—')}</td>
+          <td class="pool-meta" style="font-size:11px;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(e.sortiment||'')}">${esc(e.sortiment||'—')}</td>
           <td class="pool-meta">${e.max_kapazitaet?e.max_kapazitaet+' kg/Wo':'—'}</td>
           <td><span class="badge ${e.zert_count>0?'badge-green':'badge-amber'}">${e.zert_count} verifiziert</span></td>
           <td class="pool-meta">${e.commitment_count}</td>
           <td><div style="display:flex;gap:.35rem">
-            <button class="btn btn-sm" data-action="erz-detail" data-id="${e.id}" data-name="${e.betrieb_name}">Detail</button>
+            <button class="btn btn-sm" data-action="erz-detail" data-id="${e.id}" data-name="${esc(e.betrieb_name)}">Detail</button>
             <button class="btn btn-sm" data-action="abrechnung" data-id="${e.id}">Abr.</button>
           </div></td>
         </tr>`).join('')}
@@ -2120,15 +2120,15 @@ async function loadErzeugerDetail(erzId) {
           <table style="font-size:13px;width:100%;border-collapse:collapse">
             ${[['Betrieb',e.betrieb_name],['E-Mail',e.email],['Region',e.region||'—'],
               ['Adresse',e.adresse?(e.adresse+', '+(e.plz||'')+' '+(e.ort||'')).trim():'—'],
-              ['Telefon',e.telefon||'—'],['Website',e.website?`<a href="${e.website}" target="_blank">${e.website}</a>`:'—'],
+              ['Telefon',e.telefon||'—'],['Website',e.website?raw(`<a href="${esc(safeUrl(e.website))}" target="_blank" rel="noopener noreferrer">${esc(e.website)}</a>`):'—'],
               ['Sortiment',e.sortiment||'—'],['Kapazität',e.max_kapazitaet?e.max_kapazitaet+' kg/Wo':'—'],
               ['Betriebsgröße',e.betriebsgroesse||'—'],['Gründung',e.gruendungsjahr||'—'],
               ['IBAN',e.iban||'—'],['USt-ID',e.ust_id||'—'],
               ['Gesamt ausgezahlt',fmt(gesamtAZ)+' €'],
               ['Mitglied seit',new Date(e.created_at||Date.now()).toLocaleDateString('de-DE')],
             ].map(([k,v])=>`<tr style="border-bottom:1px solid var(--border)">
-              <td style="padding:5px 0;color:var(--text3);width:140px">${k}</td>
-              <td style="padding:5px 0;font-weight:500">${v}</td>
+              <td style="padding:5px 0;color:var(--text3);width:140px">${esc(k)}</td>
+              <td style="padding:5px 0;font-weight:500">${v&&v.__raw!==undefined?v.__raw:esc(v)}</td>
             </tr>`).join('')}
           </table>
         </div>
@@ -2136,7 +2136,7 @@ async function loadErzeugerDetail(erzId) {
           <div class="card-title">Zertifikate</div>
           ${zertifikate.length ? zertifikate.map(z=>`
             <div class="auszahl-row">
-              <div><div style="font-size:13px;font-weight:500">${z.typ} · ${z.zert_nummer}</div>
+              <div><div style="font-size:13px;font-weight:500">${esc(z.typ)} · ${esc(z.zert_nummer)}</div>
               <div class="pool-meta">Gültig bis: ${(() => {
               if (!z.gueltig_bis) return '—';
               const d = new Date(z.gueltig_bis);
@@ -2152,7 +2152,7 @@ async function loadErzeugerDetail(erzId) {
           ${commitments.slice(0,5).length ? `
             <table class="tbl" style="font-size:12px"><thead><tr><th>Produkt</th><th>KW</th><th>Menge</th><th>Status</th></tr></thead>
             <tbody>${commitments.slice(0,5).map(c=>`<tr>
-              <td style="font-weight:500">${c.produkt}</td><td class="pool-meta">${c.lieferwoche}</td>
+              <td style="font-weight:500">${esc(c.produkt)}</td><td class="pool-meta">${esc(c.lieferwoche)}</td>
               <td class="pool-meta">${fmt(c.menge,0)} kg</td><td>${statusBadge(c.status)}</td>
             </tr>`).join('')}</tbody></table>
           ` : '<p style="color:var(--text3);font-size:13px">Keine Zusagen</p>'}
@@ -2163,7 +2163,7 @@ async function loadErzeugerDetail(erzId) {
         <button class="btn btn-sm" onclick="document.getElementById('erzeuger-detail-card').style.display='none'">Schließen</button>
       </div>
     `);
-  } catch (err) { setHTML('erzeuger-detail-body',`<div class="alert alert-error">${err.message}</div>`); }
+  } catch (err) { setHTML('erzeuger-detail-body',`<div class="alert alert-error">${esc(err.message)}</div>`); }
 }
 
 document.getElementById('btn-erzeuger-detail-close')?.addEventListener('click', ()=>{ const c=document.getElementById('erzeuger-detail-card'); if(c) c.style.display='none'; });
@@ -2200,14 +2200,14 @@ function renderCaterer(list) {
       <thead><tr><th>Firma</th><th>E-Mail</th><th>Region</th><th>Ort</th><th>Küche</th><th>Pools</th><th>USt-ID</th><th>Aktionen</th></tr></thead>
       <tbody>${list.map(c=>`
         <tr>
-          <td><div style="font-weight:500">${c.firma_name}</div>${c.gruendungsjahr?`<div class="pool-meta">seit ${c.gruendungsjahr}</div>`:''}</td>
-          <td class="pool-meta">${c.email}</td>
-          <td><span class="badge badge-gray">${c.region||'—'}</span></td>
-          <td class="pool-meta" style="font-size:11px">${c.ort?c.plz+' '+c.ort:'—'}</td>
-          <td class="pool-meta" style="font-size:11px">${c.kuechen_typ||'—'}${c.anz_plaetze?' · '+c.anz_plaetze+' Plätze':''}</td>
+          <td><div style="font-weight:500">${esc(c.firma_name)}</div>${c.gruendungsjahr?`<div class="pool-meta">seit ${c.gruendungsjahr}</div>`:''}</td>
+          <td class="pool-meta">${esc(c.email)}</td>
+          <td><span class="badge badge-gray">${esc(c.region||'—')}</span></td>
+          <td class="pool-meta" style="font-size:11px">${esc(c.ort?(c.plz||'')+' '+c.ort:'—')}</td>
+          <td class="pool-meta" style="font-size:11px">${esc(c.kuechen_typ||'—')}${c.anz_plaetze?' · '+c.anz_plaetze+' Plätze':''}</td>
           <td class="pool-meta">${c.pool_count}</td>
-          <td class="pool-meta">${c.ust_id||'—'}</td>
-          <td><button class="btn btn-sm" data-action="cat-detail" data-id="${c.id}" data-name="${c.firma_name}">Detail</button></td>
+          <td class="pool-meta">${esc(c.ust_id||'—')}</td>
+          <td><button class="btn btn-sm" data-action="cat-detail" data-id="${c.id}" data-name="${esc(c.firma_name)}">Detail</button></td>
         </tr>`).join('')}
       </tbody>
     </table>
@@ -2237,14 +2237,14 @@ async function loadCatererDetail(catId) {
           <table style="font-size:13px;width:100%;border-collapse:collapse">
             ${[['Firma',c.firma_name],['E-Mail',c.email],['Region',c.region||'—'],
               ['Adresse',c.adresse?(c.adresse+', '+(c.plz||'')+' '+(c.ort||'')).trim():'—'],
-              ['Telefon',c.telefon||'—'],['Website',c.website?`<a href="${c.website}" target="_blank">${c.website}</a>`:'—'],
+              ['Telefon',c.telefon||'—'],['Website',c.website?raw(`<a href="${esc(safeUrl(c.website))}" target="_blank" rel="noopener noreferrer">${esc(c.website)}</a>`):'—'],
               ['Küchen-Typ',c.kuechen_typ||'—'],['Kapazität',c.kuechen_kapazitaet||'—'],
               ['Sitzplätze',c.anz_plaetze||'—'],['Gründung',c.gruendungsjahr||'—'],
               ['IBAN',c.iban||'—'],['USt-ID',c.ust_id||'—'],
               ['Mitglied seit',new Date(c.created_at||Date.now()).toLocaleDateString('de-DE')],
             ].map(([k,v])=>`<tr style="border-bottom:1px solid var(--border)">
-              <td style="padding:5px 0;color:var(--text3);width:140px">${k}</td>
-              <td style="padding:5px 0;font-weight:500">${v}</td>
+              <td style="padding:5px 0;color:var(--text3);width:140px">${esc(k)}</td>
+              <td style="padding:5px 0;font-weight:500">${v&&v.__raw!==undefined?v.__raw:esc(v)}</td>
             </tr>`).join('')}
           </table>
         </div>
@@ -2253,18 +2253,18 @@ async function loadCatererDetail(catId) {
           ${pools.length ? `
             <table class="tbl" style="font-size:12px"><thead><tr><th>Produkt</th><th>KW</th><th>Füllstand</th><th>Status</th></tr></thead>
             <tbody>${pools.slice(0,8).map(p=>`<tr>
-              <td style="font-weight:500" class="pool-item" data-pool-id="${p.id}" style="cursor:pointer">${p.produkt}</td>
-              <td class="pool-meta">${p.lieferwoche}</td>
+              <td style="font-weight:500" class="pool-item" data-pool-id="${p.id}" style="cursor:pointer">${esc(p.produkt)}</td>
+              <td class="pool-meta">${esc(p.lieferwoche)}</td>
               <td class="pool-meta">${Math.round(p.menge_committed||0)}/${Math.round(p.menge_ziel)} kg</td>
               <td>${statusBadge(p.status)}</td>
             </tr>`).join('')}</tbody></table>
           ` : '<p style="color:var(--text3);font-size:13px">Keine Pools</p>'}
-          ${c.beschreibung ? `<div class="card-title" style="margin-top:1rem">Beschreibung</div><p style="font-size:13px;color:var(--text2);line-height:1.6">${c.beschreibung}</p>` : ''}
+          ${c.beschreibung ? `<div class="card-title" style="margin-top:1rem">Beschreibung</div><p style="font-size:13px;color:var(--text2);line-height:1.6">${esc(c.beschreibung)}</p>` : ''}
         </div>
       </div>
       <button class="btn btn-sm" onclick="document.getElementById('caterer-detail-card').style.display='none'">Schließen</button>
     `);
-  } catch (err) { setHTML('caterer-detail-body',`<div class="alert alert-error">${err.message}</div>`); }
+  } catch (err) { setHTML('caterer-detail-body',`<div class="alert alert-error">${esc(err.message)}</div>`); }
 }
 
 document.getElementById('btn-caterer-detail-close')?.addEventListener('click',()=>{ const c=document.getElementById('caterer-detail-card'); if(c) c.style.display='none'; });
@@ -2296,7 +2296,7 @@ async function loadLieferungNeu() {
     } else {
       sel.innerHTML = pools.map(p => {
         const hat  = poolMitLief.has(p.id);
-        const lbl  = `${p.produkt} – KW ${p.lieferwoche} (${Math.round(p.menge_committed||0)} kg)`;
+        const lbl  = `${esc(p.produkt)} – KW ${esc(p.lieferwoche)} (${Math.round(p.menge_committed||0)} kg)`;
         return `<option value="${p.id}" ${hat?'disabled style="color:var(--text3)"':''}>
           ${hat?'✓ ':''} ${lbl}${hat?' [Lieferschein bereits vorhanden]':''}
         </option>`;
@@ -2307,7 +2307,7 @@ async function loadLieferungNeu() {
     const statusSel = document.getElementById('lief-pool-status-change');
     if (statusSel) {
       statusSel.innerHTML = pools.map(p =>
-        `<option value="${p.id}">${p.produkt} – KW ${p.lieferwoche} (${p.status})</option>`
+        `<option value="${p.id}">${esc(p.produkt)} – KW ${esc(p.lieferwoche)} (${esc(p.status)})</option>`
       ).join('');
     }
   } catch (err) {}
@@ -2328,25 +2328,25 @@ async function loadLieferscheineListe() {
         </tr></thead>
         <tbody>${lieferungen.map(l => `
           <tr>
-            <td style="font-family:'DM Mono',monospace;font-size:11px">${l.lieferschein_nr}</td>
-            <td style="font-weight:500">${l.produkt||'—'}</td>
-            <td class="pool-meta">${l.lieferwoche||'—'}</td>
+            <td style="font-family:'DM Mono',monospace;font-size:11px">${esc(l.lieferschein_nr)}</td>
+            <td style="font-weight:500">${esc(l.produkt||'—')}</td>
+            <td class="pool-meta">${esc(l.lieferwoche||'—')}</td>
             <td class="pool-meta">${l.lieferdatum ? new Date(l.lieferdatum).toLocaleDateString('de-DE') : '—'}</td>
             <td class="pool-meta">${l.menge_bestellt ? fmt(l.menge_bestellt,0)+' kg' : '—'}</td>
             <td class="pool-meta">${l.menge_geliefert ? fmt(l.menge_geliefert,0)+' kg' : '—'}</td>
             <td>${statusBadge(l.status)}</td>
             <td>
               <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(location.origin+'/caterer?qr='+l.qr_code)}&color=0d1f15&margin=2"
-                   alt="${l.qr_code}"
+                   alt="${esc(l.qr_code)}"
                    style="width:48px;height:48px;border-radius:4px;border:1px solid var(--border);cursor:pointer"
-                   title="${l.qr_code}"
+                   title="${esc(l.qr_code)}"
                    onclick="window.open(this.src.replace('120x120','300x300'),'_blank')">
             </td>
             <td>
               <div style="display:flex;gap:.35rem">
                 <button class="btn btn-sm" onclick="openPrint('/api/print/lieferung/${l.id}')">🖨</button>
                 <button class="btn btn-sm btn-primary" onclick="dlPrint('/api/print/lieferung/${l.id}')" title="HTML herunterladen">↓</button>
-                ${l.status!=='abgeschlossen'?`<button class="btn btn-sm btn-danger" data-action="del-lief" data-id="${l.id}" data-nr="${l.lieferschein_nr}" style="padding:3px 8px">✕</button>`:''}
+                ${l.status!=='abgeschlossen'?`<button class="btn btn-sm btn-danger" data-action="del-lief" data-id="${l.id}" data-nr="${esc(l.lieferschein_nr)}" style="padding:3px 8px">✕</button>`:''}
               </div>
             </td>
           </tr>`).join('')}
@@ -2359,7 +2359,7 @@ async function loadLieferscheineListe() {
 document.getElementById('lief-admin-list')?.addEventListener('click', async e => {
   const btn = e.target.closest('[data-action="del-lief"]');
   if (!btn) return;
-  if (!confirm(`Lieferschein ${btn.dataset.nr} wirklich löschen?`)) return;
+  if (!confirm(`Lieferschein ${esc(btn.dataset.nr)} wirklich löschen?`)) return;
   try {
     const r = await fetch('/api/lieferungen/' + btn.dataset.id, {
       method: 'DELETE',
@@ -2405,7 +2405,7 @@ document.getElementById('btn-pool-status-change')?.addEventListener('click', asy
     toast('Pool-Status aktualisiert');
     loadLieferungNeu(); // Dropdown neu laden
   } catch (err) {
-    setHTML('pool-status-result', `<div class="alert alert-error" style="margin:.5rem 0">${err.message}</div>`);
+    setHTML('pool-status-result', `<div class="alert alert-error" style="margin:.5rem 0">${esc(err.message)}</div>`);
   }
 });
 document.getElementById('btn-reload-lieferscheine')?.addEventListener('click', loadLieferscheineListe);
@@ -2432,12 +2432,12 @@ document.getElementById('btn-create-lief')?.addEventListener('click', async () =
     setHTML('lief-create-result',`<div class="success-box">
       <div class="success-icon">✓</div>
       <div class="success-title">Lieferschein erstellt</div>
-      <div class="success-sub">Nr: ${lieferung.lieferschein_nr}</div>
+      <div class="success-sub">Nr: ${esc(lieferung.lieferschein_nr)}</div>
       <div style="margin-top:1rem;display:flex;flex-direction:column;align-items:center;gap:.75rem">
-        <img src="/api/lieferungen/qr/${lieferung.qr_code}"
-             alt="QR-Code ${lieferung.qr_code}"
+        <img src="/api/lieferungen/qr/${esc(lieferung.qr_code)}"
+             alt="QR-Code ${esc(lieferung.qr_code)}"
              style="width:160px;height:160px;border-radius:8px;border:2px solid var(--border)">
-        <span style="font-family:'DM Mono',monospace;font-size:13px;color:var(--text2)">${lieferung.qr_code}</span>
+        <span style="font-family:'DM Mono',monospace;font-size:13px;color:var(--text2)">${esc(lieferung.qr_code)}</span>
       </div>
       <div style="margin-top:.875rem;display:flex;gap:.5rem;justify-content:center">
         <button class="btn btn-sm btn-primary" onclick="openPrint('/api/print/lieferung/${lieferung.id}')">🖨 Lieferschein drucken</button>
@@ -2453,17 +2453,17 @@ async function loadLager() { loadLagerBestand(); loadBedarfAbgleich(); loadBeweg
 async function loadLagerBestand() {
   try {
     const [{lager},{alerts}] = await Promise.all([api.getLager(),api.getLagerAlerts()]);
-    setHTML('lager-alerts', alerts.length ? `<div class="alert alert-info">⚠ ${alerts.length} unter Mindestbestand: ${alerts.map(a=>`<strong>${a.produkt}</strong>`).join(', ')}</div>` : '');
+    setHTML('lager-alerts', alerts.length ? `<div class="alert alert-info">⚠ ${alerts.length} unter Mindestbestand: ${alerts.map(a=>`<strong>${esc(a.produkt)}</strong>`).join(', ')}</div>` : '');
     setHTML('lager-list', lager.length ? `
       <table class="tbl"><thead><tr><th>Produkt</th><th>Bestand</th><th>Mindestbestand</th><th>Eingang 7d</th><th>Ausgang 7d</th><th>Status</th><th></th></tr></thead>
       <tbody>${lager.map(l=>`<tr>
-        <td style="font-weight:500">${l.produkt}</td>
-        <td style="font-family:'DM Mono',monospace">${fmt(l.bestand,1)} ${l.einheit}</td>
-        <td style="font-family:'DM Mono',monospace;color:var(--text2)">${fmt(l.mindestbestand,1)} ${l.einheit}</td>
+        <td style="font-weight:500">${esc(l.produkt)}</td>
+        <td style="font-family:'DM Mono',monospace">${fmt(l.bestand,1)} ${esc(l.einheit)}</td>
+        <td style="font-family:'DM Mono',monospace;color:var(--text2)">${fmt(l.mindestbestand,1)} ${esc(l.einheit)}</td>
         <td style="color:var(--green);font-family:'DM Mono',monospace">+${fmt(l.eingang_7d,1)}</td>
         <td style="color:var(--amber);font-family:'DM Mono',monospace">-${fmt(l.ausgang_7d,1)}</td>
         <td>${l.unterbestand?'<span class="badge badge-red">Unterbestand</span>':'<span class="badge badge-green">OK</span>'}</td>
-        <td><button class="btn btn-sm" data-action="minbestand" data-id="${l.id}" data-produkt="${l.produkt}" data-min="${l.mindestbestand}">Min.</button></td>
+        <td><button class="btn btn-sm" data-action="minbestand" data-id="${l.id}" data-produkt="${esc(l.produkt)}" data-min="${l.mindestbestand}">Min.</button></td>
       </tr>`).join('')}</tbody></table>
     ` : '<p style="color:var(--text3);font-size:13px">Noch keine Lagereinträge</p>');
     document.getElementById('lager-list')?.addEventListener('click', e => {
@@ -2479,9 +2479,9 @@ async function loadBedarfAbgleich() {
     setHTML('bedarf-abgleich', aggregiert.length ? `
       <table class="tbl"><thead><tr><th>Produkt</th><th>Wochenbedarf</th><th>Bestand</th><th>Reichweite</th><th>Abnehmer</th></tr></thead>
       <tbody>${aggregiert.map(r=>`<tr>
-        <td style="font-weight:500">${r.produkt}</td>
-        <td style="font-family:'DM Mono',monospace">${fmt(r.gesamt_pro_woche,1)} ${r.einheit}</td>
-        <td style="font-family:'DM Mono',monospace">${r.bestand_aktuell!=null?fmt(r.bestand_aktuell,1)+' '+r.einheit:'—'}</td>
+        <td style="font-weight:500">${esc(r.produkt)}</td>
+        <td style="font-family:'DM Mono',monospace">${fmt(r.gesamt_pro_woche,1)} ${esc(r.einheit)}</td>
+        <td style="font-family:'DM Mono',monospace">${r.bestand_aktuell!=null?fmt(r.bestand_aktuell,1)+' '+esc(r.einheit):'—'}</td>
         <td>${r.deckung_tage!=null?`<span class="badge ${r.deckung_tage<3?'badge-red':r.deckung_tage<7?'badge-amber':'badge-green'}">${r.deckung_tage} Tage</span>`:'<span class="badge badge-gray">—</span>'}</td>
         <td class="pool-meta">${r.caterer_anzahl}</td>
       </tr>`).join('')}</tbody></table>
@@ -2497,18 +2497,18 @@ async function loadBewegungen() {
       <table class="tbl"><thead><tr><th>Zeit</th><th>Produkt</th><th>Typ</th><th>Menge</th><th>Bestand</th><th>Notiz</th></tr></thead>
       <tbody>${bewegungen.map(m=>`<tr>
         <td class="pool-meta">${new Date(m.created_at).toLocaleString('de-DE',{dateStyle:'short',timeStyle:'short'})}</td>
-        <td style="font-weight:500">${m.produkt}</td>
+        <td style="font-weight:500">${esc(m.produkt)}</td>
         <td>${m.typ==='eingang'?'<span class="badge badge-green">Eingang</span>':m.typ==='ausgang'?'<span class="badge badge-amber">Ausgang</span>':'<span class="badge badge-gray">Korrektur</span>'}</td>
-        <td style="font-family:'DM Mono',monospace;${m.typ==='eingang'?'color:var(--green)':m.typ==='ausgang'?'color:var(--amber)':''}">${m.typ==='eingang'?'+':m.typ==='ausgang'?'-':''}${fmt(Math.abs(m.menge),1)} ${m.einheit}</td>
-        <td class="pool-meta">${m.bestand_nach!=null?fmt(m.bestand_nach,1)+' '+m.einheit:'—'}</td>
-        <td class="pool-meta">${m.notiz||'—'}</td>
+        <td style="font-family:'DM Mono',monospace;${m.typ==='eingang'?'color:var(--green)':m.typ==='ausgang'?'color:var(--amber)':''}">${m.typ==='eingang'?'+':m.typ==='ausgang'?'-':''}${fmt(Math.abs(m.menge),1)} ${esc(m.einheit)}</td>
+        <td class="pool-meta">${m.bestand_nach!=null?fmt(m.bestand_nach,1)+' '+esc(m.einheit):'—'}</td>
+        <td class="pool-meta">${esc(m.notiz||'—')}</td>
       </tr>`).join('')}</tbody></table>
     ` : '<p style="color:var(--text3);font-size:13px">Keine Bewegungen</p>');
   } catch(err){showAlert('alerts','error',err.message);}
 }
 
 async function setMindestbestand(id,produkt,aktuell) {
-  const neu=prompt(`Mindestbestand für "${produkt}" (aktuell: ${aktuell} kg):`,aktuell);
+  const neu=prompt(`Mindestbestand für "${esc(produkt)}" (aktuell: ${aktuell} kg):`,aktuell);
   if(neu==null||isNaN(parseFloat(neu))) return;
   try{await api.setMindestbestand(id,parseFloat(neu));toast('Gesetzt');loadLagerBestand();}
   catch(err){showAlert('alerts','error',err.message);}
@@ -2526,7 +2526,7 @@ document.getElementById('btn-eingang-submit')?.addEventListener('click', async()
   btn.disabled=true;btn.innerHTML='<span class="spinner"></span>';
   try{
     const res=await api.lagerEingang({produkt,menge,qualitaet,notiz});
-    setHTML('eingang-result',`<div class="alert alert-success">✓ ${menge} kg ${produkt} eingebucht · Bestand: ${fmt(res.bestand_aktuell,1)} kg</div>`);
+    setHTML('eingang-result',`<div class="alert alert-success">✓ ${menge} kg ${esc(produkt)} eingebucht · Bestand: ${fmt(res.bestand_aktuell,1)} kg</div>`);
     document.getElementById('eg-produkt').value='';document.getElementById('eg-menge').value='';document.getElementById('eg-notiz').value='';
     btn.textContent='Buchen';btn.disabled=false;loadLagerBestand();loadBewegungen();
   }catch(err){btn.textContent='Buchen';btn.disabled=false;showAlert('alerts','error',err.message);}
@@ -2549,9 +2549,9 @@ async function loadAuszahlungen() {
       <table class="tbl"><thead><tr><th>Datum</th><th>Betrieb</th><th>Produkt</th><th>KW</th><th>Brutto</th><th>Netto</th><th>Status</th><th>Aktion</th></tr></thead>
       <tbody>${auszahlungen.map(a=>`<tr id="azrow-${a.id}">
         <td class="pool-meta">${new Date(a.created_at).toLocaleDateString('de-DE')}</td>
-        <td style="font-weight:500">${a.betrieb_name}</td>
-        <td class="pool-meta">${a.produkt}</td>
-        <td class="pool-meta">${a.lieferwoche}</td>
+        <td style="font-weight:500">${esc(a.betrieb_name)}</td>
+        <td class="pool-meta">${esc(a.produkt)}</td>
+        <td class="pool-meta">${esc(a.lieferwoche)}</td>
         <td style="font-family:'DM Mono',monospace">${fmt(a.brutto)} €</td>
         <td style="font-family:'DM Mono',monospace;font-weight:500;color:var(--green)">${fmt(a.netto)} €</td>
         <td>${statusBadge(a.status)}</td>
@@ -2590,7 +2590,7 @@ async function loadReports() {
   try {
     const {erzeuger}=await api.getAllErzeuger();
     const sel=document.getElementById('report-erzeuger-sel');
-    if(sel) sel.innerHTML='<option value="">— Erzeuger wählen —</option>'+erzeuger.map(e=>`<option value="${e.id}">${e.betrieb_name}</option>`).join('');
+    if(sel) sel.innerHTML='<option value="">— Erzeuger wählen —</option>'+erzeuger.map(e=>`<option value="${e.id}">${esc(e.betrieb_name)}</option>`).join('');
   } catch(err){}
 }
 document.getElementById('view-reports')?.addEventListener('click',e=>{
@@ -2636,7 +2636,7 @@ document.getElementById('btn-bulk-send')?.addEventListener('click', async () => 
     result.innerHTML=`<span style="color:var(--green)">✓ ${res.gesendet} gesendet${res.fehler?', '+res.fehler+' Fehler':''}</span>`;
     document.getElementById('bulk-betreff').value='';
     document.getElementById('bulk-text').value='';
-  } catch(err) { result.innerHTML=`<span style="color:var(--red)">${err.message}</span>`; }
+  } catch(err) { result.innerHTML=`<span style="color:var(--red)">${esc(err.message)}</span>`; }
   finally { btn.disabled=false; btn.textContent='📤 E-Mail senden'; }
 });
 
@@ -2654,14 +2654,14 @@ async function loadFahrerMgmt() {
     setHTML('fahrer-mgmt-list', fahrer.length ? `
       <table class="tbl"><thead><tr><th>Name</th><th>E-Mail</th><th>Lizenz</th><th>Touren gesamt</th><th>Touren heute</th><th>Status</th></tr></thead>
       <tbody>${fahrer.map(f=>`<tr>
-        <td style="font-weight:500">${f.name}</td>
-        <td class="pool-meta">${f.email}</td>
-        <td><span class="badge badge-gray">${f.lizenzklasse}</span></td>
+        <td style="font-weight:500">${esc(f.name)}</td>
+        <td class="pool-meta">${esc(f.email)}</td>
+        <td><span class="badge badge-gray">${esc(f.lizenzklasse)}</span></td>
         <td class="pool-meta">${f.touren_gesamt}</td>
         <td class="pool-meta">${f.touren_heute||0}</td>
         <td>${f.aktiv?'<span class="badge badge-green">Aktiv</span>':'<span class="badge badge-red">Inaktiv</span>'}</td>
         <td>
-          <button class="btn btn-sm" onclick="fahrerBearbeiten('${f.id}','${f.name}','${f.email}','${f.lizenzklasse}',${f.aktiv})">✏ Bearbeiten</button>
+          <button class="btn btn-sm" onclick="fahrerBearbeiten(${jsq(f.id)},${jsq(f.name)},${jsq(f.email)},${jsq(f.lizenzklasse)},${f.aktiv?'true':'false'})">✏ Bearbeiten</button>
         </td>
       </tr>`).join('')}</tbody></table>
     ` : '<p style="color:var(--text3);font-size:13px">Noch keine Fahrer</p>');
@@ -2669,7 +2669,7 @@ async function loadFahrerMgmt() {
     // Push-Test Dropdown befüllen
     const pushSel = document.getElementById('push-test-fahrer');
     if (pushSel) pushSel.innerHTML = '<option value="">— Fahrer wählen —</option>' +
-      fahrer.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
+      fahrer.map(f => `<option value="${f.id}">${esc(f.name)}</option>`).join('');
   } catch(err){showAlert('alerts','error',err.message);}
 }
 
@@ -2724,14 +2724,14 @@ document.getElementById('btn-fe-save')?.addEventListener('click', async () => {
     toast('Fahrer aktualisiert');
     loadFahrerMgmt();
   } catch (err) {
-    setHTML('fahrer-edit-result', `<div class="alert alert-error">${err.message}</div>`);
+    setHTML('fahrer-edit-result', `<div class="alert alert-error">${esc(err.message)}</div>`);
   }
 });
 
 document.getElementById('btn-fe-delete')?.addEventListener('click', async () => {
   const id   = document.getElementById('fe-id').value;
   const name = document.getElementById('fe-name').value;
-  if (!confirm(`Fahrer "${name}" wirklich löschen? Alle zugewiesenen Touren werden auf "kein Fahrer" gesetzt.`)) return;
+  if (!confirm(`Fahrer "${esc(name)}" wirklich löschen? Alle zugewiesenen Touren werden auf "kein Fahrer" gesetzt.`)) return;
   try {
     await fetch(`/api/auth/fahrer/${id}`, {
       method: 'DELETE',
@@ -2742,7 +2742,7 @@ document.getElementById('btn-fe-delete')?.addEventListener('click', async () => 
     toast('Fahrer gelöscht');
     loadFahrerMgmt();
   } catch (err) {
-    setHTML('fahrer-edit-result', `<div class="alert alert-error">${err.message}</div>`);
+    setHTML('fahrer-edit-result', `<div class="alert alert-error">${esc(err.message)}</div>`);
   }
 });
 
@@ -2757,13 +2757,13 @@ async function loadTourenHeute() {
     setHTML('touren-heute-list', touren.length ? `
       <table class="tbl"><thead><tr><th>Typ</th><th>Fahrer</th><th>Fahrzeug</th><th>Start</th><th>Stopps</th><th>Status</th><th></th></tr></thead>
       <tbody>${touren.map(t=>`<tr>
-        <td style="font-weight:500">${t.typ==='abholung'?'🌾':t.typ==='auslieferung'?'🚚':'🔄'} ${t.typ}</td>
-        <td class="pool-meta">${t.fahrer_name||'—'}</td>
+        <td style="font-weight:500">${t.typ==='abholung'?'🌾':t.typ==='auslieferung'?'🚚':'🔄'} ${esc(t.typ)}</td>
+        <td class="pool-meta">${esc(t.fahrer_name||'—')}</td>
         <td class="pool-meta">${t.fahrzeug_bezeichnung||'—'}</td>
         <td class="pool-meta">${t.startzeit?t.startzeit.slice(0,5)+' Uhr':'—'}</td>
         <td class="pool-meta">${t.stopps_done||0} / ${t.stopp_anzahl||0}</td>
         <td>${statusBadge(t.status)}</td>
-        <td><button class="btn btn-sm" data-action="detail" data-id="${t.id}" data-label="${t.typ} · ${t.fahrer_name||'kein Fahrer'}">Detail</button></td>
+        <td><button class="btn btn-sm" data-action="detail" data-id="${t.id}" data-label="${esc(t.typ)} · ${esc(t.fahrer_name||'kein Fahrer')}">Detail</button></td>
       </tr>`).join('')}</tbody></table>
     ` : '<p style="color:var(--text3);font-size:13px">Keine Touren heute</p>');
     document.getElementById('touren-heute-list')?.addEventListener('click', e => {
@@ -2792,9 +2792,9 @@ async function loadTourStopps(id) {
       <tbody>${stopps.map(s=>`<tr>
         <td class="pool-meta">${s.reihenfolge}</td>
         <td>${s.typ==='abholung'?'<span class="badge badge-amber">Abholung</span>':'<span class="badge badge-green">Auslieferung</span>'}</td>
-        <td style="font-weight:500">${s.name}</td>
-        <td class="pool-meta">${s.adresse||'—'}</td>
-        <td class="pool-meta">${s.produkt?s.produkt+' · '+(s.menge_geplant_kg||'?')+' kg':'—'}</td>
+        <td style="font-weight:500">${esc(s.name)}</td>
+        <td class="pool-meta">${esc(s.adresse||'—')}</td>
+        <td class="pool-meta">${s.produkt?esc(s.produkt)+' · '+esc(s.menge_geplant_kg||'?')+' kg':'—'}</td>
         <td>${statusBadge(s.status)}</td>
         <td><div style="display:flex;gap:.35rem"><button class="btn btn-sm btn-danger" data-action="delstopp" data-tid="${id}" data-sid="${s.id}">✕</button>${s.foto_base64?`<button class="btn btn-sm" data-action="showfoto" data-id="${s.id}">📷</button>`:''}</div></td>
       </tr>`).join('')}</tbody></table>
@@ -2805,7 +2805,7 @@ async function loadTourStopps(id) {
       if (btn.dataset.action === 'delstopp') deleteStopp(btn.dataset.tid, btn.dataset.sid);
       if (btn.dataset.action === 'showfoto') {
         const src = fotoMap[btn.dataset.id];
-        if (!src) return toast('Kein Foto vorhanden','error');
+        if (!src || !/^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+\/=]+$/.test(src)) return toast('Kein Foto vorhanden','error');
         const overlay = document.createElement('div');
         overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:600;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:1rem';
         overlay.innerHTML = `<img src="${src}" style="max-width:90vw;max-height:90vh;border-radius:8px;object-fit:contain">`;
@@ -2845,7 +2845,7 @@ document.getElementById('btn-optimiere')?.addEventListener('click', async () => 
   if(!aktiveTourId) return;
   try {
     const res=await api.optimiereTour(aktiveTourId);
-    setHTML('optimier-result',`<div class="alert alert-${res.e_lastenrad_ok?'success':'info'}">${res.message}</div>`);
+    setHTML('optimier-result',`<div class="alert alert-${res.e_lastenrad_ok?'success':'info'}">${esc(res.message)}</div>`);
     loadTourStopps(aktiveTourId);
   } catch(err){showAlert('alerts','error',err.message);}
 });
@@ -2859,9 +2859,9 @@ async function prefillTourFormDropdowns() {
   try {
     const [{ fahrer },{ fahrzeuge }] = await Promise.all([api.getFahrerListe(), api.getFahrzeuge()]);
     const fSel=document.getElementById('tf-fahrer');
-    if(fSel) fSel.innerHTML='<option value="">— kein Fahrer —</option>'+fahrer.map(f=>`<option value="${f.id}">${f.name}</option>`).join('');
+    if(fSel) fSel.innerHTML='<option value="">— kein Fahrer —</option>'+fahrer.map(f=>`<option value="${f.id}">${esc(f.name)}</option>`).join('');
     const fzSel=document.getElementById('tf-fahrzeug');
-    if(fzSel) fzSel.innerHTML='<option value="">— kein Fahrzeug —</option>'+fahrzeuge.map(f=>`<option value="${f.id}">${f.bezeichnung} (${f.typ})</option>`).join('');
+    if(fzSel) fzSel.innerHTML='<option value="">— kein Fahrzeug —</option>'+fahrzeuge.map(f=>`<option value="${f.id}">${esc(f.bezeichnung)} (${esc(f.typ)})</option>`).join('');
   } catch(err){}
 }
 
@@ -2891,12 +2891,12 @@ async function loadFahrzeuge() {
     setHTML('fahrzeuge-list', fahrzeuge.length ? `
       <table class="tbl"><thead><tr><th>Fahrzeug</th><th>Typ</th><th>Kennzeichen</th><th>Zuladung</th><th>Touren heute</th><th></th></tr></thead>
       <tbody>${fahrzeuge.map(f=>`<tr>
-        <td style="font-weight:500">${ICONS[f.typ]||'🚗'} ${f.bezeichnung}</td>
-        <td><span class="badge badge-gray">${f.typ.replace('_',' ')}</span></td>
-        <td class="pool-meta">${f.kennzeichen||'—'}</td>
+        <td style="font-weight:500">${esc(ICONS[f.typ]||'🚗')} ${esc(f.bezeichnung)}</td>
+        <td><span class="badge badge-gray">${esc(String(f.typ||'').replace('_',' '))}</span></td>
+        <td class="pool-meta">${esc(f.kennzeichen||'—')}</td>
         <td class="pool-meta">${f.max_zuladung_kg?f.max_zuladung_kg+' kg':'—'}</td>
         <td class="pool-meta">${f.touren_heute||0}</td>
-        <td><button class="btn btn-sm btn-danger" data-action="delfz" data-id="${f.id}" data-name="${f.bezeichnung}">Deaktivieren</button></td>
+        <td><button class="btn btn-sm btn-danger" data-action="delfz" data-id="${f.id}" data-name="${esc(f.bezeichnung)}">Deaktivieren</button></td>
       </tr>`).join('')}</tbody></table>
     ` : '<p style="color:var(--text3);font-size:13px">Noch keine Fahrzeuge</p>');
     document.getElementById('fahrzeuge-list')?.addEventListener('click', e => {
@@ -2906,7 +2906,7 @@ async function loadFahrzeuge() {
   } catch(err){showAlert('alerts','error',err.message);}
 }
 async function deaktiviereF(id,name) {
-  if(!confirm(`"${name}" deaktivieren?`)) return;
+  if(!confirm(`"${esc(name)}" deaktivieren?`)) return;
   try { await api.deleteFahrzeug(id); toast('Deaktiviert'); loadFahrzeuge(); }
   catch(err){showAlert('alerts','error',err.message);}
 }
@@ -2948,8 +2948,8 @@ async function loadPoolsAlle(page = 1) {
         <tbody>${pools.map(p => {
           const pct = poolPct(p.menge_committed, p.menge_ziel);
           return `<tr>
-            <td style="font-weight:600">${p.produkt}</td>
-            <td class="pool-meta">${p.lieferwoche}</td>
+            <td style="font-weight:600">${esc(p.produkt)}</td>
+            <td class="pool-meta">${esc(p.lieferwoche)}</td>
             <td class="pool-meta">${fmt(p.preis_pro_einheit)} €/kg</td>
             <td style="font-family:'DM Mono',monospace">${Math.round(p.menge_ziel)} kg</td>
             <td style="font-family:'DM Mono',monospace">${Math.round(p.menge_committed)} kg</td>
@@ -2965,7 +2965,7 @@ async function loadPoolsAlle(page = 1) {
             <td>${statusBadge(p.status)}</td>
             <td><div style="display:flex;gap:.35rem">
               <button class="btn btn-sm" data-action="pool-detail" data-id="${p.id}">Details</button>
-              <button class="btn btn-sm" data-action="pool-edit" data-id="${p.id}" data-produkt="${p.produkt}" data-preis="${p.preis_pro_einheit}" data-menge="${p.menge_ziel}" data-deadline="${p.deadline?.split('T')[0]||''}" data-lieferwoche="${esc(p.lieferwoche||'')}" data-liefertag="${esc(p.liefertag||'')}" data-zvon="${esc(String(p.zeitfenster_von||'06:30').slice(0,5))}" data-zbis="${esc(String(p.zeitfenster_bis||'09:00').slice(0,5))}" title="Bearbeiten">✏</button>
+              <button class="btn btn-sm" data-action="pool-edit" data-id="${p.id}" data-produkt="${esc(p.produkt)}" data-preis="${p.preis_pro_einheit}" data-menge="${p.menge_ziel}" data-deadline="${p.deadline?.split('T')[0]||''}" data-lieferwoche="${esc(p.lieferwoche||'')}" data-liefertag="${esc(p.liefertag||'')}" data-zvon="${esc(String(p.zeitfenster_von||'06:30').slice(0,5))}" data-zbis="${esc(String(p.zeitfenster_bis||'09:00').slice(0,5))}" title="Bearbeiten">✏</button>
               ${p.status==='offen'?`<button class="btn btn-sm" data-action="pool-deadline" data-id="${p.id}" data-deadline="${p.deadline?.split('T')[0]||''}">⏱ Deadline</button>`:''}
               ${p.status==='offen'?`<button class="btn btn-sm" data-action="pool-close" data-id="${p.id}">Schließen</button>`:''}
               ${['offen','geschlossen'].includes(p.status)?`<button class="btn btn-sm btn-danger" data-action="pool-abort" data-id="${p.id}">Abbrechen</button>`:''}
@@ -3057,7 +3057,7 @@ document.getElementById('btn-korrektur-submit')?.addEventListener('click', async
   btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
   try {
     await api.lagerKorrektur({ produkt, menge, notiz: notiz || 'Manuelle Korrektur' });
-    setHTML('korrektur-result', `<div class="alert alert-success">✓ Korrektur gebucht: ${menge > 0 ? '+' : ''}${menge} kg ${produkt}</div>`);
+    setHTML('korrektur-result', `<div class="alert alert-success">✓ Korrektur gebucht: ${menge > 0 ? '+' : ''}${menge} kg ${esc(produkt)}</div>`);
     document.getElementById('kor-produkt').value = '';
     document.getElementById('kor-menge').value   = '';
     document.getElementById('kor-notiz').value   = '';
@@ -3111,7 +3111,7 @@ document.getElementById('btn-push-test')?.addEventListener('click', async () => 
     setHTML('push-test-result', res.sent > 0
       ? `<div class="alert alert-success">✓ Push gesendet (${res.sent} Subscription${res.sent>1?'s':''})</div>`
       : `<div class="alert alert-info">Keine aktiven Push-Subscriptions für diesen Fahrer</div>`);
-  } catch (err) { setHTML('push-test-result',`<div class="alert alert-error">${err.message}</div>`); }
+  } catch (err) { setHTML('push-test-result',`<div class="alert alert-error">${esc(err.message)}</div>`); }
   btn.disabled = false;
 });
 
@@ -3179,10 +3179,10 @@ async function refreshTracking() {
       const color = p.ist_aktiv ? 'var(--green)' : 'var(--text3)';
       const popup = `
         <div style="font-size:13px;min-width:200px">
-          <strong>${p.fahrer_name}</strong>
+          <strong>${esc(p.fahrer_name)}</strong>
           <div style="color:${color};font-size:11px;margin-top:2px">${p.ist_aktiv ? '● Online' : `● Zuletzt: ${Math.round(p.sekunden_her/60)} Min`}</div>
-          ${p.tour_typ ? `<div style="margin-top:6px;font-size:12px">Tour: ${p.tour_typ} · ${p.tour_datum}</div>` : ''}
-          ${p.stopp_name ? `<div style="font-size:12px">Nächster Stopp: <strong>${p.stopp_name}</strong></div>` : ''}
+          ${p.tour_typ ? `<div style="margin-top:6px;font-size:12px">Tour: ${esc(p.tour_typ)} · ${esc(p.tour_datum)}</div>` : ''}
+          ${p.stopp_name ? `<div style="font-size:12px">Nächster Stopp: <strong>${esc(p.stopp_name)}</strong></div>` : ''}
           ${p.stopps_gesamt ? `<div style="font-size:11px;color:var(--text3)">${p.stopps_done}/${p.stopps_gesamt} Stopps</div>` : ''}
           ${p.speed_kmh ? `<div style="font-size:11px;color:var(--text3)">${p.speed_kmh} km/h</div>` : ''}
           <div style="margin-top:6px">
@@ -3203,10 +3203,10 @@ async function refreshTracking() {
       <table class="tbl" style="font-size:12px">
         <thead><tr><th>Fahrer</th><th>Status</th><th>Tour</th><th>Stopp</th><th>Fortschritt</th><th>Speed</th><th>Letztes Signal</th><th></th></tr></thead>
         <tbody>${positions.map(p => `<tr>
-          <td style="font-weight:500">${p.fahrer_name}</td>
+          <td style="font-weight:500">${esc(p.fahrer_name)}</td>
           <td><span class="badge ${p.ist_aktiv?'badge-green':'badge-gray'}">${p.ist_aktiv?'Online':'Inaktiv'}</span></td>
-          <td class="pool-meta">${p.tour_typ||'—'} ${p.tour_datum?'· '+p.tour_datum:''}</td>
-          <td class="pool-meta">${p.stopp_name||'—'}</td>
+          <td class="pool-meta">${esc(p.tour_typ||'—')} ${p.tour_datum?'· '+p.tour_datum:''}</td>
+          <td class="pool-meta">${esc(p.stopp_name||'—')}</td>
           <td class="pool-meta">${p.stopps_gesamt?p.stopps_done+'/'+p.stopps_gesamt:' —'}</td>
           <td class="pool-meta">${p.speed_kmh?p.speed_kmh+' km/h':'—'}</td>
           <td class="pool-meta">${p.sekunden_her<60?'Gerade eben':Math.round(p.sekunden_her/60)+' Min'}</td>
@@ -3319,7 +3319,7 @@ document.getElementById('btn-change-pw')?.addEventListener('click', async () => 
     if(r.error) throw new Error(r.error);
     setHTML('pw-change-result','<div class="alert alert-success" style="margin-bottom:.75rem">✓ Passwort geändert</div>');
     ['pw-current','pw-new','pw-repeat'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
-  } catch(e) { setHTML('pw-change-result','<div class="alert alert-error">'+e.message+'</div>'); }
+  } catch(e) { setHTML('pw-change-result','<div class="alert alert-error">'+esc(e.message)+'</div>'); }
 });
 
 // ── PFAND ─────────────────────────────────────────────────────
@@ -3394,11 +3394,11 @@ async function loadPfandListe() {
           const offen  = p.pfand_kisten_geliefert - (p.pfand_kisten_zurueck||0);
           const alles  = offen === 0;
           return `<tr style="${alles?'opacity:.55':''}">
-            <td style="font-family:'DM Mono',monospace;font-size:11px">${p.lieferschein_nr}</td>
-            <td style="font-weight:500">${p.produkt||'—'}</td>
+            <td style="font-family:'DM Mono',monospace;font-size:11px">${esc(p.lieferschein_nr)}</td>
+            <td style="font-weight:500">${esc(p.produkt||'—')}</td>
             <td class="pool-meta">${p.lieferdatum ? new Date(p.lieferdatum).toLocaleDateString('de-DE') : '—'}</td>
-            <td class="pool-meta">${p.betrieb_name||'—'}</td>
-            <td class="pool-meta">${p.firma_name||'—'}</td>
+            <td class="pool-meta">${esc(p.betrieb_name||'—')}</td>
+            <td class="pool-meta">${esc(p.firma_name||'—')}</td>
             <td style="text-align:center;font-weight:600">${p.pfand_kisten_geliefert}</td>
             <td style="text-align:center;color:var(--green)">${p.pfand_kisten_zurueck||0}</td>
             <td style="text-align:center;color:${offen>0?'var(--red)':'var(--green)'};font-weight:600">${offen}</td>
@@ -3406,13 +3406,13 @@ async function loadPfandListe() {
               ${parseFloat(p.pfand_offen||0).toFixed(2)} €
             </td>
             <td>
-              ${offen > 0 ? `<button class="btn btn-sm btn-primary" onclick="pfandRueckgabe('${p.id}','${p.lieferschein_nr}',${offen})">Rückgabe</button>` : '<span style="color:var(--green);font-size:12px">✓ erledigt</span>'}
+              ${offen > 0 ? `<button class="btn btn-sm btn-primary" onclick="pfandRueckgabe(${jsq(p.id)},${jsq(p.lieferschein_nr)},${Number(offen)||0})">Rückgabe</button>` : '<span style="color:var(--green);font-size:12px">✓ erledigt</span>'}
             </td>
           </tr>`;
         }).join('')}</tbody>
       </table>
     `);
-  } catch(err) { setHTML('pfand-list', `<div class="alert alert-error">${err.message}</div>`); }
+  } catch(err) { setHTML('pfand-list', `<div class="alert alert-error">${esc(err.message)}</div>`); }
 }
 
 async function loadPfandCaterer() {
@@ -3441,7 +3441,7 @@ async function loadPfandCaterer() {
       .map(([name, d]) => `
         <div style="display:flex;justify-content:space-between;align-items:center;padding:.6rem 0;border-bottom:1px solid var(--border)">
           <div>
-            <div style="font-weight:500;font-size:13px">${name}</div>
+            <div style="font-weight:500;font-size:13px">${esc(name)}</div>
             <div style="font-size:11px;color:var(--text3)">${d.anzahl} Lieferschein${d.anzahl>1?'e':''}</div>
           </div>
           <div style="text-align:right">
@@ -3469,10 +3469,10 @@ async function loadPfandHistorie() {
         <thead><tr><th>Datum</th><th>Typ</th><th>Kisten</th><th>Betrag</th><th>Notiz</th></tr></thead>
         <tbody>${bewegungen.map(b => `<tr>
           <td class="pool-meta">${new Date(b.created_at).toLocaleDateString('de-DE')}</td>
-          <td><span class="badge badge-${b.bewegung_typ==='rueckgabe'?'green':'gray'}">${b.bewegung_typ}</span></td>
+          <td><span class="badge badge-${b.bewegung_typ==='rueckgabe'?'green':'gray'}">${esc(b.bewegung_typ)}</span></td>
           <td style="font-weight:600;text-align:center">${b.kisten_anzahl}</td>
           <td style="font-family:'DM Mono',monospace">${parseFloat(b.pfand_betrag||0).toFixed(2)} €</td>
-          <td class="pool-meta">${b.notiz||'—'}</td>
+          <td class="pool-meta">${esc(b.notiz||'—')}</td>
         </tr>`).join('')}</tbody>
       </table>
     `);
@@ -3480,7 +3480,7 @@ async function loadPfandHistorie() {
 }
 
 async function pfandRueckgabe(lieferungId, nr, maxKisten) {
-  const kisten = prompt(`Lieferschein ${nr} — Kisten zurück? (max. ${maxKisten})`);
+  const kisten = prompt(`Lieferschein ${esc(nr)} — Kisten zurück? (max. ${maxKisten})`);
   if (!kisten || isNaN(kisten) || parseInt(kisten) <= 0) return;
   if (parseInt(kisten) > maxKisten) return showAlert('alerts','error',`Max. ${maxKisten} Kisten`);
   const notiz = prompt('Notiz (optional):') ?? '';
@@ -3518,12 +3518,12 @@ document.getElementById('btn-pfand-rueck-manual')?.addEventListener('click', asy
 
   try {
     // Erst Lieferung per Nr. finden
-    const { lieferungen } = await fetch(`/api/lieferungen?nr=${nr}`, {
+    const { lieferungen } = await fetch(`/api/lieferungen?nr=${esc(nr)}`, {
       headers:{'Authorization':'Bearer '+Auth.getToken()}
     }).then(r=>r.json());
 
     const lief = lieferungen?.find(l => l.lieferschein_nr === nr);
-    if (!lief) throw new Error(`Lieferschein ${nr} nicht gefunden`);
+    if (!lief) throw new Error(`Lieferschein ${esc(nr)} nicht gefunden`);
 
     const r = await fetch('/api/pfand/rueckgabe', {
       method:'POST',
@@ -3532,13 +3532,13 @@ document.getElementById('btn-pfand-rueck-manual')?.addEventListener('click', asy
     }).then(r=>r.json());
     if (r.error) throw new Error(r.error);
 
-    setHTML('pfand-rueck-result',`<div class="alert alert-success" style="margin:.5rem 0">✓ ${r.message}</div>`);
+    setHTML('pfand-rueck-result',`<div class="alert alert-success" style="margin:.5rem 0">✓ ${esc(r.message)}</div>`);
     document.getElementById('pfand-lief-nr').value='';
     document.getElementById('pfand-rueck-anzahl').value='';
     document.getElementById('pfand-rueck-notiz').value='';
     loadPfand();
   } catch(err) {
-    setHTML('pfand-rueck-result',`<div class="alert alert-error" style="margin:.5rem 0">${err.message}</div>`);
+    setHTML('pfand-rueck-result',`<div class="alert alert-error" style="margin:.5rem 0">${esc(err.message)}</div>`);
   }
 });
 
@@ -3565,10 +3565,10 @@ document.addEventListener('input', async (e) => {
         resEl.innerHTML = results.map(r => `
           <div style="padding:.6rem 1rem;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px;display:flex;gap:.5rem;align-items:center"
                onclick="switchView('${r.typ==='pool'?'pools-alle':r.typ==='lieferschein'?'lieferung-neu':r.typ==='erzeuger'?'erzeuger':r.typ==='caterer'?'caterer-mgmt':'logistik'}');document.getElementById('search-results').style.display='none'">
-            <span>${icons[r.typ]||'•'}</span>
+            <span>${esc(icons[r.typ]||'•')}</span>
             <div>
-              <div style="font-weight:500">${r.titel}</div>
-              <div style="font-size:11px;color:var(--text3)">${r.typ} · ${r.sub||''}</div>
+              <div style="font-weight:500">${esc(r.titel)}</div>
+              <div style="font-size:11px;color:var(--text3)">${esc(r.typ)} · ${esc(r.sub||'')}</div>
             </div>
           </div>`).join('');
       }
@@ -3597,8 +3597,8 @@ async function loadRechnungen() {
           <th>Netto</th><th>MwSt.</th><th>Brutto</th><th>Status</th><th></th>
         </tr></thead>
         <tbody>${rechnungen.map(r => `<tr>
-          <td style="font-family:'DM Mono',monospace;font-size:11px">${r.rechnungs_nr}</td>
-          <td style="font-weight:500">${r.betrieb_name||'—'}</td>
+          <td style="font-family:'DM Mono',monospace;font-size:11px">${esc(r.rechnungs_nr)}</td>
+          <td style="font-weight:500">${esc(r.betrieb_name||'—')}</td>
           <td class="pool-meta">${new Date(r.rechnungsdatum).toLocaleDateString('de-DE')}</td>
           <td style="font-family:'DM Mono',monospace">${parseFloat(r.netto).toFixed(2)} €</td>
           <td class="pool-meta">${parseFloat(r.mwst).toFixed(2)} €</td>
@@ -3606,8 +3606,8 @@ async function loadRechnungen() {
           <td>${statusBadge(r.status)}</td>
           <td style="display:flex;gap:.35rem">
             <button class="btn btn-sm" onclick="window.open('/api/rechnungen/${r.id}/pdf','_blank')" title="Druckansicht">🖨</button>
-            <button class="btn btn-sm btn-primary" onclick="dlRechnungPDF('${r.id}','${r.rechnungs_nr}')" title="PDF herunterladen">↓ PDF</button>
-            ${r.status!=='storniert'?`<button class="btn btn-sm btn-danger" onclick="rechStornieren('${r.id}','${r.rechnungs_nr}')">✕</button>`:''}
+            <button class="btn btn-sm btn-primary" onclick="dlRechnungPDF(${jsq(r.id)},${jsq(r.rechnungs_nr)})" title="PDF herunterladen">↓ PDF</button>
+            ${r.status!=='storniert'?`<button class="btn btn-sm btn-danger" onclick="rechStornieren(${jsq(r.id)},${jsq(r.rechnungs_nr)})">✕</button>`:''}
           </td>
         </tr>`).join('')}</tbody>
       </table>
@@ -3626,7 +3626,7 @@ async function dlRechnungPDF(id, nr) {
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href     = url;
-    a.download = `Rechnung-${nr}.pdf`;
+    a.download = `Rechnung-${esc(nr)}.pdf`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 5000);
   } catch(err) { alert(err.message); }
@@ -3634,7 +3634,7 @@ async function dlRechnungPDF(id, nr) {
 document.getElementById('btn-reload-rech')?.addEventListener('click', loadRechnungen);
 
 async function rechStornieren(id, nr) {
-  if (!confirm(`Rechnung ${nr} stornieren?`)) return;
+  if (!confirm(`Rechnung ${esc(nr)} stornieren?`)) return;
   try {
     const r = await fetch(`/api/rechnungen/${id}/stornieren`, {
       method:'POST', headers:{'Authorization':'Bearer '+Auth.getToken()}
@@ -3657,8 +3657,8 @@ async function loadEinladungen() {
         <tbody>${einladungen.map(i => {
           const abgelaufen = new Date(i.expires_at) < new Date();
           return `<tr style="${abgelaufen||i.used?'opacity:.6':''}">
-            <td style="font-weight:500">${i.email}</td>
-            <td>${i.rolle}</td>
+            <td style="font-weight:500">${esc(i.email)}</td>
+            <td>${esc(i.rolle)}</td>
             <td>${i.used?'<span class="badge badge-green">Verwendet</span>':abgelaufen?'<span class="badge badge-red">Abgelaufen</span>':'<span class="badge badge-gray">Offen</span>'}</td>
             <td class="pool-meta">${new Date(i.expires_at).toLocaleDateString('de-DE')}</td>
             <td>
@@ -3681,11 +3681,11 @@ document.getElementById('btn-einladung-senden')?.addEventListener('click', async
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+Auth.getToken()},
       body:JSON.stringify({email,name,rolle})}).then(r=>r.json());
     if(r.error) throw new Error(r.error);
-    setHTML('einladung-result',`<div class="alert alert-success">✓ Einladung an ${email} gesendet</div>`);
+    setHTML('einladung-result',`<div class="alert alert-success">✓ Einladung an ${esc(email)} gesendet</div>`);
     document.getElementById('inv-email').value='';
     document.getElementById('inv-name').value='';
     loadEinladungen();
-  } catch(err) { setHTML('einladung-result',`<div class="alert alert-error">${err.message}</div>`); }
+  } catch(err) { setHTML('einladung-result',`<div class="alert alert-error">${esc(err.message)}</div>`); }
 });
 
 async function einladungLoeschen(id) {
@@ -3705,7 +3705,7 @@ async function loadVorlagen() {
     }).then(r=>r.json());
     const sel = document.getElementById('vl-caterer');
     if (sel && caterer?.length) {
-      sel.innerHTML = caterer.map(c=>`<option value="${c.id}">${c.firma_name}</option>`).join('');
+      sel.innerHTML = caterer.map(c=>`<option value="${c.id}">${esc(c.firma_name)}</option>`).join('');
     } else if (sel) {
       sel.innerHTML = '<option value="">Kein Caterer vorhanden</option>';
     }
@@ -3721,9 +3721,9 @@ async function loadVorlagen() {
       <table class="tbl" style="font-size:12px">
         <thead><tr><th>Produkt</th><th>Tag</th><th>Caterer</th><th>Menge</th><th>Preis</th><th>Status</th><th></th></tr></thead>
         <tbody>${vorlagen.map(v => `<tr>
-          <td style="font-weight:500">${v.produkt}</td>
+          <td style="font-weight:500">${esc(v.produkt)}</td>
           <td>${TAGE[v.wochentag]||'—'}</td>
-          <td class="pool-meta">${v.firma_name||'—'}</td>
+          <td class="pool-meta">${esc(v.firma_name||'—')}</td>
           <td class="pool-meta">${v.menge_ziel||'—'} kg</td>
           <td class="pool-meta">${v.preis_pro_einheit||'—'} €</td>
           <td>${v.aktiv?'<span class="badge badge-green">Aktiv</span>':'<span class="badge badge-red">Inaktiv</span>'}</td>
@@ -3790,10 +3790,10 @@ async function loadAuditLog(page = 1) {
         <thead><tr><th>Zeit</th><th>Nutzer</th><th>Rolle</th><th>Aktion</th><th>Details</th><th>IP</th></tr></thead>
         <tbody>${logs.map(l => `<tr>
           <td class="pool-meta" style="white-space:nowrap">${new Date(l.created_at).toLocaleString('de-DE',{dateStyle:'short',timeStyle:'short'})}</td>
-          <td style="font-weight:500">${l.name||l.email||'—'}</td>
+          <td style="font-weight:500">${esc(l.name||l.email||'—')}</td>
           <td><span class="badge badge-gray">${l.role||'—'}</span></td>
-          <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--green)">${l.action}</td>
-          <td class="pool-meta" style="font-size:11px">${l.details && Object.keys(l.details).length ? Object.entries(l.details).map(([k,v])=>`${k}: ${v}`).join(' · ') : '—'}</td>
+          <td style="font-family:'DM Mono',monospace;font-size:11px;color:var(--green)">${esc(l.action)}</td>
+          <td class="pool-meta" style="font-size:11px">${l.details && Object.keys(l.details).length ? Object.entries(l.details).map(([k,v])=>`${esc(k)}: ${esc(typeof v==='object'&&v!==null?JSON.stringify(v):v)}`).join(' · ') : '—'}</td>
           <td class="pool-meta" style="font-size:10px">${l.ip||'—'}</td>
         </tr>`).join('')}</tbody>
       </table>
@@ -3855,12 +3855,12 @@ async function loadPoolErstellen() {
       headers:{'Authorization':'Bearer '+Auth.getToken()}
     }).then(r=>r.json());
     const sel = document.getElementById('apc-caterer');
-    if (sel) sel.innerHTML = (caterer||[]).map(c=>`<option value="${c.id}">${c.firma_name}</option>`).join('');
+    if (sel) sel.innerHTML = (caterer||[]).map(c=>`<option value="${c.id}">${esc(c.firma_name)}</option>`).join('');
   } catch {}
   const now = new Date();
   const kw  = getAdminKW(now);
   const pf  = document.getElementById('apc-lieferwoche');
-  if (pf && !pf.value) pf.value = `KW ${kw}/${now.getFullYear()}`;
+  if (pf && !pf.value) pf.value = `KW ${esc(kw)}/${now.getFullYear()}`;
   const dd  = document.getElementById('apc-deadline');
   if (dd && !dd.value) {
     const d = new Date(); d.setDate(d.getDate()+7);
@@ -3897,7 +3897,7 @@ document.getElementById('btn-admin-pool-create')?.addEventListener('click', asyn
         zeitfenster_bis:document.getElementById('apc-zeit-bis').value||'09:00'})
     }).then(r=>r.json());
     if (r.error) throw new Error(r.error);
-    setHTML('admin-pool-create-result',`<div class="alert alert-success">✓ Pool "${r.pool?.produkt||produkt}" erstellt</div>`);
+    setHTML('admin-pool-create-result',`<div class="alert alert-success">✓ Pool "${esc(r.pool?.produkt||produkt)}" erstellt</div>`);
     document.getElementById('admin-pool-create-form').style.display='none';
     toast('Pool erstellt');
     setTimeout(()=>{showView('pools-alle');loadPoolsAlle();},1500);
@@ -3918,12 +3918,12 @@ async function renderCharts(poolsList) {
     container.innerHTML = aktive.map(p => {
       const pct   = Math.min(100, Math.round((p.menge_committed / Math.max(1, p.menge_ziel)) * 100));
       const color = pct >= 100 ? 'var(--green)' : pct >= 60 ? 'var(--amber)' : 'var(--red)';
-      return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0" title="${p.produkt}: ${pct}%">
+      return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0" title="${esc(p.produkt)}: ${pct}%">
         <div style="font-size:9px;color:var(--text3);font-family:monospace">${pct}%</div>
         <div style="width:100%;background:var(--bg3);border-radius:3px;overflow:hidden;position:relative;height:60px">
           <div style="position:absolute;bottom:0;left:0;right:0;height:${pct}%;background:${color};border-radius:3px 3px 0 0"></div>
         </div>
-        <div style="font-size:9px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;text-align:center">${p.produkt.split(' ')[0]}</div>
+        <div style="font-size:9px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;text-align:center">${esc(String(p.produkt||'').split(' ')[0])}</div>
       </div>`;
     }).join('');
   } catch {}
@@ -3941,7 +3941,7 @@ async function renderCharts(poolsList) {
       const d = new Date();
       d.setDate(d.getDate() - i*7);
       const kw = Math.ceil((d - new Date(d.getFullYear(),0,1))/604800000);
-      weeks.push(`KW${kw}`);
+      weeks.push(`KW${esc(kw)}`);
     }
     // Hole Wochendaten
     const wData = await fetch('/api/reports/weekly-stats', {
@@ -4003,7 +4003,7 @@ document.getElementById('btn-pe-save')?.addEventListener('click', async () => {
     toast('Pool aktualisiert');
     document.getElementById('pool-edit-modal').style.display='none';
     loadPoolsAlle(poolsAllePage);
-  } catch(err){ setHTML('pool-edit-result',`<div class="alert alert-error">${err.message}</div>`); }
+  } catch(err){ setHTML('pool-edit-result',`<div class="alert alert-error">${esc(err.message)}</div>`); }
   btn.textContent='Speichern'; btn.disabled=false;
 });
 

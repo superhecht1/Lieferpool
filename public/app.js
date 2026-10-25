@@ -211,6 +211,21 @@ function esc(str) {
     .replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
 }
 
+// Nur http(s)-Links zulassen (verhindert javascript:-URLs)
+function safeUrl(u) {
+  const t = String(u == null ? '' : u).trim();
+  if (/^https?:\/\//i.test(t)) return t;
+  if (/^[\w.-]+\.[a-z]{2,}(\/|$)/i.test(t)) return 'https://' + t;
+  return '#';
+}
+// Sicheres JS-Zeichenkettenliteral für inline-Handler: onclick="fn(${jsq(wert)})"
+function jsq(v) {
+  return JSON.stringify(String(v == null ? '' : v))
+    .replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '\\u003c').replace(/>/g, '\\u003e');
+}
+// Markiert fertig escaptes HTML für Tabellen, die sonst alles escapen
+function raw(h) { return { __raw: h }; }
+
 // Sicheres setHTML: warnt wenn bekannte User-Input-Felder unescaped sind
 function setHTML(id, html) {
   const el = document.getElementById(id);
@@ -426,8 +441,8 @@ async function showPoolDetail(poolId) {
 
     document.getElementById('modal-pool-body').innerHTML = `
       <div class="modal-grid">
-        <div class="modal-stat"><div class="modal-stat-label">Region</div><div class="modal-stat-val">${pool.region}</div></div>
-        <div class="modal-stat"><div class="modal-stat-label">Lieferwoche</div><div class="modal-stat-val">${pool.lieferwoche}</div></div>
+        <div class="modal-stat"><div class="modal-stat-label">Region</div><div class="modal-stat-val">${esc(pool.region)}</div></div>
+        <div class="modal-stat"><div class="modal-stat-label">Lieferwoche</div><div class="modal-stat-val">${esc(pool.lieferwoche)}</div></div>
         <div class="modal-stat"><div class="modal-stat-label">Preis</div><div class="modal-stat-val">${fmt(pool.preis_pro_einheit)} €/kg</div></div>
         <div class="modal-stat"><div class="modal-stat-label">Deadline</div><div class="modal-stat-val" style="font-size:14px">${new Date(pool.deadline).toLocaleDateString('de-DE')}</div></div>
         <div class="modal-stat"><div class="modal-stat-label">Warenwert</div><div class="modal-stat-val green">${fmt(wertGesamt)} €</div></div>
@@ -463,8 +478,8 @@ async function showPoolDetail(poolId) {
                 const anteil = totalMenge>0 ? (parseFloat(c.menge)/totalMenge*100).toFixed(1) : 0;
                 const erloes = parseFloat(c.menge)*parseFloat(pool.preis_pro_einheit)*0.99;
                 return `<tr>
-                  <td style="font-weight:500">${isErzeuger && c.betrieb_name !== Auth.getUser()?.name ? c.betrieb_name.split(' ')[0]+'...' : c.betrieb_name||'—'}</td>
-                  <td class="pool-meta">${c.region||'—'}</td>
+                  <td style="font-weight:500">${esc(isErzeuger && c.betrieb_name !== Auth.getUser()?.name ? String(c.betrieb_name||'').split(' ')[0]+'...' : c.betrieb_name||'—')}</td>
+                  <td class="pool-meta">${esc(c.region||'—')}</td>
                   <td style="font-family:'JetBrains Mono',monospace">${fmt(c.menge,0)} kg</td>
                   <td>
                     <div style="display:flex;align-items:center;gap:8px">
@@ -493,8 +508,8 @@ async function showPoolDetail(poolId) {
             <thead><tr><th>Nr.</th><th>QR</th><th>Bestellt</th><th>Geliefert</th><th>Qualität</th><th>Status</th></tr></thead>
             <tbody>
               ${lieferungen.map(l=>`<tr>
-                <td class="pool-meta">${l.lieferschein_nr}</td>
-                <td><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green)">${l.qr_code}</span></td>
+                <td class="pool-meta">${esc(l.lieferschein_nr)}</td>
+                <td><span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green)">${esc(l.qr_code)}</span></td>
                 <td class="pool-meta">${fmt(l.menge_bestellt,0)} kg</td>
                 <td style="font-weight:500">${l.menge_geliefert?fmt(l.menge_geliefert,0)+' kg':'—'}</td>
                 <td>${l.qualitaet?statusBadge(l.qualitaet):'—'}</td>
@@ -512,7 +527,7 @@ async function showPoolDetail(poolId) {
             <thead><tr><th>Betrieb</th><th>Brutto</th><th>Netto</th><th>Status</th></tr></thead>
             <tbody>
               ${auszahlungen.map(a=>`<tr>
-                <td style="font-weight:500">${a.betrieb_name||'—'}</td>
+                <td style="font-weight:500">${esc(a.betrieb_name||'—')}</td>
                 <td class="pool-meta">${fmt(a.brutto)} €</td>
                 <td style="font-family:'JetBrains Mono',monospace;color:var(--green);font-weight:500">${fmt(a.netto)} €</td>
                 <td>${statusBadge(a.status)}</td>
