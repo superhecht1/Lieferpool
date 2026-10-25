@@ -10,7 +10,7 @@
   <title>FrischKette · Fahrer-App</title>
   <script>window.VAPID_PUBLIC_KEY = '[[VAPID_PUBLIC_KEY]]';</script>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%230d1f15'/><text y='24' x='4' font-size='22' font-family='monospace' font-weight='bold' fill='%234a9e5c'>F</text></svg>">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="/vendor/fonts.css">
   <script>try{var t=localStorage.getItem('lp_theme');if(t)document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
   <style>
     :root {
@@ -1113,7 +1113,7 @@ async function loadJsQR() {
   if (window.jsQR) return;
   return new Promise((res, rej) => {
     const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';
+    s.src = '/vendor/jsQR.js';
     s.onload  = res;
     s.onerror = rej;
     document.head.appendChild(s);
