@@ -1,4 +1,8 @@
-# Update 4
-- Dateien in die gleichnamigen Ordner kopieren, deployen. Keine Migration nötig.
-- Tourenvorschlag: Admin → Logistik → „🧭 Tourenvorschlag". Nutzt Lieferdatum der Lieferungen, Zusagen der Erzeuger, Koordinaten (Geocoding in Nachhaltigkeit ausführen!) und die größte aktive Fahrzeug-Zuladung.
-- Monatsabrechnung: Caterer → Lieferscheine → „Monatsabrechnung (PDF)". Nur bestätigte Wareneingänge (Status „eingegangen"). Ist keine Rechnung im Sinne des UStG (steht auf dem PDF).
+# Update 5 – Offline-Modus Fahrer
+Dateien: public/fahrer.html, public/sw-fahrer.js (Cache v4). Keine Migration, kein Backend-Update.
+
+- Touren und geöffnete Tour werden auf dem Gerät gespeichert (IndexedDB) – Tour einmal mit Netz öffnen.
+- Ohne Netz: Stopp bestätigen/überspringen, Tour starten/beenden -> Warteschlange, Anzeige im roten Banner.
+- Sobald Netz da ist (oder per Tipp auf das Banner, sonst alle 60 s): automatische Übertragung in Reihenfolge.
+- GPS-Tracking pausiert ohne Netz (keine Nachlieferung).
+- Vom Server abgelehnte Aktionen werden verworfen und gemeldet.

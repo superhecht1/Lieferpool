@@ -462,6 +462,111 @@ async function api(path, opts = {}) {
   }
 }
 
+
+/* ── OFFLINE: Warteschlange + Snapshots (IndexedDB) ─────── */
+const OQ = (function(){
+  let dbp = null;
+  function open(){
+    if (dbp) return dbp;
+    dbp = new Promise((res, rej) => {
+      if (!window.indexedDB) return rej(new Error('no idb'));
+      const r = indexedDB.open('fk-fahrer', 1);
+      r.onupgradeneeded = () => {
+        const d = r.result;
+        d.createObjectStore('queue', { keyPath:'id', autoIncrement:true });
+        d.createObjectStore('snap',  { keyPath:'k' });
+      };
+      r.onsuccess = () => res(r.result);
+      r.onerror   = () => rej(r.error);
+    });
+    return dbp;
+  }
+  async function tx(store, mode, fn){
+    const d = await open();
+    return new Promise((res, rej) => {
+      const t = d.transaction(store, mode);
+      const rq = fn(t.objectStore(store));
+      t.oncomplete = () => res(rq ? rq.result : undefined);
+      t.onerror = () => rej(t.error);
+    });
+  }
+  const user = () => (me && (me.id || me.email)) || 'x';
+  return {
+    add:   item => tx('queue','readwrite', st => st.add({ ...item, user:user(), ts:Date.now() })),
+    all:   async () => { try { return ((await tx('queue','readonly', st => st.getAll())) || []).filter(i => i.user === user()); } catch { return []; } },
+    del:   id   => tx('queue','readwrite', st => st.delete(id)),
+    put:   (k,v) => tx('snap','readwrite', st => st.put({ k: user()+':'+k, v, ts:Date.now() })).catch(()=>{}),
+    get:   async k => { try { const r = await tx('snap','readonly', st => st.get(user()+':'+k)); return r ? r.v : null; } catch { return null; } },
+  };
+})();
+
+const isNetErr = e => e && /Verbindungsfehler/.test(e.message || '');
+const OFFLINE_OK = /^\/touren\/\d+\/(stopps\/\d+\/(bestaetigen|ueberspringen)|status)$/;
+
+// Aktion ausführen; bei fehlendem Netz in die Warteschlange legen
+async function apiQ(path, opts) {
+  if (!OFFLINE_OK.test(path)) return api(path, opts);
+  if (!navigator.onLine) { await queueAction(path, opts); return { queued:true }; }
+  try { return await api(path, opts); }
+  catch (e) {
+    if (isNetErr(e)) { await queueAction(path, opts); return { queued:true }; }
+    throw e;
+  }
+}
+async function queueAction(path, opts) {
+  await OQ.add({ path, method: opts.method || 'POST', body: opts.body || null });
+  updateOnlineStatus();
+}
+
+// Noch nicht gesendete Aktionen auf frisch geladene Stopps anwenden
+async function applyPending(stopps, tourId) {
+  const q = await OQ.all();
+  for (const it of q) {
+    const m = it.path.match(/^\/touren\/(\d+)\/stopps\/(\d+)\/(bestaetigen|ueberspringen)$/);
+    if (!m || String(m[1]) !== String(tourId)) continue;
+    const st = stopps.find(x => String(x.id) === m[2]);
+    if (!st) continue;
+    st.status = m[3] === 'bestaetigen' ? 'abgeschlossen' : 'uebersprungen';
+    if (m[3] === 'bestaetigen' && it.body && it.body.menge_geliefert != null) st.menge_geliefert = it.body.menge_geliefert;
+  }
+  return stopps;
+}
+
+let syncRunning = false;
+async function syncQueue() {
+  if (syncRunning || !navigator.onLine) return;
+  syncRunning = true;
+  let sent = 0, dropped = 0;
+  try {
+    const q = (await OQ.all()).sort((a,b) => a.id - b.id);
+    for (const it of q) {
+      try {
+        await api(it.path, { method: it.method, body: it.body });
+        await OQ.del(it.id); sent++;
+      } catch (e) {
+        if (isNetErr(e) || /^401/.test(e.message)) break;   // später erneut / Login nötig
+        await OQ.del(it.id); dropped++;                     // Server lehnt ab: nicht endlos wiederholen
+      }
+    }
+  } finally { syncRunning = false; }
+  if (sent) toast(sent + ' Aktion' + (sent>1?'en':'') + ' synchronisiert');
+  if (dropped) toast(dropped + ' Aktion(en) vom Server abgelehnt', false);
+  updateOnlineStatus();
+  if (sent || dropped) {
+    loadTouren();
+    if (aktiveTour) {
+      try {
+        const r = await api('/touren/' + aktiveTour.id + '?stopps=true');
+        aktiveTour = r.tour;
+        alleStopps = await applyPending(r.stopps || [], r.tour.id);
+        renderAktiveTour();
+      } catch {}
+    }
+  }
+}
+window.addEventListener('online', () => setTimeout(syncQueue, 800));
+setInterval(syncQueue, 60000);
+
 /* ── TOAST ─────────────────────────────────────────────── */
 function toast(msg, ok = true) {
   const el = document.getElementById('toast');
@@ -518,7 +623,7 @@ function stopTracking() {
   updateTrackBadge(false);
 }
 async function sendPos() {
-  if (!aktiveTourId) return;
+  if (!aktiveTourId || !navigator.onLine) return;
   navigator.geolocation.getCurrentPosition(async pos => {
     try {
       await api('/tracking/position', { method:'POST', body:{
@@ -582,7 +687,17 @@ let allTouren = [];
 
 async function loadTouren() {
   try {
-    const { touren } = await api('/touren/meine?datum=' + new Date().toISOString().slice(0,10));
+    const heute = new Date().toISOString().slice(0,10);
+    let touren, offlineStand = false;
+    try {
+      ({ touren } = await api('/touren/meine?datum=' + heute));
+      OQ.put('touren:' + heute, touren || []);
+    } catch (e) {
+      if (!isNetErr(e)) throw e;
+      touren = await OQ.get('touren:' + heute);
+      if (!touren) throw e;
+      offlineStand = true;
+    }
     allTouren = touren || [];
     renderTodayCard(allTouren);
 
@@ -597,6 +712,7 @@ async function loadTouren() {
     }
 
     document.getElementById('touren-list-wrap').innerHTML =
+      (offlineStand ? '<div class="empty-sub" style="margin-bottom:.5rem">📴 Offline – zuletzt geladener Stand</div>' : '') +
       allTouren.map(t => tourCard(t)).join('');
 
     // Auto-open active tour
@@ -662,8 +778,8 @@ function tourCard(t) {
 /* ── TOUR STARTEN ──────────────────────────────────────── */
 async function tourStarten(id) {
   try {
-    await api('/touren/' + id + '/status', { method:'PUT', body:{ status:'aktiv' } });
-    toast('Tour gestartet');
+    const r = await apiQ('/touren/' + id + '/status', { method:'PUT', body:{ status:'aktiv' } });
+    toast(r.queued ? 'Tour gestartet (wird später gesendet)' : 'Tour gestartet');
     await tourOeffnen(id);
   } catch (err) { toast(err.message, false); }
 }
@@ -675,9 +791,18 @@ let currentStopp = null;
 
 async function tourOeffnen(id) {
   try {
-    const { tour, stopps } = await api('/touren/' + id + '?stopps=true');
+    let data;
+    try {
+      data = await api('/touren/' + id + '?stopps=true');
+      OQ.put('tour:' + id, data);
+    } catch (e) {
+      if (!isNetErr(e)) throw e;
+      data = await OQ.get('tour:' + id);
+      if (!data) throw new Error('Tour offline nicht verfügbar – einmal mit Netz öffnen');
+    }
+    const { tour, stopps } = data;
     aktiveTour  = tour;
-    alleStopps  = stopps || [];
+    alleStopps  = await applyPending(stopps || [], tour.id);
     currentStopp = alleStopps.find(s => s.status === 'ausstehend') || null;
 
     document.getElementById('tab-tour').style.display = 'flex';
@@ -812,16 +937,24 @@ async function stoppBestaetigen(stoppId) {
   const foto  = document.getElementById('foto-prev-' + stoppId)?.src || '';
 
   try {
-    await api('/touren/' + aktiveTour.id + '/stopps/' + stoppId + '/bestaetigen', {
+    const r = await apiQ('/touren/' + aktiveTour.id + '/stopps/' + stoppId + '/bestaetigen', {
       method: 'POST',
       body: { menge_geliefert: menge ? parseFloat(menge) : null, notiz, foto: foto.startsWith('data:') ? foto : null },
     });
-    toast('Stopp bestätigt ✓');
+    toast(r.queued ? 'Stopp gespeichert – wird gesendet, sobald Netz da ist' : 'Stopp bestätigt ✓');
 
     // Nächsten Stopp finden
-    const { tour, stopps } = await api('/touren/' + aktiveTour.id + '?stopps=true');
-    aktiveTour  = tour;
-    alleStopps  = stopps;
+    let stopps;
+    if (r.queued) {
+      const st = alleStopps.find(x => String(x.id) === String(stoppId));
+      if (st) { st.status = 'abgeschlossen'; if (menge) st.menge_geliefert = parseFloat(menge); }
+      stopps = alleStopps;
+    } else {
+      const d = await api('/touren/' + aktiveTour.id + '?stopps=true');
+      aktiveTour = d.tour;
+      stopps = alleStopps = await applyPending(d.stopps || [], d.tour.id);
+      OQ.put('tour:' + d.tour.id, d);
+    }
     currentStopp = stopps.find(s => s.status === 'ausstehend') || null;
 
     if (!currentStopp) {
@@ -845,13 +978,21 @@ async function stoppBestaetigen(stoppId) {
 async function stoppUeberspringen(stoppId) {
   const grund = prompt('Grund für Überspringen (optional):') ?? '';
   try {
-    await api('/touren/' + aktiveTour.id + '/stopps/' + stoppId + '/ueberspringen', {
+    const r = await apiQ('/touren/' + aktiveTour.id + '/stopps/' + stoppId + '/ueberspringen', {
       method: 'POST', body: { grund },
     });
-    toast('Stopp übersprungen');
-    const { tour, stopps } = await api('/touren/' + aktiveTour.id + '?stopps=true');
-    aktiveTour  = tour;
-    alleStopps  = stopps;
+    toast(r.queued ? 'Übersprungen – wird später gesendet' : 'Stopp übersprungen');
+    let stopps;
+    if (r.queued) {
+      const st = alleStopps.find(x => String(x.id) === String(stoppId));
+      if (st) st.status = 'uebersprungen';
+      stopps = alleStopps;
+    } else {
+      const d = await api('/touren/' + aktiveTour.id + '?stopps=true');
+      aktiveTour = d.tour;
+      stopps = alleStopps = await applyPending(d.stopps || [], d.tour.id);
+      OQ.put('tour:' + d.tour.id, d);
+    }
     currentStopp = stopps.find(s => s.status === 'ausstehend') || null;
     renderAktiveTour();
   } catch (err) { toast(err.message, false); }
@@ -861,9 +1002,9 @@ async function stoppUeberspringen(stoppId) {
 async function tourBeenden() {
   if (!confirm('Tour wirklich beenden?')) return;
   try {
-    await api('/touren/' + aktiveTour.id + '/status', { method:'PUT', body:{ status:'abgeschlossen' } });
+    const r = await apiQ('/touren/' + aktiveTour.id + '/status', { method:'PUT', body:{ status:'abgeschlossen' } });
     stopTracking();
-    toast('Tour abgeschlossen 🎉');
+    toast(r.queued ? 'Tour beendet – wird gesendet, sobald Netz da ist' : 'Tour abgeschlossen 🎉');
     document.getElementById('tab-tour').style.display = 'none';
     await loadTouren();
     showScreen('heute');
@@ -955,7 +1096,18 @@ let swRegistration = null;
 /* ── OFFLINE DETECTION ──────────────────────────────────── */
 function updateOnlineStatus() {
   const banner = document.getElementById('offline-banner');
-  if (banner) banner.style.display = navigator.onLine ? 'none' : 'block';
+  if (!banner) return;
+  OQ.all().then(q => {
+    const n = q.length;
+    if (!navigator.onLine) {
+      banner.textContent = '📴 Offline – Aktionen werden gespeichert' + (n ? ' (' + n + ' wartend)' : '');
+      banner.style.display = 'block';
+    } else if (n) {
+      banner.textContent = '⏳ ' + n + ' Aktion' + (n>1?'en':'') + ' warten auf Senden – antippen zum Senden';
+      banner.style.display = 'block';
+      banner.onclick = syncQueue;
+    } else banner.style.display = 'none';
+  });
 }
 window.addEventListener('online',  updateOnlineStatus);
 window.addEventListener('offline', updateOnlineStatus);
@@ -1122,6 +1274,7 @@ async function loadJsQR() {
 
 /* ── INIT ──────────────────────────────────────────────── */
 loadTouren();
+syncQueue();
 
 // Push-Permission nach kurzem Delay anfragen (nicht sofort auf Seitenload)
 setTimeout(() => {
