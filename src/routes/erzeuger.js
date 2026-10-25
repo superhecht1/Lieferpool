@@ -21,7 +21,8 @@ router.get('/me', auth, role('erzeuger'), async (req, res) => {
       `SELECT * FROM zertifikate WHERE erzeuger_id = $1 ORDER BY created_at DESC`, [e.id]
     );
     const { rows: commitments } = await db.query(`
-      SELECT c.*, p.produkt, p.preis_pro_einheit, p.lieferwoche, p.status AS pool_status
+      SELECT c.*, p.produkt, p.preis_pro_einheit, p.lieferwoche, p.status AS pool_status,
+             p.liefertag, p.zeitfenster_von, p.zeitfenster_bis, p.deadline, p.platform_fee_pct
       FROM commitments c JOIN pools p ON p.id = c.pool_id
       WHERE c.erzeuger_id = $1 ORDER BY c.created_at DESC LIMIT 20
     `, [e.id]);
